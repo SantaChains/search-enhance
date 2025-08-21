@@ -27,7 +27,7 @@
     "_execute_action": {
       "suggested_key": {
         "default": "Alt+L",
-        "mac": "Cmd+Shift+L",
+        "mac": "Command+Shift+L",
         "windows": "Alt+L",
         "linux": "Alt+L"
       },
@@ -36,14 +36,14 @@
     "toggle_clipboard_monitoring": {
       "suggested_key": {
         "default": "Alt+Shift+C",
-        "mac": "Cmd+Shift+C"
+        "mac": "Command+Shift+C"
       },
       "description": "Toggle clipboard monitoring"
     },
     "quick_search": {
       "suggested_key": {
         "default": "Alt+Shift+S",
-        "mac": "Cmd+Shift+S"
+        "mac": "Command+Shift+S"
       },
       "description": "Quick search selected text"
     }
