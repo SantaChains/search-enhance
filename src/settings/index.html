@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>搜索助手 - 设置</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>设置</h1>
+
+        <!-- Search Engine Settings -->
+        <section>
+            <h2>搜索引擎</h2>
+            <div id="engine-list" class="settings-list">
+                <!-- Search engines will be dynamically added here -->
+            </div>
+            <div class="add-engine-form">
+                <input type="text" id="new-engine-name" placeholder="名称 (例如: 百度)">
+                <input type="text" id="new-engine-template" placeholder="URL模板 (使用 %s 作为查询占位符)">
+                <button id="add-engine-btn">添加引擎</button>
+            </div>
+        </section>
+
+        <!-- History Settings -->
+        <section>
+            <h2>搜索历史</h2>
+            <div class="history-controls">
+                <label for="history-limit-input">历史记录限制:</label>
+                <input type="number" id="history-limit-input" min="0" max="500">
+            </div>
+            <div id="history-list" class="settings-list">
+                <!-- History items will be dynamically added here -->
+            </div>
+            <button id="clear-history-btn">清空历史</button>
+        </section>
+
+        <!-- Data Management -->
+        <section>
+            <h2>数据管理</h2>
+            <div class="data-buttons">
+                <button id="export-btn">导出配置</button>
+                <label for="import-file-input" class="import-btn-label">
+                    导入配置
+                </label>
+                <input type="file" id="import-file-input" accept=".json,.edn" style="display: none;">
+            </div>
+        </section>
+
+    </div>
+    <script src="main.js" type="module"></script>
+</body>
+</html>

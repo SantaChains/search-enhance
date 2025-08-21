@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>扩展测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .test-data {
+            background: #fff;
+            padding: 10px;
+            border-radius: 3px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enhance Search Buddy 扩展测试页面</h1>
+    
+    <div class="test-section">
+        <h2>使用说明</h2>
+        <p>1. 按 <kbd>Alt+L</kbd> 打开悬浮搜索框</p>
+        <p>2. 点击浏览器工具栏的扩展图标打开弹窗</p>
+        <p>3. 在侧边栏中打开扩展</p>
+    </div>
+
+    <div class="test-section">
+        <h2>测试数据 - 路径格式</h2>
+        <div class="test-data">
+            D:\Users\Jliu Pureey\Downloads\gitmine\enhance-search-buddy\README.md
+        </div>
+        <div class="test-data">
+            "C:\Program Files\Microsoft Office\Office16\WINWORD.EXE"
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>测试数据 - 仓库格式</h2>
+        <div class="test-data">
+            microsoft/vscode
+        </div>
+        <div class="test-data">
+            https://github.com/facebook/react
+        </div>
+        <div class="test-data">
+            https://zread.ai/openai/gpt-4
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>测试数据 - 混合文本</h2>
+        <div class="test-data">
+            这是一段包含链接 https://www.example.com 和路径 D:\test\file.txt 的混合文本，还有仓库 user/repo 等内容。
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>测试数据 - 文本拆分</h2>
+        <div class="test-data">
+            Hello world! This is a test sentence. 这是中文测试。包含数字123和标点符号。
+        </div>
+    </div>
+
+    <script>
+        // 添加一些测试用的剪贴板内容
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('test-data')) {
+                navigator.clipboard.writeText(e.target.textContent.trim()).then(() => {
+                    console.log('已复制到剪贴板:', e.target.textContent.trim());
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>增强搜索助手</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h3>增强搜索助手</h3>
+            <div class="header-buttons">
+                <button id="clipboard-btn" title="监听剪贴板">📋</button>
+                <button id="settings-btn" title="设置">⚙️</button>
+                <button id="close-btn" title="关闭 (或按 Alt+L)">×</button>
+            </div>
+        </header>
+
+        <div class="search-area">
+            <input type="text" id="search-input" placeholder="搜索或处理文本...">
+            <button id="search-btn">搜索</button>
+        </div>
+
+        <div class="controls">
+            <div class="switch-container">
+                <label for="switch-extract" class="switch-label">提取拆解</label>
+                <label class="switch">
+                    <input type="checkbox" id="switch-extract">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="switch-container">
+                <label for="switch-link-gen" class="switch-label">生成链接</label>
+                <label class="switch">
+                    <input type="checkbox" id="switch-link-gen">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="switch-container">
+                <label for="switch-multi-format" class="switch-label">多格式分析</label>
+                <label class="switch">
+                    <input type="checkbox" id="switch-multi-format">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+
+        <div id="results-area">
+            <!-- Container for Switch 1: Extraction & Splitting -->
+            <div id="extract-container" class="result-panel" style="display: none;">
+                <div id="path-conversion-tool">
+                    <div class="path-options">
+                        <label><input type="checkbox" id="path-quote-checkbox">用引号包裹 ""</label>
+                    </div>
+                    <div id="path-conversion-result" class="path-result-list"></div>
+                </div>
+                <div id="link-extraction-result"></div>
+                <div id="text-splitting-tool">
+                    <div class="split-controls">
+                        <select id="split-delimiter-select">
+                            <option value="en-sentence">按英文句子</option>
+                            <option value="zh-sentence">按中文句子</option>
+                            <option value="space">按空格</option>
+                            <option value="newline">按换行</option>
+                            <option value="punctuation">按标点</option>
+                            <option value="word">按单词</option>
+                        </select>
+                        <button id="refresh-split-btn">刷新拆分</button>
+                    </div>
+                    <div id="split-output-container" class="split-container"></div>
+                    <div class="split-actions">
+                        <button id="copy-selected-btn">复制选中</button>
+                        <div class="copy-options">
+                            <label><input type="checkbox" id="copy-opt-space">空格</label>
+                            <label><input type="checkbox" id="copy-opt-newline">换行</label>
+                            <label><input type="checkbox" id="copy-opt-tab">制表符</label>
+                        </div>
+                        <label class="select-all-label"><input type="checkbox" id="select-all-checkbox">全选</label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Container for Switch 2: Link Generation -->
+            <div id="link-gen-container" class="result-panel" style="display: none;">
+                <!-- Dynamic content will be injected here -->
+            </div>
+
+            <!-- Container for Switch 3: Multi-Format Analysis -->
+            <div id="multi-format-container" class="result-panel" style="display: none;">
+                <!-- Dynamic content will be injected here -->
+            </div>
+        </div>
+
+    </div>
+    <script src="main.js" type="module"></script>
+</body>
+</html>

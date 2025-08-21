@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "Enhance Search Buddy",
+  "version": "1.0.0",
+  "description": "A browser extension to enhance search experience with a floating search box and text processing tools.",
+  "permissions": [
+    "storage",
+    "sidePanel",
+    "activeTab",
+    "scripting",
+    "contextMenus",
+    "clipboardRead"
+  ],
+  "commands": {
+    "toggle-floating-view": {
+      "suggested_key": {
+        "default": "Alt+L",
+        "mac": "Alt+L"
+      },
+      "description": "Toggle floating search view"
+    }
+  },
+  "background": {
+    "service_worker": "src/background/index.js"
+  },
+  "side_panel": {
+    "default_path": "src/popup/index.html"
+  },
+  "action": {
+    "default_title": "Enhance Search Buddy",
+    "default_popup": "src/popup/index.html"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/popup/index.html",
+        "src/settings/index.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "options_page": "src/settings/index.html"
+}
