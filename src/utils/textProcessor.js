@@ -1,6 +1,11 @@
 // src/utils/textProcessor.js
 
 /**
+ * Enhanced Text Processing Utilities
+ * Provides comprehensive text analysis and processing capabilities
+ */
+
+/**
  * Checks if a string is a valid URL.
  * @param {string} str The string to check.
  * @returns {boolean}
@@ -25,34 +30,55 @@ export function processTextExtraction(text) {
         extractedLinks: [],
     };
 
-    // 1. Extract links first
-    // More robust URL regex to match the examples and common cases
-    const urlRegex = /https?:\/\/(?:[-\w.])+(?:\:[0-9]+)?(?:\/(?:[\w\/_.])*(?:\?(?:[\w&=%.])*)?(?:\#(?:[\w.])*)?)?/gi;
-    results.extractedLinks = [...new Set(text.match(urlRegex) || [])]; // Use Set to remove duplicates
+    if (!text || !text.trim()) return results;
+
+    // 1. Extract links first - Enhanced URL detection
+    const urlRegex = /https?:\/\/(?:[-\w.])+(?::[0-9]+)?(?:\/(?:[\w\/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?/gi;
+    let potentialLinks = text.match(urlRegex) || [];
     
-    // 2. Clean the text
+    // Post-process to validate URLs more strictly
+    results.extractedLinks = [...new Set(potentialLinks.filter(url => {
+        try {
+            // Validate URL format
+            const testUrl = url.startsWith('http') ? url : `http://${url}`;
+            new URL(testUrl);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }))];
+    
+    // 2. Clean the text for English-focused processing
     let cleaned = text;
-    // Remove links that were found
+    
+    // Remove links that were found to avoid processing them as text
     if (results.extractedLinks.length > 0) {
         results.extractedLinks.forEach(url => {
             // Escape special regex characters in the URL before replacing
             const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            cleaned = cleaned.replace(new RegExp(escapedUrl, 'gi'), '');
+            cleaned = cleaned.replace(new RegExp(escapedUrl, 'gi'), ' ');
         });
     }
-    // Remove Chinese characters and specific Chinese punctuation (based on user example)
-    // Keep only 。 (U+3002) as specified. Other common ones: ， (U+FF0C), ； (U+FF1B), ： (U+FF1A), ？ (U+FF1F), ！ (U+FF01)
+    
+    // Remove Chinese characters (as per original requirement for Switch 1)
     // U+4e00-U+9fa5 covers common CJK characters.
-    cleaned = cleaned.replace(/[\u4e00-\u9fa5]/g, ''); // Remove Chinese characters
-    cleaned = cleaned.replace(/[，；：？！]/g, ''); // Remove specific Chinese punctuation (except 。)
+    cleaned = cleaned.replace(/[\u4e00-\u9fa5]/g, '');
+    
+    // Remove specific Chinese punctuation (based on user example)
+    // Keep only 。 (U+3002) as specified. Other common ones: ， (U+FF0C), ； (U+FF1B), ： (U+FF1A), ？ (U+FF1F), ！ (U+FF01)
+    cleaned = cleaned.replace(/[，；：？！]/g, '');
+    
     // Replace Chinese period with English period
     cleaned = cleaned.replace(/。/g, '.');
-    // Remove content within square brackets
-    cleaned = cleaned.replace(/\[.*?\]/g, '');
+    
+    // Remove content within square brackets and the brackets themselves
+    cleaned = cleaned.replace(/\[[^\]]*\]/g, '');
+    
     // Remove all non-English letters, non-digits, non-spaces, non-periods
-    // This step aims to clean the text for subsequent splitting, removing any residual unwanted characters.
-    cleaned = cleaned.replace(/[^a-zA-Z0-9\s.]/g, '');
-    // Trim whitespace and normalize internal spaces
+    // This aggressive cleaning is for the specific use case of this tool (Switch 1).
+    cleaned = cleaned.replace(/[^a-zA-Z0-9\s.]/g, ' ');
+    
+    // Trim whitespace and normalize internal spaces (replace multiple spaces with single space)
     results.cleanedText = cleaned.trim().replace(/\s+/g, ' ');
 
     return results;
@@ -66,26 +92,28 @@ export function processTextExtraction(text) {
  */
 export function splitText(text, delimiter = 'en-sentence') {
     if (!text) return [];
+    
     switch (delimiter) {
         case 'space':
             return text.split(/\s+/).filter(Boolean);
         case 'newline':
             return text.split(/\n+/).filter(Boolean);
         case 'zh-sentence':
+            // Match sequences of characters that are not sentence-ending punctuation, 
+            // followed by optional sentence-ending punctuation.
             return text.match(/[^。！？]+[。！？]?/g) || [];
         case 'en-sentence':
+            // Match sequences of characters that are not sentence-ending punctuation, 
+            // followed by optional sentence-ending punctuation.
             return text.match(/[^.!?]+[.!?]?/g) || [];
         case 'punctuation':
-            // Split by common punctuation marks, filtering out empty strings
-            // This will create empty parts around punctuation, so we filter them out and also trim parts
-            // A more sophisticated approach might be needed based on exact user expectation
+            // Split the text by a variety of common punctuation marks.
             return text.split(/[,.!?;:，。！？；：]/).map(part => part.trim()).filter(Boolean);
         case 'word':
-            // Split by non-word characters, effectively getting words
-            // \w includes underscores, which might or might not be desired
+            // Split by non-word characters (\W+).
             return text.split(/\W+/).filter(Boolean);
         default:
-            // Default to English sentence splitting if an unknown delimiter is passed
+            // Default to English sentence splitting if an unknown or unsupported delimiter is passed.
             return text.match(/[^.!?]+[.!?]?/g) || [];
     }
 }
@@ -96,12 +124,14 @@ export function splitText(text, delimiter = 'en-sentence') {
  * @returns {string[]|null} An array of path formats or null if not a valid path.
  */
 export function processPath(path) {
+    if (!path || !path.trim()) return null;
+    
     // Strictly check for Windows path format, distinguishes between quoted and unquoted
     // Matches paths like: D:\Users\Jliu Pureey\Downloads\gitmine\Edge-Homepage\README.md
     // And quoted paths like: "C:\Program Files\Microsoft Office\Office16\WINWORD.EXE"
     
     // Check for path with quotes
-    const matchWithQuotes = path.match(/^"([a-zA-Z]:\\[^"<>|?*]*)"/);
+    const matchWithQuotes = path.match(/^"([a-zA-Z]:\\[^"<>|?*]*)"$/);
     // Check for path without quotes 
     const matchWithoutQuotes = path.match(/^([a-zA-Z]:\\[^"<>|?*]*)$/);
     
@@ -114,20 +144,18 @@ export function processPath(path) {
         return null; // Not a valid Windows path format
     }
 
-    // 1. D:\Users\Jliu Pureey\Downloads\gitmine\Edge-Homepage\README.md (Original clean path)
+    // 1. Original clean path
     const originalPath = cleanPath;
     
-    // 2. file:///D:/Users/Jliu%20Pureey/Downloads/gitmine/Edge-Homepage/README.md (Unix-style file URL)
+    // 2. Unix-style file URL
     const unixPath = cleanPath.replace(/\\/g, '/');
-    const fileUrlUnix = 'file:///' + unixPath; // encodeURI is not needed for basic path conversion and can cause issues with spaces if not used correctly everywhere
+    const fileUrlUnix = 'file:///' + unixPath;
     
-    // 3. D:\\Users\\Jliu Pureey\\Downloads\\gitmine\\Edge-Homepage\\README.md (Double backslash escaped)
+    // 3. Double backslash escaped
     const escapedPath = cleanPath.replace(/\\/g, '\\\\'); 
     
-    // 4. file://D:\Users\Jliu Pureey\Downloads\gitmine\Edge-Homepage\README.md (Alternative file URL format from example)
-    // The example format file://D:/... seems to be a typo or unconventional. 
-    // A more plausible interpretation based on the example's structure (file:// followed by a Windows path) is:
-    const fileUrlAlt = 'file://' + cleanPath.replace(/\\/g, '\\'); // file://D:\Users\... -> file://D:\Users\...
+    // 4. Alternative file URL format
+    const fileUrlAlt = 'file://' + cleanPath.replace(/\\/g, '\\');
 
     return [
         originalPath,
@@ -137,13 +165,14 @@ export function processPath(path) {
     ];
 }
 
-
 /**
  * Generates various repository links from a "user/repo" string or a known URL.
  * @param {string} text The input text.
- * @returns {string[]|null} An array of generated links or null.
+ * @returns {object|null} An object containing the original GitHub link and an array of generated links, or null.
  */
 export function processLinkGeneration(text) {
+    if (!text || !text.trim()) return null;
+    
     const knownDomains = ['github.com', 'zread.ai', 'deepwiki.com', 'context7.com'];
     const templates = {
         github: 'https://github.com/{user_repo}',
@@ -153,19 +182,26 @@ export function processLinkGeneration(text) {
     };
 
     let userRepo = '';
+    let originalGithubLink = null;
 
     // Check for "user/repo" format
     const shortMatch = text.trim().match(/^([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)$/);
     if (shortMatch) {
         userRepo = text.trim();
+        originalGithubLink = `https://github.com/${userRepo}`;
     } else {
         // Check for known URLs
         try {
             const url = new URL(text);
-            if (knownDomains.includes(url.hostname.replace('www.', ''))) {
+            const hostname = url.hostname.replace('www.', '');
+            if (knownDomains.includes(hostname)) {
                 const pathParts = url.pathname.split('/').filter(Boolean);
                 if (pathParts.length >= 2) {
                     userRepo = `${pathParts[0]}/${pathParts[1]}`;
+                    // If the original URL is a GitHub link, store it
+                    if (hostname === 'github.com') {
+                        originalGithubLink = text.trim();
+                    }
                 }
             }
         } catch (e) {
@@ -174,7 +210,13 @@ export function processLinkGeneration(text) {
     }
 
     if (userRepo) {
-        return Object.values(templates).map(template => template.replace('{user_repo}', userRepo));
+        const generatedLinks = Object.values(templates).map(template => 
+            template.replace('{user_repo}', userRepo)
+        );
+        return {
+            originalGithubLink,
+            generatedLinks
+        };
     }
 
     return null;
@@ -208,7 +250,7 @@ export function processMultiFormat(text) {
     ))];
 
     // 路径检测 (Windows和Unix路径)
-    const pathRegex = /(?:[a-zA-Z]:[\\\/]|[\\\/])[^<>"*?|]+|~\/[^<>"*?|]+/g;
+    const pathRegex = /(?:[a-zA-Z]:[\\/]|[\\/])[^<>"*?|]+|~\/[^<>"*?|]+/g;
     results.paths = [...new Set(text.match(pathRegex) || [])];
 
     // 邮箱检测
@@ -325,12 +367,19 @@ export function analyzeTextForMultipleFormats(text) {
     }
 
     // 仓库链接生成
-    const repoLinks = processLinkGeneration(text);
-    if (repoLinks) {
+    const repoResult = processLinkGeneration(text);
+    if (repoResult) {
         results.push({
             type: '仓库链接',
-            data: repoLinks.map(url => ({ url }))
+            data: repoResult.generatedLinks.map(url => ({ url }))
         });
+        // Also push the original GitHub link if it exists
+        if (repoResult.originalGithubLink) {
+            results.push({
+                type: 'GitHub链接',
+                data: [{ url: repoResult.originalGithubLink }]
+            });
+        }
     }
 
     // 多格式检测

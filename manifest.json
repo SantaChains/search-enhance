@@ -1,45 +1,91 @@
 {
   "manifest_version": 3,
   "name": "Enhance Search Buddy",
-  "version": "1.0.0",
-  "description": "A browser extension to enhance search experience with a floating search box and text processing tools.",
+  "version": "2.0.0",
+  "description": "A powerful browser extension to enhance search experience with intelligent text processing, multi-format analysis, and advanced clipboard monitoring.",
+  "author": "Search Buddy Team",
+  "homepage_url": "https://github.com/SantaChains/search-enhance",
   "permissions": [
     "storage",
     "sidePanel",
     "activeTab",
     "scripting",
     "contextMenus",
-    "clipboardRead"
+    "clipboardRead",
+    "clipboardWrite",
+    "notifications",
+    "tabs"
+  ],
+  "optional_permissions": [
+    "background"
+  ],
+  "host_permissions": [
+    "http://*/*",
+    "https://*/*"
   ],
   "commands": {
-    "toggle-floating-view": {
+    "_execute_action": {
       "suggested_key": {
         "default": "Alt+L",
-        "mac": "Alt+L"
+        "mac": "Cmd+Shift+L",
+        "windows": "Alt+L",
+        "linux": "Alt+L"
       },
-      "description": "Toggle floating search view"
+      "description": "Open the popup or side panel"
+    },
+    "toggle_clipboard_monitoring": {
+      "suggested_key": {
+        "default": "Alt+Shift+C",
+        "mac": "Cmd+Shift+C"
+      },
+      "description": "Toggle clipboard monitoring"
+    },
+    "quick_search": {
+      "suggested_key": {
+        "default": "Alt+Shift+S",
+        "mac": "Cmd+Shift+S"
+      },
+      "description": "Quick search selected text"
     }
   },
   "background": {
-    "service_worker": "src/background/index.js"
+    "service_worker": "src/background/index.js",
+    "type": "module"
   },
   "side_panel": {
     "default_path": "src/popup/index.html"
   },
   "action": {
     "default_title": "Enhance Search Buddy",
-    "default_popup": "src/popup/index.html"
+    "default_popup": "src/popup/index.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   },
   "web_accessible_resources": [
     {
       "resources": [
         "src/popup/index.html",
-        "src/settings/index.html"
+        "src/settings/index.html",
+        "icons/*"
       ],
       "matches": [
         "<all_urls>"
       ]
     }
   ],
-  "options_page": "src/settings/index.html"
+  "options_page": "src/settings/index.html",
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline';"
+  },
+  "minimum_chrome_version": "88"
 }
