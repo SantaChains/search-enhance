@@ -4,28 +4,47 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>搜索助手 - 设置</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="new-style.css">
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="resizable-container">
         <h1>设置</h1>
 
         <!-- Search Engine Settings -->
         <section>
-            <h2>搜索引擎</h2>
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.3-4.3"/>
+                </svg>
+                搜索引擎
+            </h2>
             <div id="engine-list" class="settings-list">
                 <!-- Search engines will be dynamically added here -->
             </div>
             <div class="add-engine-form">
                 <input type="text" id="new-engine-name" placeholder="名称 (例如: 百度)">
                 <input type="text" id="new-engine-template" placeholder="URL模板 (使用 %s 作为查询占位符)">
-                <button id="add-engine-btn">添加引擎</button>
+                <button id="add-engine-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-plus">
+                        <path d="M5 12h14"/>
+                        <path d="M12 5v14"/>
+                    </svg>
+                    添加引擎
+                </button>
             </div>
         </section>
 
         <!-- History Settings -->
         <section>
-            <h2>搜索历史</h2>
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-history">
+                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                    <path d="M3 3v5h5"/>
+                    <path d="M12 7v5l4 2"/>
+                </svg>
+                搜索历史
+            </h2>
             <div class="history-controls">
                 <label for="history-limit-input">历史记录限制:</label>
                 <input type="number" id="history-limit-input" min="0" max="500">
@@ -33,15 +52,43 @@
             <div id="history-list" class="settings-list">
                 <!-- History items will be dynamically added here -->
             </div>
-            <button id="clear-history-btn">清空历史</button>
+            <button id="clear-history-btn" class="danger">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2">
+                    <path d="M3 6h18"/>
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                    <line x1="10" x2="10" y1="11" y2="17"/>
+                    <line x1="14" x2="14" y1="11" y2="17"/>
+                </svg>
+                清空历史
+            </button>
         </section>
 
         <!-- Data Management -->
         <section>
-            <h2>数据管理</h2>
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-database">
+                    <ellipse cx="12" cy="5" rx="9" ry="3"/>
+                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+                </svg>
+                数据管理
+            </h2>
             <div class="data-buttons">
-                <button id="export-btn">导出配置</button>
+                <button id="export-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-download">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" x2="12" y1="15" y2="3"/>
+                    </svg>
+                    导出配置
+                </button>
                 <label for="import-file-input" class="import-btn-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="17 8 12 3 7 8"/>
+                        <line x1="12" x2="12" y1="3" y2="15"/>
+                    </svg>
                     导入配置
                 </label>
                 <input type="file" id="import-file-input" accept=".json,.edn" style="display: none;">
@@ -49,6 +96,40 @@
         </section>
 
     </div>
+    
+    <!-- 响应式侧边栏适应脚本 -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 监听窗口大小变化
+            const resizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    // 根据容器宽度调整布局
+                    const width = entry.contentRect.width;
+                    const container = document.getElementById('resizable-container');
+                    
+                    if (width < 480) {
+                        // 窄屏布局
+                        document.body.classList.add('narrow-layout');
+                        document.body.classList.remove('medium-layout', 'wide-layout');
+                    } else if (width < 768) {
+                        // 中等屏幕布局
+                        document.body.classList.add('medium-layout');
+                        document.body.classList.remove('narrow-layout', 'wide-layout');
+                    } else {
+                        // 宽屏布局
+                        document.body.classList.add('wide-layout');
+                        document.body.classList.remove('narrow-layout', 'medium-layout');
+                    }
+                }
+            });
+            
+            // 开始观察容器大小变化
+            const container = document.getElementById('resizable-container');
+            if (container) {
+                resizeObserver.observe(container);
+            }
+        });
+    </script>
     <script src="main.js" type="module"></script>
 </body>
 </html>
