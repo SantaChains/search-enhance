@@ -513,7 +513,18 @@ function renderSplittingTool(text) {
         return;
     }
     
-    const delimiter = elements.split_delimiter_select.value;
+    // 获取选中的分隔规则
+    let delimiter = elements.split_delimiter_select.value;
+    
+    // 检查是否启用了多规则选择
+    const multiRuleCheckbox = document.getElementById('enable-multi-rules');
+    if (multiRuleCheckbox && multiRuleCheckbox.checked) {
+        const selectedRules = getSelectedRules();
+        if (selectedRules.length > 0) {
+            delimiter = selectedRules;
+        }
+    }
+    
     const splitItems = splitText(text, delimiter);
     
     appState.splitItemsState = splitItems.map(item => ({ text: item, selected: false }));
@@ -543,6 +554,32 @@ function renderSplittingTool(text) {
     
     if (elements.select_all_checkbox) {
         elements.select_all_checkbox.checked = false;
+    }
+}
+
+// 获取选中的分隔规则
+function getSelectedRules() {
+    const checkboxes = document.querySelectorAll('#multi-rule-selection input[type="checkbox"]:checked');
+    return Array.from(checkboxes).map(cb => cb.value);
+}
+
+// 切换多规则选择显示
+function toggleMultiRuleSelection() {
+    const checkbox = document.getElementById('enable-multi-rules');
+    const container = document.getElementById('multi-rule-selection');
+    
+    if (checkbox && container) {
+        container.style.display = checkbox.checked ? 'block' : 'none';
+        
+        // 如果启用多规则选择，禁用单规则选择器
+        if (elements.split_delimiter_select) {
+            elements.split_delimiter_select.disabled = checkbox.checked;
+        }
+        
+        // 重新渲染拆分结果
+        if (elements.search_input && elements.search_input.value.trim()) {
+            renderSplittingTool(elements.search_input.value);
+        }
     }
 }
 
@@ -742,6 +779,31 @@ function setupEventListeners() {
     if (elements.refresh_split_btn) {
         elements.refresh_split_btn.addEventListener('click', () => 
             renderSplittingTool(elements.search_input ? elements.search_input.value : ''));
+    }
+    
+    // 多规则选择监听器
+    const multiRuleCheckbox = document.getElementById('enable-multi-rules');
+    if (multiRuleCheckbox) {
+        multiRuleCheckbox.addEventListener('change', toggleMultiRuleSelection);
+    }
+    
+    // 监听多规则选择变化
+    document.addEventListener('change', (e) => {
+        if (e.target.matches('#multi-rule-selection input[type="checkbox"]')) {
+            // 当多规则选择发生变化时，重新渲染拆分结果
+            if (elements.search_input && elements.search_input.value.trim()) {
+                renderSplittingTool(elements.search_input.value);
+            }
+        }
+    });
+    
+    // 分隔规则选择器变化监听
+    if (elements.split_delimiter_select) {
+        elements.split_delimiter_select.addEventListener('change', () => {
+            if (elements.search_input && elements.search_input.value.trim()) {
+                renderSplittingTool(elements.search_input.value);
+            }
+        });
     }
     
     if (elements.copy_selected_btn) {

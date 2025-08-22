@@ -85,37 +85,425 @@ export function processTextExtraction(text) {
 }
 
 /**
- * Splits text based on a given delimiter.
- * @param {string} text The text to split.
- * @param {string} delimiter The splitting rule ('space', 'newline', 'zh-sentence', 'en-sentence', 'punctuation', 'word').
- * @returns {string[]} An array of split parts.
+ * 智能文本拆分 - 支持多种分隔规则和内容类型识别
+ * @param {string} text 输入文本
+ * @param {string|Array} delimiter 分隔规则，支持单个规则或多个规则组合
+ * @returns {Array} 拆分结果数组
  */
 export function splitText(text, delimiter = 'en-sentence') {
-    if (!text) return [];
+    if (!text || !text.trim()) return [];
     
-    switch (delimiter) {
+    // 支持多规则同时应用
+    const delimiters = Array.isArray(delimiter) ? delimiter : [delimiter];
+    let results = [text.trim()];
+    
+    // 按优先级依次应用分隔规则
+    for (const rule of delimiters) {
+        const newResults = [];
+        for (const segment of results) {
+            newResults.push(...applySingleSplitRule(segment, rule));
+        }
+        results = newResults;
+    }
+    
+    // 后处理：去重、过滤、长度校准
+    return postProcessSplitResults(results);
+}
+
+/**
+ * 应用单个分隔规则
+ * @param {string} text 文本片段
+ * @param {string} rule 分隔规则
+ * @returns {Array} 分隔结果
+ */
+function applySingleSplitRule(text, rule) {
+    if (!text || !text.trim()) return [];
+    
+    const contentType = detectContentType(text);
+    
+    switch (rule) {
+        case 'auto':
+            return autoSplit(text, contentType);
+        case 'en-sentence':
+            return splitEnglishSentences(text);
+        case 'zh-sentence':
+            return splitChineseSentences(text);
+        case 'mixed-sentence':
+            return splitMixedLanguageSentences(text);
+        case 'code-naming':
+            return splitCodeNaming(text);
+        case 'list-items':
+            return splitListItems(text);
+        case 'wrapped-content':
+            return splitWrappedContent(text);
         case 'space':
             return text.split(/\s+/).filter(Boolean);
         case 'newline':
-            return text.split(/\n+/).filter(Boolean);
-        case 'zh-sentence':
-            // Match sequences of characters that are not sentence-ending punctuation, 
-            // followed by optional sentence-ending punctuation.
-            return text.match(/[^。！？]+[。！？]?/g) || [];
-        case 'en-sentence':
-            // Match sequences of characters that are not sentence-ending punctuation, 
-            // followed by optional sentence-ending punctuation.
-            return text.match(/[^.!?]+[.!?]?/g) || [];
+            return text.split(/\r?\n+/).filter(Boolean);
         case 'punctuation':
-            // Split the text by a variety of common punctuation marks.
-            return text.split(/[,.!?;:，。！？；：]/).map(part => part.trim()).filter(Boolean);
+            return splitByPunctuation(text);
         case 'word':
-            // Split by non-word characters (\W+).
             return text.split(/\W+/).filter(Boolean);
         default:
-            // Default to English sentence splitting if an unknown or unsupported delimiter is passed.
-            return text.match(/[^.!?]+[.!?]?/g) || [];
+            return splitEnglishSentences(text);
     }
+}
+
+/**
+ * 检测内容类型
+ * @param {string} text 输入文本
+ * @returns {string} 内容类型
+ */
+function detectContentType(text) {
+    // 1. 检测列表类内容
+    if (/^[\s]*(?:\d+[.)]\s*|[一二三四五六七八九十]+[、.]\s*|[①②③④⑤⑥⑦⑧⑨⑩]\s*|[-*•·]\s*)/m.test(text)) {
+        return 'list';
+    }
+    
+    // 2. 检测代码/函数名
+    if (/[a-zA-Z_$][a-zA-Z0-9_$]*[A-Z][a-zA-Z0-9_$]*|[a-zA-Z_$][a-zA-Z0-9_$]*_[a-zA-Z0-9_$]+|[a-zA-Z_$][a-zA-Z0-9_$]*-[a-zA-Z0-9_$]+/.test(text)) {
+        return 'code';
+    }
+    
+    // 3. 检测包裹类标点
+    if (/["""''（）()【】《》<>「」『』]/g.test(text)) {
+        return 'wrapped';
+    }
+    
+    // 4. 检测中英文混合
+    const chineseCount = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+    const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
+    
+    if (chineseCount > 0 && englishCount > 0) {
+        return 'mixed';
+    } else if (chineseCount > englishCount) {
+        return 'chinese';
+    } else if (englishCount > 0) {
+        return 'english';
+    }
+    
+    return 'unknown';
+}
+
+/**
+ * 自动智能拆分
+ * @param {string} text 输入文本
+ * @param {string} contentType 内容类型
+ * @returns {Array} 拆分结果
+ */
+function autoSplit(text, contentType) {
+    switch (contentType) {
+        case 'list':
+            return splitListItems(text);
+        case 'code':
+            return splitCodeNaming(text);
+        case 'wrapped':
+            return splitWrappedContent(text);
+        case 'mixed':
+            return splitMixedLanguageSentences(text);
+        case 'chinese':
+            return splitChineseSentences(text);
+        case 'english':
+            return splitEnglishSentences(text);
+        default:
+            return splitMixedLanguageSentences(text);
+    }
+}
+
+/**
+ * 拆分英文句子
+ * @param {string} text 英文文本
+ * @returns {Array} 句子数组
+ */
+function splitEnglishSentences(text) {
+    // 先按句号、感叹号、问号拆分
+    const sentences = text.match(/[^.!?]+[.!?]?/g) || [];
+    const results = [];
+    
+    for (let sentence of sentences) {
+        sentence = sentence.trim();
+        if (!sentence) continue;
+        
+        // 如果句子过长，按逗号进一步拆分
+        if (sentence.length > 100) {
+            const parts = sentence.split(/,\s+/).filter(Boolean);
+            results.push(...parts);
+        } else {
+            results.push(sentence);
+        }
+    }
+    
+    return results;
+}
+
+/**
+ * 拆分中文句子
+ * @param {string} text 中文文本
+ * @returns {Array} 句子数组
+ */
+function splitChineseSentences(text) {
+    // 按中文句号、感叹号、问号、分号拆分
+    const sentences = text.split(/[。！？；]/).filter(Boolean);
+    const results = [];
+    
+    for (let sentence of sentences) {
+        sentence = sentence.trim();
+        if (!sentence) continue;
+        
+        // 如果句子过长，按逗号、顿号进一步拆分
+        if (sentence.length > 50) {
+            const parts = sentence.split(/[，、]/).filter(part => {
+                const trimmed = part.trim();
+                // 过滤掉过短的虚词
+                return trimmed.length > 1 && !/^[的了是在有和与或但而且然后因为所以]$/.test(trimmed);
+            });
+            results.push(...parts);
+        } else {
+            results.push(sentence);
+        }
+    }
+    
+    return results;
+}
+
+/**
+ * 拆分中英文混合句子
+ * @param {string} text 混合语言文本
+ * @returns {Array} 拆分结果
+ */
+function splitMixedLanguageSentences(text) {
+    const results = [];
+    
+    // 按语言边界拆分
+    const segments = text.match(/[\u4e00-\u9fa5，。！？；：""''（）【】《》]+|[a-zA-Z0-9\s,.!?;:()"'<>\[\]{}]+/g) || [];
+    
+    for (let segment of segments) {
+        segment = segment.trim();
+        if (!segment) continue;
+        
+        // 判断是中文还是英文主导
+        const chineseCount = (segment.match(/[\u4e00-\u9fa5]/g) || []).length;
+        const englishCount = (segment.match(/[a-zA-Z]/g) || []).length;
+        
+        if (chineseCount > englishCount) {
+            results.push(...splitChineseSentences(segment));
+        } else {
+            results.push(...splitEnglishSentences(segment));
+        }
+    }
+    
+    return results;
+}
+
+/**
+ * 拆分代码命名
+ * @param {string} text 代码文本
+ * @returns {Array} 拆分结果
+ */
+function splitCodeNaming(text) {
+    const results = [];
+    
+    // 按空格和换行先拆分
+    const tokens = text.split(/\s+/).filter(Boolean);
+    
+    for (const token of tokens) {
+        // 检测驼峰命名法 (camelCase, PascalCase)
+        if (/[a-z][A-Z]/.test(token)) {
+            const parts = token.split(/(?=[A-Z])/).filter(Boolean);
+            // 处理连续大写字母的情况 (如 HTTPRequest -> HTTP, Request)
+            const processed = [];
+            for (let part of parts) {
+                if (/^[A-Z]{2,}/.test(part) && part.length > 2) {
+                    const match = part.match(/^([A-Z]+)([A-Z][a-z].*)$/);
+                    if (match) {
+                        processed.push(match[1].slice(0, -1)); // 前面的大写字母
+                        processed.push(match[1].slice(-1) + match[2]); // 最后一个大写字母+后续
+                    } else {
+                        processed.push(part);
+                    }
+                } else {
+                    processed.push(part);
+                }
+            }
+            results.push(...processed);
+        }
+        // 检测蛇形命名法 (snake_case)
+        else if (token.includes('_')) {
+            results.push(...token.split('_').filter(Boolean));
+        }
+        // 检测串式命名法 (kebab-case)
+        else if (token.includes('-')) {
+            results.push(...token.split('-').filter(Boolean));
+        }
+        // 处理带括号的函数名
+        else if (/\w+\([^)]*\)/.test(token)) {
+            const match = token.match(/(\w+)\(([^)]*)\)/);
+            if (match) {
+                results.push(match[1]); // 函数名
+                if (match[2].trim()) {
+                    results.push(...match[2].split(',').map(p => p.trim()).filter(Boolean));
+                }
+            }
+        }
+        else {
+            results.push(token);
+        }
+    }
+    
+    return results;
+}
+
+/**
+ * 拆分列表项
+ * @param {string} text 列表文本
+ * @returns {Array} 列表项数组
+ */
+function splitListItems(text) {
+    const results = [];
+    
+    // 按行拆分
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        
+        // 匹配各种列表标记
+        const patterns = [
+            /^\d+[.)]\s*(.+)$/,           // 1. 或 1) 
+            /^[一二三四五六七八九十]+[、.]\s*(.+)$/,  // 一、
+            /^[①②③④⑤⑥⑦⑧⑨⑩]\s*(.+)$/,        // ①
+            /^[a-zA-Z][.)]\s*(.+)$/,      // a. 或 a)
+            /^[-*•·]\s*(.+)$/,            // - * • ·
+            /^[▪▫◦‣⁃]\s*(.+)$/           // 其他符号
+        ];
+        
+        let matched = false;
+        for (const pattern of patterns) {
+            const match = trimmed.match(pattern);
+            if (match) {
+                results.push(match[1].trim());
+                matched = true;
+                break;
+            }
+        }
+        
+        // 如果没有匹配到列表标记，直接添加
+        if (!matched) {
+            results.push(trimmed);
+        }
+    }
+    
+    return results;
+}
+
+/**
+ * 拆分包裹内容
+ * @param {string} text 包含包裹标点的文本
+ * @returns {Array} 拆分结果
+ */
+function splitWrappedContent(text) {
+    const results = [];
+    
+    // 定义包裹符号对
+    const wrappers = [
+        { open: '"', close: '"' },
+        { open: '"', close: '"' },
+        { open: "'", close: "'" },
+        { open: "'", close: "'" },
+        { open: '（', close: '）' },
+        { open: '(', close: ')' },
+        { open: '【', close: '】' },
+        { open: '[', close: ']' },
+        { open: '《', close: '》' },
+        { open: '<', close: '>' },
+        { open: '「', close: '」' },
+        { open: '『', close: '』' }
+    ];
+    
+    let remaining = text;
+    
+    for (const wrapper of wrappers) {
+        const regex = new RegExp(`\\${wrapper.open}([^\\${wrapper.close}]*)\\${wrapper.close}`, 'g');
+        let match;
+        
+        while ((match = regex.exec(remaining)) !== null) {
+            const content = match[1].trim();
+            if (content) {
+                results.push(content);
+            }
+            // 移除已处理的部分
+            remaining = remaining.replace(match[0], ' ');
+        }
+    }
+    
+    // 处理剩余的非包裹内容
+    const leftover = remaining.trim();
+    if (leftover) {
+        // 按标点符号拆分剩余内容
+        results.push(...splitByPunctuation(leftover));
+    }
+    
+    return results;
+}
+
+/**
+ * 按标点符号拆分
+ * @param {string} text 文本
+ * @returns {Array} 拆分结果
+ */
+function splitByPunctuation(text) {
+    // 中英文标点符号
+    return text.split(/[,.!?;:，。！？；：、]/)
+               .map(part => part.trim())
+               .filter(Boolean);
+}
+
+/**
+ * 后处理拆分结果
+ * @param {Array} results 原始拆分结果
+ * @returns {Array} 处理后的结果
+ */
+function postProcessSplitResults(results) {
+    if (!results || results.length === 0) return [];
+    
+    // 1. 去重
+    const uniqueResults = [...new Set(results.map(item => item.trim()))].filter(Boolean);
+    
+    // 2. 长度校准 - 合并过短的片段
+    const processed = [];
+    let i = 0;
+    
+    while (i < uniqueResults.length) {
+        let current = uniqueResults[i];
+        
+        // 如果当前项过短（1-2个字符），尝试与相邻项合并
+        if (current.length <= 2 && i < uniqueResults.length - 1) {
+            const next = uniqueResults[i + 1];
+            // 检查是否为无意义的虚词或单字符
+            if (/^[的了是在有和与或但而且然后因为所以a-zA-Z]$/.test(current)) {
+                current = current + next;
+                i += 2; // 跳过下一项
+            } else {
+                processed.push(current);
+                i++;
+            }
+        } else {
+            processed.push(current);
+            i++;
+        }
+    }
+    
+    // 3. 语义补全 - 保护固定搭配
+    const protectedPhrases = [
+        '北京大学', '清华大学', '中国科学院', 'HTTP', 'HTTPS', 'API', 'URL', 'JSON', 'XML',
+        'JavaScript', 'TypeScript', 'GitHub', 'Google', 'Microsoft', 'Apple'
+    ];
+    
+    return processed.filter(item => {
+        // 保留长度合适的项目
+        return item.length >= 1 && item.length <= 200;
+    });
 }
 
 /**
@@ -126,14 +514,16 @@ export function splitText(text, delimiter = 'en-sentence') {
 export function processPath(path) {
     if (!path || !path.trim()) return null;
     
+    const input = path.trim();
+    
     // Strictly check for Windows path format, distinguishes between quoted and unquoted
     // Matches paths like: D:\Users\Jliu Pureey\Downloads\gitmine\Edge-Homepage\README.md
     // And quoted paths like: "C:\Program Files\Microsoft Office\Office16\WINWORD.EXE"
     
     // Check for path with quotes
-    const matchWithQuotes = path.match(/^"([a-zA-Z]:\\[^"<>|?*]*)"$/);
+    const matchWithQuotes = input.match(/^"([a-zA-Z]:\\[^"<>|?*]*)"$/);
     // Check for path without quotes 
-    const matchWithoutQuotes = path.match(/^([a-zA-Z]:\\[^"<>|?*]*)$/);
+    const matchWithoutQuotes = input.match(/^([a-zA-Z]:\\[^"<>|?*]*)$/);
     
     let cleanPath = null;
     if (matchWithQuotes) {
@@ -154,8 +544,8 @@ export function processPath(path) {
     // 3. Double backslash escaped
     const escapedPath = cleanPath.replace(/\\/g, '\\\\'); 
     
-    // 4. Alternative file URL format
-    const fileUrlAlt = 'file://' + cleanPath.replace(/\\/g, '\\');
+    // 4. Alternative file URL format (encoded)
+    const fileUrlAlt = 'file:///' + encodeURI(unixPath);
 
     return [
         originalPath,
@@ -188,7 +578,7 @@ export function processLinkGeneration(text) {
     const shortMatch = text.trim().match(/^([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)$/);
     if (shortMatch) {
         userRepo = text.trim();
-        originalGithubLink = `https://github.com/${userRepo}`;
+        // originalGithubLink is only captured when the original input is a GitHub URL
     } else {
         // Check for known URLs
         try {
@@ -198,7 +588,7 @@ export function processLinkGeneration(text) {
                 const pathParts = url.pathname.split('/').filter(Boolean);
                 if (pathParts.length >= 2) {
                     userRepo = `${pathParts[0]}/${pathParts[1]}`;
-                    // If the original URL is a GitHub link, store it
+                    // Capture the original link only when the input was a GitHub URL
                     if (hostname === 'github.com') {
                         originalGithubLink = text.trim();
                     }
@@ -410,4 +800,47 @@ export function analyzeTextForMultipleFormats(text) {
     }
 
     return results;
+}
+
+/**
+ * 获取分隔规则的说明信息
+ * @param {string} rule 分隔规则名称
+ * @returns {string} 规则说明
+ */
+export function getSplitRuleDescription(rule) {
+    const descriptions = {
+        'auto': '智能分析：根据内容类型自动选择最适合的分隔方式，支持列表、代码、包裹内容等复杂场景',
+        'en-sentence': '英文句子：按句号、感叹号、问号拆分英文句子，长句子会按逗号进一步拆分',
+        'zh-sentence': '中文句子：按中文标点（。！？；）拆分句子，长句按逗号、顿号拆分并过滤虚词',
+        'mixed-sentence': '中英混合：按语言边界智能拆分，中文部分用中文规则，英文部分用英文规则',
+        'code-naming': '代码命名：识别驼峰、蛇形、串式命名法，拆分函数名和变量名为基础语义单元',
+        'list-items': '列表项目：提取有序列表（1. 一、 ①）和无序列表（- * •）的内容，自动过滤序号标记',
+        'wrapped-content': '包裹内容：提取引号、括号、书名号等包裹符号内的内容，支持中英文标点',
+        'space': '空格分隔：按空格拆分单词，适合英文文本的基础分词',
+        'newline': '换行分隔：按换行符拆分，适合处理多行文本内容',
+        'punctuation': '标点分隔：按中英文标点符号拆分，获取基础文本片段',
+        'word': '单词分隔：按非字母数字字符拆分，提取纯单词内容'
+    };
+    
+    return descriptions[rule] || '未知规则';
+}
+
+/**
+ * 获取所有可用的分隔规则
+ * @returns {Array} 规则列表
+ */
+export function getAvailableSplitRules() {
+    return [
+        { value: 'auto', label: '智能分析', description: getSplitRuleDescription('auto') },
+        { value: 'mixed-sentence', label: '中英混合', description: getSplitRuleDescription('mixed-sentence') },
+        { value: 'zh-sentence', label: '中文句子', description: getSplitRuleDescription('zh-sentence') },
+        { value: 'en-sentence', label: '英文句子', description: getSplitRuleDescription('en-sentence') },
+        { value: 'code-naming', label: '代码命名', description: getSplitRuleDescription('code-naming') },
+        { value: 'list-items', label: '列表项目', description: getSplitRuleDescription('list-items') },
+        { value: 'wrapped-content', label: '包裹内容', description: getSplitRuleDescription('wrapped-content') },
+        { value: 'space', label: '空格分隔', description: getSplitRuleDescription('space') },
+        { value: 'newline', label: '换行分隔', description: getSplitRuleDescription('newline') },
+        { value: 'punctuation', label: '标点分隔', description: getSplitRuleDescription('punctuation') },
+        { value: 'word', label: '单词分隔', description: getSplitRuleDescription('word') }
+    ];
 }
