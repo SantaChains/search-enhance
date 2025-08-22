@@ -117,7 +117,7 @@ export async function saveSettings(settings) {
 }
 
 /**
- * Add a record to history with deduplication and validation
+ * Add a record to history with enhanced GitHub repository detection
  * @param {string} item - Item to add to history
  * @returns {Promise<boolean>} Success status
  */
@@ -131,9 +131,15 @@ export async function addToHistory(item) {
         const { history, historyLimit } = await getSettings();
         const trimmedItem = item.trim();
         
-        // Remove duplicates and add to front
-        const filteredHistory = history.filter(h => h !== trimmedItem);
-        const newHistory = [trimmedItem, ...filteredHistory];
+        // Enhanced history entry with metadata
+        const historyEntry = createHistoryEntry(trimmedItem);
+        
+        // Remove duplicates (by URL) and add to front
+        const filteredHistory = history.filter(h => {
+            const existing = typeof h === 'string' ? h : h.url;
+            return existing !== historyEntry.url;
+        });
+        const newHistory = [historyEntry, ...filteredHistory];
         
         // Enforce history limit
         if (newHistory.length > historyLimit) {
@@ -150,6 +156,67 @@ export async function addToHistory(item) {
         logger.error('Failed to add to history:', error);
         return false;
     }
+}
+
+/**
+ * Create enhanced history entry with metadata
+ * @param {string} url - URL to create entry for
+ * @returns {object} History entry with metadata
+ */
+export function createHistoryEntry(url) {
+    const entry = {
+        url,
+        timestamp: new Date().toISOString(),
+        type: 'other',
+        domain: '',
+        title: '',
+        isGitHubRepo: false,
+        repoInfo: null
+    };
+    
+    try {
+        const urlObj = new URL(url);
+        entry.domain = urlObj.hostname;
+        
+        // GitHub repository detection
+        if (urlObj.hostname === 'github.com') {
+            const pathParts = urlObj.pathname.split('/').filter(Boolean);
+            if (pathParts.length >= 2) {
+                entry.type = 'github';
+                entry.isGitHubRepo = true;
+                entry.repoInfo = {
+                    username: pathParts[0],
+                    repository: pathParts[1],
+                    fullName: `${pathParts[0]}/${pathParts[1]}`
+                };
+                entry.title = entry.repoInfo.fullName;
+            }
+        }
+        // Other code platforms
+        else if (['zread.ai', 'deepwiki.com', 'context7.com'].includes(urlObj.hostname)) {
+            const pathParts = urlObj.pathname.split('/').filter(Boolean);
+            if (pathParts.length >= 2) {
+                entry.type = 'code_platform';
+                entry.repoInfo = {
+                    username: pathParts[0],
+                    repository: pathParts[1],
+                    fullName: `${pathParts[0]}/${pathParts[1]}`
+                };
+                entry.title = entry.repoInfo.fullName;
+            }
+        }
+        // Regular websites
+        else {
+            entry.type = 'website';
+            entry.title = urlObj.hostname;
+        }
+    } catch (e) {
+        // If not a valid URL, treat as search query
+        entry.type = 'search';
+        entry.title = url.length > 30 ? url.substring(0, 30) + '...' : url;
+    }
+    
+    return entry;
 }
 
 /**
@@ -170,21 +237,45 @@ export async function clearHistory() {
 }
 
 /**
- * Get history with optional filtering
+ * Get history with enhanced filtering options
  * @param {number} limit - Maximum number of items to return
  * @param {string} filter - Optional filter string
- * @returns {Promise<string[]>} History items
+ * @param {string} type - Optional type filter ('github', 'website', 'search', 'all')
+ * @returns {Promise<Array>} History items
  */
-export async function getHistory(limit = null, filter = null) {
+export async function getHistory(limit = null, filter = null, type = 'all') {
     try {
         const { history } = await getSettings();
         let filteredHistory = history;
         
-        // Apply filter if provided
+        // Ensure backward compatibility - convert string entries to objects
+        filteredHistory = history.map(item => {
+            if (typeof item === 'string') {
+                return createHistoryEntry(item);
+            }
+            return item;
+        });
+        
+        // Apply type filter
+        if (type && type !== 'all') {
+            filteredHistory = filteredHistory.filter(item => {
+                if (type === 'github') {
+                    return item.type === 'github' || item.isGitHubRepo;
+                }
+                if (type === 'other') {
+                    return item.type !== 'github' && !item.isGitHubRepo;
+                }
+                return item.type === type;
+            });
+        }
+        
+        // Apply text filter
         if (filter && typeof filter === 'string') {
             const filterLower = filter.toLowerCase();
-            filteredHistory = history.filter(item => 
-                item.toLowerCase().includes(filterLower)
+            filteredHistory = filteredHistory.filter(item => 
+                item.url.toLowerCase().includes(filterLower) ||
+                item.title.toLowerCase().includes(filterLower) ||
+                (item.repoInfo && item.repoInfo.fullName.toLowerCase().includes(filterLower))
             );
         }
         
@@ -197,6 +288,40 @@ export async function getHistory(limit = null, filter = null) {
     } catch (error) {
         logger.error('Failed to get history:', error);
         return [];
+    }
+}
+
+/**
+ * Get GitHub repositories from history
+ * @param {number} limit - Maximum number of repos to return
+ * @returns {Promise<Array>} GitHub repository entries
+ */
+export async function getGitHubRepositories(limit = null) {
+    return await getHistory(limit, null, 'github');
+}
+
+/**
+ * Remove specific item from history
+ * @param {string} url - URL to remove from history
+ * @returns {Promise<boolean>} Success status
+ */
+export async function removeFromHistory(url) {
+    try {
+        const { history } = await getSettings();
+        const filteredHistory = history.filter(item => {
+            const itemUrl = typeof item === 'string' ? item : item.url;
+            return itemUrl !== url;
+        });
+        
+        const success = await saveSettings({ history: filteredHistory });
+        if (success) {
+            logger.info(`Removed from history: ${url}`);
+        }
+        
+        return success;
+    } catch (error) {
+        logger.error('Failed to remove from history:', error);
+        return false;
     }
 }
 

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Enhance Search Buddy",
-  "version": "2.0.0",
-  "description": "A powerful browser extension to enhance search experience with intelligent text processing, multi-format analysis, and advanced clipboard monitoring.",
+  "version": "2.1.0",
+  "description": "一款强大的浏览器扩展，通过智能文本处理、多格式分析和高级剪贴板监控增强您的搜索体验",
   "author": "Search Buddy Team",
   "homepage_url": "https://github.com/SantaChains/search-enhance",
   "permissions": [
@@ -52,6 +52,13 @@
     "service_worker": "src/background/index.js",
     "type": "module"
   },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["src/content/index.js"],
+      "run_at": "document_idle"
+    }
+  ],
   "side_panel": {
     "default_path": "src/popup/index.html"
   },

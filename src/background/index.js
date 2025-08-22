@@ -23,6 +23,13 @@ const logger = {
  */
 async function openSidePanel(windowId, source = 'unknown') {
     try {
+        // Check if we're in a normal window (not a popup or app window)
+        const window = await chrome.windows.get(windowId);
+        if (window.type !== 'normal') {
+            logger.warn(`Cannot open side panel in ${window.type} window`);
+            return;
+        }
+        
         await chrome.sidePanel.open({ windowId });
         logger.info(`Side panel opened successfully via ${source}`);
     } catch (error) {
@@ -64,12 +71,58 @@ chrome.runtime.onInstalled.addListener(async () => {
     }
 });
 
-// Handle keyboard shortcuts
+// Handle keyboard shortcuts with enhanced functionality
 chrome.commands.onCommand.addListener(async (command, tab) => {
-    if (command === '_execute_action' && tab?.windowId) {
-        await openSidePanel(tab.windowId, 'keyboard shortcut (Alt+L)');
+    logger.info(`Command received: ${command}`, tab);
+    
+    switch (command) {
+        case '_execute_action':
+            // Alt+L - Open side panel
+            if (tab?.windowId) {
+                await openSidePanel(tab.windowId, 'keyboard shortcut (Alt+L)');
+            }
+            break;
+            
+        case 'toggle_clipboard_monitoring':
+            // Alt+Shift+C - Toggle clipboard monitoring
+            try {
+                await chrome.tabs.sendMessage(tab.id, { 
+                    action: 'toggleClipboardMonitoring' 
+                });
+            } catch (error) {
+                logger.warn('Could not send clipboard toggle message to tab:', error);
+            }
+            break;
+            
+        case 'quick_search':
+            // Alt+Shift+S - Quick search selected text
+            try {
+                const [result] = await chrome.scripting.executeScript({
+                    target: { tabId: tab.id },
+                    function: getSelectedText
+                });
+                
+                if (result?.result) {
+                    await handleSelectedText(result.result, tab.windowId);
+                }
+            } catch (error) {
+                logger.warn('Could not get selected text:', error);
+                // Fallback: just open the side panel
+                await openSidePanel(tab.windowId, 'quick search fallback');
+            }
+            break;
+            
+        default:
+            logger.warn(`Unknown command: ${command}`);
     }
 });
+
+/**
+ * Function to be injected to get selected text
+ */
+function getSelectedText() {
+    return window.getSelection().toString().trim();
+}
 
 // Handle context menu clicks
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
