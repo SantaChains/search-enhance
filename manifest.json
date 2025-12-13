@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Enhance Search Buddy",
+  "name": "Decide search",
   "version": "2.1.0",
   "description": "一款强大的浏览器扩展，通过智能文本处理、多格式分析和高级剪贴板监控增强您的搜索体验",
-  "author": "Search Buddy Team",
+  "author": "SantaChains",
   "homepage_url": "https://github.com/SantaChains/search-enhance",
   "permissions": [
     "storage",
