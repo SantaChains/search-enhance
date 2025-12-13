@@ -191,8 +191,8 @@ document.addEventListener('keydown', (event) => {
         chrome.runtime.sendMessage({ action: 'openSidePanel' });
     }
     
-    // Alt+Shift+C - 切换剪贴板监控（backup处理）
-    if (event.altKey && event.shiftKey && event.key.toLowerCase() === 'c' && !event.ctrlKey) {
+    // Alt+K - 切换剪贴板监控（backup处理）
+    if (event.altKey && event.key.toLowerCase() === 'k' && !event.ctrlKey && !event.shiftKey) {
         event.preventDefault();
         toggleClipboardMonitoring();
     }

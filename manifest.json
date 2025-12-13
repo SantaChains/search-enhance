@@ -35,8 +35,8 @@
     },
     "toggle_clipboard_monitoring": {
       "suggested_key": {
-        "default": "Alt+Shift+C",
-        "mac": "Command+Shift+C"
+        "default": "Alt+K",
+        "mac": "Command+Shift+K"
       },
       "description": "Toggle clipboard monitoring"
     },
