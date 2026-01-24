@@ -90,6 +90,20 @@
                 </div>
             </section>
 
+            
+                <div class="switch-container" data-switch="clipboard">
+                    <input type="checkbox" id="clipboard-monitor-switch" checked>
+                    <label for="clipboard-monitor-switch">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-check">
+                            <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+                            <path d="m9 14 2 2 4-4"/>
+                        </svg>
+                        剪贴板监控
+                    </label>
+                </div>
+            </section>
+
             <!-- 提取和拆解功能区域 -->
             <section id="extract-container" class="result-panel">
                 <h4>
@@ -141,7 +155,7 @@
                         </select>
                         <div class="multi-rule-container">
                             <label class="multi-rule-label">
-                                <input type="checkbox" id="enable-multi-rules">
+                                <input type="checkbox" id="multi-rule-checkbox">
                                 多规则组合
                             </label>
                             <div id="multi-rule-selection" style="display:none;">

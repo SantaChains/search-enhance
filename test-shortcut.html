@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>快捷键测试</title>
+</head>
+<body>
+    <h1>剪贴板监控快捷键测试</h1>
+    <p>按 Alt+K 应该切换剪贴板监控</p>
+    <p>当前状态: <span id="status">未知</span></p>
+    <button onclick="testShortcut()">测试快捷键注册</button>
+    
+    <script>
+        // 测试内容脚本是否加载
+        function testShortcut() {
+            console.log('测试快捷键功能...');
+            
+            // 模拟剪贴板监控
+            if (window.searchBuddyClipboardInterval) {
+                clearInterval(window.searchBuddyClipboardInterval);
+                window.searchBuddyClipboardInterval = null;
+                document.getElementById('status').textContent = '已关闭';
+                alert('剪贴板监控已关闭');
+            } else {
+                window.searchBuddyClipboardInterval = setInterval(async () => {
+                    try {
+                        const text = await navigator.clipboard.readText();
+                        if (text && text !== window.lastClipboardContent) {
+                            window.lastClipboardContent = text;
+                            console.log('检测到剪贴板内容:', text);
+                        }
+                    } catch (e) {
+                        console.log('剪贴板读取错误:', e);
+                    }
+                }, 1000);
+                document.getElementById('status').textContent = '已开启';
+                alert('剪贴板监控已开启');
+            }
+        }
+        
+        // 监听来自扩展的消息
+        chrome.runtime?.onMessage?.addListener((request, sender, sendResponse) => {
+            console.log('收到扩展消息:', request);
+            if (request.action === 'toggleClipboardMonitoring') {
+                testShortcut();
+                sendResponse({ success: true });
+            }
+        });
+    </script>
+</body>
+</html>

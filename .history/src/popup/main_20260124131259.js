@@ -58,12 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // 初始化UI
         renderEngineSelect();
-        // 默认开启剪贴板监控
-        if (appState.settings?.userPreferences?.autoClipboard) {
-            await toggleClipboardMonitoring();
-        } else {
-            updateClipboardButtonState(false);
-        }
+        updateClipboardButtonState(false);
         renderHistory();
         
         // 初始化textarea自适应高度
@@ -836,8 +831,19 @@ function setupEventListeners() {
     // 添加手动调整大小的监听器
     setupTextareaResizeHandle();
     
-    // 注意：Alt+K快捷键已在manifest.json中定义为全局命令
-    // 由background.js处理，不需要在popup中重复定义
+    // 添加全局键盘快捷键支持
+    document.addEventListener('keydown', (e) => {
+        // 添加调试日志，便于排查问题
+        logger.info(`快捷键检测: altKey=${e.altKey}, key=${e.key}`);
+        
+        // alt+k 快捷键切换剪贴板监控
+        if (e.altKey && e.key === 'k') {
+            e.preventDefault(); // 防止默认行为
+            e.stopPropagation(); // 防止事件冒泡
+            logger.info('触发 alt+k 快捷键，切换剪贴板监控状态');
+            toggleClipboardMonitoring();
+        }
+    }, { capture: true }); // 使用捕获模式，确保事件被捕获
     
     logger.info("事件监听器设置完成");
 }

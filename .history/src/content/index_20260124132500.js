@@ -36,7 +36,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ success: true });
             break;
             
-
+        case 'showNotification':
+            showPageNotification(request.message, request.type);
+            sendResponse({ success: true });
+            break;
             
         default:
             logger.warn('未知消息类型:', request.action);

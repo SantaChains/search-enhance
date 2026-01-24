@@ -58,12 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // 初始化UI
         renderEngineSelect();
-        // 默认开启剪贴板监控
-        if (appState.settings?.userPreferences?.autoClipboard) {
-            await toggleClipboardMonitoring();
-        } else {
-            updateClipboardButtonState(false);
-        }
+        updateClipboardButtonState(false);
         renderHistory();
         
         // 初始化textarea自适应高度
