@@ -244,37 +244,6 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
             sendResponse({ isActive: isClipboardMonitoring });
             break;
             
-        case 'clipboardChanged':
-            // 处理来自popup或content script的剪贴板变化通知
-            // 转发给其他打开的popup和侧边栏
-            try {
-                // 保存到存储中，以便新打开的popup访问
-                await chrome.storage.local.set({ [STORAGE_KEY_LAST_CLIPBOARD_CONTENT]: request.content });
-                
-                // 转发给其他tab
-                const tabs = await chrome.tabs.query({ status: 'complete' });
-                for (const tab of tabs) {
-                    if (tab.id && tab.id !== sender.tab?.id) {
-                        await chrome.tabs.sendMessage(tab.id, request).catch(() => {
-                            // 忽略错误，可能内容脚本未加载
-                        });
-                    }
-                }
-                
-                sendResponse({ success: true });
-            } catch (error) {
-                logger.error('转发剪贴板变化通知失败:', error);
-                sendResponse({ success: false, error: error.message });
-            }
-            break;
-            
-        case 'clipboardMonitoringToggled':
-            // 更新全局状态
-            isClipboardMonitoring = request.isActive;
-            await chrome.storage.local.set({ [STORAGE_KEY_CLIPBOARD_MONITORING]: isClipboardMonitoring });
-            sendResponse({ success: true });
-            break;
-            
         default:
             // 其他消息类型，保持通道开放
             sendResponse({ success: false, error: 'Unknown action' });

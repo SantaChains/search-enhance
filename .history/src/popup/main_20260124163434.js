@@ -75,10 +75,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // 初始化UI
         renderEngineSelect();
-        
-        // 初始化剪贴板监控状态（从background script获取）
-        await initClipboardMonitoringState();
-        
+        // 默认开启剪贴板监控
+        if (appState.settings?.userPreferences?.autoClipboard) {
+            await toggleClipboardMonitoring();
+        } else {
+            updateClipboardButtonState(false);
+        }
         renderHistory();
         renderClipboardHistory();
         
@@ -156,84 +158,23 @@ function showNotification(message, isSuccess = true) {
 
 // 剪贴板监控功能
 async function toggleClipboardMonitoring() {
-    // 切换本地监控状态
-    appState.clipboardMonitoring = !appState.clipboardMonitoring;
-    
-    if (appState.clipboardMonitoring) {
-        try {
-            await startClipboardMonitoring();
-            showNotification('剪贴板监控已启动');
-        } catch (error) {
-            logger.warn('剪贴板监控启动失败:', error);
-            appState.clipboardMonitoring = false;
-            showNotification('无法启动剪贴板监控', false);
-        }
-    } else {
-        stopClipboardMonitoring();
-        showNotification('剪贴板监控已停止');
-    }
-    
-    // 通知background script状态变化
-    chrome.runtime.sendMessage({
-        action: 'clipboardMonitoringToggled',
-        isActive: appState.clipboardMonitoring
-    }).catch(error => {
-        logger.warn('通知background script状态变化失败:', error);
-    });
-    
-    updateClipboardButtonState(appState.clipboardMonitoring);
-}
-
-async function startClipboardMonitoring() {
-    if (appState.clipboardInterval) {
-        clearInterval(appState.clipboardInterval);
-    }
-    
-    appState.clipboardInterval = setInterval(async () => {
-        if (!appState.clipboardMonitoring) return;
+    try {
+        // 向background script发送切换请求
+        const response = await chrome.runtime.sendMessage({ 
+            action: 'toggleClipboardMonitoring' 
+        });
         
-        try {
-            const text = await navigator.clipboard.readText();
-            if (text && text !== appState.lastClipboardContent && text.trim().length > 0) {
-                appState.lastClipboardContent = text;
-                
-                // 更新搜索框内容
-                if (elements.search_input) {
-                    elements.search_input.value = text;
-                    
-                    // 重置手动调整标记，允许自适应调整
-                    elements.search_input.isManuallyResized = false;
-                    
-                    // 触发输入处理和高度调整
-                    handleTextareaInput();
-                    
-                    // 更新搜索控件位置
-                    updateSearchControlsPosition();
-                }
-                
-                // 添加到剪贴板历史
-                await addToClipboardHistory(text);
-                
-                // 通知background script，以便它可以通知其他打开的侧边栏
-                chrome.runtime.sendMessage({
-                    action: 'clipboardChanged',
-                    content: text
-                }).catch(error => {
-                    logger.warn('通知background script剪贴板变化失败:', error);
-                });
-                
-                showNotification('检测到剪贴板内容变化');
-            }
-        } catch (err) {
-            // 静默处理剪贴板读取错误
+        if (response.success) {
+            // 更新本地状态
+            appState.clipboardMonitoring = response.isActive;
+            updateClipboardButtonState(appState.clipboardMonitoring);
+            showNotification(appState.clipboardMonitoring ? '剪贴板监控已启动' : '剪贴板监控已停止');
+        } else {
+            showNotification('无法切换剪贴板监控状态', false);
         }
-    }, 1000);
-}
-
-function stopClipboardMonitoring() {
-    if (appState.clipboardInterval) {
-        clearInterval(appState.clipboardInterval);
-        appState.clipboardInterval = null;
+    } catch (error) {
+        logger.warn('切换剪贴板监控失败:', error);
+        showNotification('无法切换剪贴板监控状态', false);
     }
 }
 
@@ -252,21 +193,18 @@ async function getClipboardMonitoringState() {
 
 // 初始化剪贴板监控状态
 async function initClipboardMonitoringState() {
-    // 从background script获取当前监控状态
-    const isMonitoring = await getClipboardMonitoringState();
-    appState.clipboardMonitoring = isMonitoring;
-    
-    // 如果监控状态为开启，启动监控
-    if (appState.clipboardMonitoring) {
-        await startClipboardMonitoring();
-    }
-    
+    appState.clipboardMonitoring = await getClipboardMonitoringState();
     updateClipboardButtonState(appState.clipboardMonitoring);
     
     // 更新开关状态
     if (elements.clipboard_monitor_switch) {
         elements.clipboard_monitor_switch.checked = appState.clipboardMonitoring;
     }
+}
+
+// 停止剪贴板监控函数（已迁移到background script，此处保留为空函数以保持兼容性）
+function stopClipboardMonitoring() {
+    // 空函数，监控逻辑已迁移到background script
 }
 
 function updateClipboardButtonState(isActive) {

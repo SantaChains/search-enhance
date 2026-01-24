@@ -36,21 +36,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ success: true });
             break;
             
-        case 'clipboardChanged':
-            // 处理来自background script的剪贴板变化通知
-            // 通知当前tab中的popup或侧边栏
-            try {
-                // 直接转发给当前tab的popup/sidebar
-                chrome.runtime.sendMessage(request).catch(() => {
-                    // 忽略错误，可能没有打开的popup/sidebar
-                });
-                sendResponse({ success: true });
-            } catch (error) {
-                logger.error('处理剪贴板变化通知失败:', error);
-                sendResponse({ success: false, error: error.message });
-            }
-            break;
-            
         default:
             logger.warn('未知消息类型:', request.action);
             sendResponse({ success: false, error: 'Unknown action' });

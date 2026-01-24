@@ -36,21 +36,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ success: true });
             break;
             
-        case 'clipboardChanged':
-            // 处理来自background script的剪贴板变化通知
-            // 通知当前tab中的popup或侧边栏
-            try {
-                // 直接转发给当前tab的popup/sidebar
-                chrome.runtime.sendMessage(request).catch(() => {
-                    // 忽略错误，可能没有打开的popup/sidebar
-                });
-                sendResponse({ success: true });
-            } catch (error) {
-                logger.error('处理剪贴板变化通知失败:', error);
-                sendResponse({ success: false, error: error.message });
-            }
-            break;
-            
         default:
             logger.warn('未知消息类型:', request.action);
             sendResponse({ success: false, error: 'Unknown action' });
@@ -166,6 +151,12 @@ document.addEventListener('keydown', (event) => {
         event.preventDefault();
         chrome.runtime.sendMessage({ action: 'openSidePanel' });
     }
+    
+    // Alt+K - 切换剪贴板监控（backup处理）
+    if (event.altKey && event.key.toLowerCase() === 'k' && !event.ctrlKey && !event.shiftKey) {
+        event.preventDefault();
+        toggleClipboardMonitoring();
+    }
 });
 
 // 页面加载完成后初始化
@@ -184,5 +175,5 @@ function initializeContentScript() {
 
 // 监听页面卸载，清理资源
 window.addEventListener('beforeunload', () => {
-    // 空函数，监控逻辑已迁移到background script
+    stopClipboardMonitoring();
 });

@@ -17,6 +17,11 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     logger.info('收到消息:', request);
     
     switch (request.action) {
+        case 'toggleClipboardMonitoring':
+            toggleClipboardMonitoring();
+            sendResponse({ success: true });
+            break;
+            
         case 'getSelectedText':
             const selectedText = window.getSelection().toString().trim();
             sendResponse({ selectedText });
@@ -27,29 +32,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             sendResponse({ success: true });
             break;
             
-        case 'clipboardMonitoringToggled':
-            // 显示剪贴板监控状态变化通知
-            showPageNotification(
-                request.isActive ? '剪贴板监控已开启' : '剪贴板监控已关闭',
-                request.isActive ? 'success' : 'info'
-            );
-            sendResponse({ success: true });
-            break;
-            
-        case 'clipboardChanged':
-            // 处理来自background script的剪贴板变化通知
-            // 通知当前tab中的popup或侧边栏
-            try {
-                // 直接转发给当前tab的popup/sidebar
-                chrome.runtime.sendMessage(request).catch(() => {
-                    // 忽略错误，可能没有打开的popup/sidebar
-                });
-                sendResponse({ success: true });
-            } catch (error) {
-                logger.error('处理剪贴板变化通知失败:', error);
-                sendResponse({ success: false, error: error.message });
-            }
-            break;
+
             
         default:
             logger.warn('未知消息类型:', request.action);
@@ -59,17 +42,53 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true; // 保持消息通道开放
 });
 
-// 剪贴板监控功能已迁移到background script，此处保留相关函数的空实现以保持兼容性
+// 切换剪贴板监控
 function toggleClipboardMonitoring() {
-    // 空函数，监控逻辑已迁移到background script
+    isClipboardMonitoring = !isClipboardMonitoring;
+    
+    if (isClipboardMonitoring) {
+        startClipboardMonitoring();
+        showPageNotification('剪贴板监控已启动', 'success');
+    } else {
+        stopClipboardMonitoring();
+        showPageNotification('剪贴板监控已停止', 'info');
+    }
 }
 
+// 启动剪贴板监控
 async function startClipboardMonitoring() {
-    // 空函数，监控逻辑已迁移到background script
+    if (clipboardInterval) {
+        clearInterval(clipboardInterval);
+    }
+    
+    clipboardInterval = setInterval(async () => {
+        if (!isClipboardMonitoring) return;
+        
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text && text !== lastClipboardContent && text.trim().length > 0) {
+                lastClipboardContent = text;
+                
+                // 通知popup有新的剪贴板内容
+                chrome.runtime.sendMessage({
+                    action: 'clipboardChanged',
+                    content: text
+                });
+                
+                showPageNotification('检测到剪贴板内容变化', 'info');
+            }
+        } catch (err) {
+            // 静默处理剪贴板读取错误
+        }
+    }, 1000);
 }
 
+// 停止剪贴板监控
 function stopClipboardMonitoring() {
-    // 空函数，监控逻辑已迁移到background script
+    if (clipboardInterval) {
+        clearInterval(clipboardInterval);
+        clipboardInterval = null;
+    }
 }
 
 // 在页面上显示通知（使用统一的页面内通知格式）
@@ -166,6 +185,12 @@ document.addEventListener('keydown', (event) => {
         event.preventDefault();
         chrome.runtime.sendMessage({ action: 'openSidePanel' });
     }
+    
+    // Alt+K - 切换剪贴板监控（backup处理）
+    if (event.altKey && event.key.toLowerCase() === 'k' && !event.ctrlKey && !event.shiftKey) {
+        event.preventDefault();
+        toggleClipboardMonitoring();
+    }
 });
 
 // 页面加载完成后初始化
@@ -184,5 +209,5 @@ function initializeContentScript() {
 
 // 监听页面卸载，清理资源
 window.addEventListener('beforeunload', () => {
-    // 空函数，监控逻辑已迁移到background script
+    stopClipboardMonitoring();
 });

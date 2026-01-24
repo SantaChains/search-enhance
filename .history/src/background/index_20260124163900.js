@@ -64,12 +64,60 @@ async function startGlobalClipboardMonitoring() {
         clearInterval(clipboardInterval);
     }
     
-    logger.info('全局剪贴板监控已启动');
+    clipboardInterval = setInterval(async () => {
+        if (!isClipboardMonitoring) return;
+        
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text && text !== lastClipboardContent && text.trim().length > 0) {
+                lastClipboardContent = text;
+                
+                // 保存到存储中，以便popup访问
+                await chrome.storage.local.set({ [STORAGE_KEY_LAST_CLIPBOARD_CONTENT]: text });
+                
+                // 添加到剪贴板历史
+                const result = await chrome.storage.local.get(['settings']);
+                const settings = result.settings || {};
+                const clipboardHistory = settings.clipboardHistory || [];
+                const maxClipboardHistory = settings.maxClipboardHistory || 50;
+                
+                // 创建新的剪贴板历史项
+                const newItem = {
+                    id: Date.now().toString(),
+                    text: text,  // 使用text字段而不是content字段，与popup/main.js保持一致
+                    timestamp: new Date().toISOString()
+                };
+                
+                // 添加到历史开头
+                clipboardHistory.unshift(newItem);
+                
+                // 限制历史记录数量
+                if (clipboardHistory.length > maxClipboardHistory) {
+                    clipboardHistory.splice(maxClipboardHistory);
+                }
+                
+                // 保存更新后的历史到settings中
+                await chrome.storage.local.set({
+                    settings: {
+                        ...settings,
+                        clipboardHistory
+                    }
+                });
+                
+                // 通知所有打开的侧边栏和popup
+                await chrome.runtime.sendMessage({
+                    action: 'clipboardChanged',
+                    content: text
+                });
+                
+                logger.info('全局剪贴板监控检测到内容变化:', text.substring(0, 50) + '...');
+            }
+        } catch (err) {
+            // 静默处理剪贴板读取错误
+        }
+    }, 1000);
     
-    // 注意：在service worker中，navigator.clipboard API可能无法直接使用
-    // 我们将依赖popup和content script来检测剪贴板变化
-    // 当剪贴板变化时，它们会发送消息给background script
-    // 这里我们只需要保持监控状态
+    logger.info('全局剪贴板监控已启动');
 }
 
 // 停止全局剪贴板监控
@@ -89,15 +137,10 @@ async function toggleGlobalClipboardMonitoring() {
     // 保存状态到存储
     await chrome.storage.local.set({ [STORAGE_KEY_CLIPBOARD_MONITORING]: isClipboardMonitoring });
     
-    // 通知所有打开的popup和侧边栏
-    try {
-        await chrome.runtime.sendMessage({
-            action: 'clipboardMonitoringToggled',
-            isActive: isClipboardMonitoring
-        });
-    } catch (error) {
-        // 忽略错误，可能没有打开的popup或侧边栏
-        logger.warn('通知剪贴板监控状态变化失败:', error);
+    if (isClipboardMonitoring) {
+        await startGlobalClipboardMonitoring();
+    } else {
+        stopGlobalClipboardMonitoring();
     }
     
     return isClipboardMonitoring;
@@ -242,37 +285,6 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
         case 'getClipboardMonitoringState':
             // 获取当前剪贴板监控状态
             sendResponse({ isActive: isClipboardMonitoring });
-            break;
-            
-        case 'clipboardChanged':
-            // 处理来自popup或content script的剪贴板变化通知
-            // 转发给其他打开的popup和侧边栏
-            try {
-                // 保存到存储中，以便新打开的popup访问
-                await chrome.storage.local.set({ [STORAGE_KEY_LAST_CLIPBOARD_CONTENT]: request.content });
-                
-                // 转发给其他tab
-                const tabs = await chrome.tabs.query({ status: 'complete' });
-                for (const tab of tabs) {
-                    if (tab.id && tab.id !== sender.tab?.id) {
-                        await chrome.tabs.sendMessage(tab.id, request).catch(() => {
-                            // 忽略错误，可能内容脚本未加载
-                        });
-                    }
-                }
-                
-                sendResponse({ success: true });
-            } catch (error) {
-                logger.error('转发剪贴板变化通知失败:', error);
-                sendResponse({ success: false, error: error.message });
-            }
-            break;
-            
-        case 'clipboardMonitoringToggled':
-            // 更新全局状态
-            isClipboardMonitoring = request.isActive;
-            await chrome.storage.local.set({ [STORAGE_KEY_CLIPBOARD_MONITORING]: isClipboardMonitoring });
-            sendResponse({ success: true });
             break;
             
         default:
