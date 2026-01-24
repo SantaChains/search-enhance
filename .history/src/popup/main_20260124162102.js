@@ -533,9 +533,49 @@ function deselectAllClipboardItems() {
     updateBatchCounter();
 }
 
+// 删除选中的剪贴板项
+function deleteSelectedClipboardItems() {
+    if (appState.selectedItems.size === 0) {
+        showNotification('请先选择要删除的项目', false);
+        return;
+    }
+    
+    if (confirm(`确定要删除选中的 ${appState.selectedItems.size} 条记录吗？`)) {
+        appState.clipboardHistory = appState.clipboardHistory.filter(
+            item => !appState.selectedItems.has(item.id)
+        );
+        
+        // 保存到存储
+        chrome.storage.local.set({
+            clipboardHistory: appState.clipboardHistory
+        });
+        
+        // 清空选择
+        appState.selectedItems.clear();
+        
+        renderClipboardHistory();
+        updateBatchCounter();
+        showNotification(`已删除 ${appState.selectedItems.size} 条记录`);
+    }
+}
 
-
-
+// 复制选中的剪贴板项
+function copySelectedClipboardItems() {
+    if (appState.selectedItems.size === 0) {
+        showNotification('请先选择要复制的项目', false);
+        return;
+    }
+    
+    const selectedTexts = appState.clipboardHistory
+        .filter(item => appState.selectedItems.has(item.id))
+        .map(item => item.text);
+    
+    if (selectedTexts.length > 0) {
+        const combinedText = selectedTexts.join('\n');
+        copyTextToClipboard(combinedText);
+        showNotification(`已复制 ${selectedTexts.length} 条记录`);
+    }
+}
 
 // 批量搜索选中的剪贴板项
 function batchSearchSelectedItems() {
@@ -620,14 +660,11 @@ async function deleteSelectedClipboardItems() {
 
 // 复制选中的剪贴板项
 async function copySelectedClipboardItems() {
-    if (appState.selectedItems.size === 0) {
+    const selectedItems = getSelectedClipboardItems();
+    if (selectedItems.length === 0) {
         showNotification('请先选择要复制的项', false);
         return;
     }
-    
-    const selectedItems = appState.clipboardHistory.filter(
-        item => appState.selectedItems.has(item.id)
-    );
     
     // 每条记录之间用空一行隔开
     const textToCopy = selectedItems.map(item => item.text).join('\n\n');

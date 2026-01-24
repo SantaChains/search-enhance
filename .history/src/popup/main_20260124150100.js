@@ -46,8 +46,7 @@ let appState = {
     clipboardHistory: [],
     clipboardHistoryVisible: false,
     clipboardBatchMode: false,
-    maxClipboardHistory: 100,
-    selectedItems: new Set() // 批量选择的项目ID集合
+    maxClipboardHistory: 100
 };
 
 // DOM 元素映射
@@ -121,8 +120,7 @@ function initializeElements() {
         'show-clipboard-history-btn', 'clipboard-history-container',
         'clipboard-history-list', 'batch-operations-btn', 'batch-toolbar',
         'select-all-clipboard-btn', 'deselect-all-clipboard-btn',
-        'delete-selected-clipboard-btn', 'copy-selected-clipboard-btn',
-        'batch-search-btn', 'clear-clipboard-history-btn'
+        'delete-selected-clipboard-btn', 'copy-selected-clipboard-btn'
     ];
     
     elementIds.forEach(id => {
@@ -202,10 +200,6 @@ async function startClipboardMonitoring() {
                     // 更新搜索控件位置
                     updateSearchControlsPosition();
                 }
-                
-                // 添加到剪贴板历史
-                await addToClipboardHistory(text);
-                
                 showNotification('检测到剪贴板内容变化');
             }
         } catch (err) {
@@ -229,427 +223,6 @@ function updateClipboardButtonState(isActive) {
         statusIndicator.classList.toggle('active', isActive);
     }
 }
-
-// 剪贴板历史功能
-// 加载剪贴板历史
-async function loadClipboardHistory() {
-    try {
-        const settings = await getSettings();
-        appState.clipboardHistory = settings.clipboardHistory || [];
-    } catch (error) {
-        logger.error('加载剪贴板历史失败:', error);
-        appState.clipboardHistory = [];
-    }
-}
-
-// 保存剪贴板历史
-async function saveClipboardHistory() {
-    try {
-        // 限制最大条数
-        if (appState.clipboardHistory.length > appState.maxClipboardHistory) {
-            appState.clipboardHistory = appState.clipboardHistory.slice(0, appState.maxClipboardHistory);
-        }
-        
-        await saveSettings({
-            ...appState.settings,
-            clipboardHistory: appState.clipboardHistory
-        });
-    } catch (error) {
-        logger.error('保存剪贴板历史失败:', error);
-    }
-}
-
-// 添加剪贴板记录
-async function addToClipboardHistory(text) {
-    if (!text || text.trim() === '') return;
-    
-    // 检查是否已有相同的记录，如果有则移除旧记录
-    const existingIndex = appState.clipboardHistory.findIndex(item => item.text === text);
-    if (existingIndex !== -1) {
-        appState.clipboardHistory.splice(existingIndex, 1);
-    }
-    
-    // 添加新记录到开头
-    const newRecord = {
-        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-        text: text,
-        timestamp: new Date().toISOString()
-    };
-    
-    appState.clipboardHistory.unshift(newRecord);
-    
-    // 保存到存储
-    await saveClipboardHistory();
-    
-    // 重新渲染
-    renderClipboardHistory();
-}
-
-// 渲染剪贴板历史
-function renderClipboardHistory() {
-    if (!elements.clipboard_history_list) return;
-    
-    if (appState.clipboardHistory.length === 0) {
-        elements.clipboard_history_list.innerHTML = '<div class="empty-state"><p>暂无剪贴板历史</p><span>复制内容后将显示在这里</span></div>';
-        return;
-    }
-    
-    elements.clipboard_history_list.innerHTML = appState.clipboardHistory.map(item => {
-        const isSelected = appState.selectedItems && appState.selectedItems.has(item.id);
-        return `
-            <div class="history-item" data-id="${item.id}">
-                <div class="clipboard-item-content">
-                    <!-- 非编辑状态：勾选框 + 文本内容 -->
-                    <div class="content-row">
-                        <input type="checkbox" class="clipboard-checkbox" data-id="${item.id}" 
-                               ${appState.clipboardBatchMode ? 'style="display:inline-block;"' : 'style="display:none;"'} 
-                               ${isSelected ? 'checked' : ''}>
-                        <div class="clipboard-text-content" data-id="${item.id}">${escapeHtml(item.text)}</div>
-                        <button class="edit-btn btn-sm" data-id="${item.id}" title="编辑">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                        </button>
-                    </div>
-                    
-                    <!-- 编辑状态：勾选框 + 文本框 + 保存/取消按钮 -->
-                    <div class="edit-row" data-id="${item.id}" style="display:none;">
-                        <input type="checkbox" class="clipboard-checkbox" data-id="${item.id}" 
-                               ${appState.clipboardBatchMode ? 'style="display:inline-block;"' : 'style="display:none;"'} 
-                               ${isSelected ? 'checked' : ''}>
-                        <textarea class="clipboard-edit-textarea" data-id="${item.id}">${escapeHtml(item.text)}</textarea>
-                        <div class="edit-buttons">
-                            <button class="save-edit-btn btn-sm" data-id="${item.id}">保存</button>
-                            <button class="cancel-edit-btn btn-sm" data-id="${item.id}">取消</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    // 绑定事件
-    bindClipboardHistoryEvents();
-    
-    // 更新批量操作计数
-    updateBatchCounter();
-}
-
-// 转义HTML特殊字符
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
-// 绑定剪贴板历史事件
-function bindClipboardHistoryEvents() {
-    // 复制按钮事件
-    elements.clipboard_history_list.querySelectorAll('.copy-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const id = e.target.dataset.id;
-            const item = appState.clipboardHistory.find(item => item.id === id);
-            if (item) {
-                await copyToClipboard(item.text, btn);
-            }
-        });
-    });
-    
-    // 编辑按钮事件
-    elements.clipboard_history_list.querySelectorAll('.edit-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = e.target.dataset.id;
-            startEditClipboardItem(id);
-        });
-    });
-    
-    // 保存编辑按钮事件
-    elements.clipboard_history_list.querySelectorAll('.save-edit-btn').forEach(btn => {
-        btn.addEventListener('click', async (e) => {
-            const id = e.target.dataset.id;
-            await saveEditClipboardItem(id);
-        });
-    });
-    
-    // 取消编辑按钮事件
-    elements.clipboard_history_list.querySelectorAll('.cancel-edit-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = e.target.dataset.id;
-            cancelEditClipboardItem(id);
-        });
-    });
-    
-    // 删除按钮事件
-    elements.clipboard_history_list.querySelectorAll('.delete-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const id = e.target.dataset.id;
-            deleteClipboardItem(id);
-        });
-    });
-    
-    // 复选框事件
-    elements.clipboard_history_list.querySelectorAll('.clipboard-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', (e) => {
-            const id = e.target.dataset.id;
-            if (e.target.checked) {
-                appState.selectedItems.add(id);
-            } else {
-                appState.selectedItems.delete(id);
-            }
-            updateBatchCounter();
-        });
-    });
-}
-
-// 开始编辑剪贴板项
-function startEditClipboardItem(id) {
-    // 隐藏非编辑状态行
-    const contentRow = elements.clipboard_history_list.querySelector(`.content-row`);
-    if (contentRow) {
-        contentRow.style.display = 'none';
-    }
-    
-    // 显示编辑状态行
-    const editRow = elements.clipboard_history_list.querySelector(`.edit-row[data-id="${id}"]`);
-    if (editRow) {
-        editRow.style.display = 'flex';
-    }
-    
-    // 设置焦点到文本框
-    const textarea = elements.clipboard_history_list.querySelector(`.clipboard-edit-textarea[data-id="${id}"]`);
-    if (textarea) {
-        textarea.focus();
-        // 调整文本框高度以适应内容
-        textarea.style.height = 'auto';
-        textarea.style.height = textarea.scrollHeight + 'px';
-    }
-}
-
-// 保存编辑的剪贴板项
-async function saveEditClipboardItem(id) {
-    const textarea = elements.clipboard_history_list.querySelector(`.clipboard-edit-textarea[data-id="${id}"]`);
-    if (!textarea) return;
-    
-    const newText = textarea.value.trim();
-    if (!newText) return;
-    
-    const item = appState.clipboardHistory.find(item => item.id === id);
-    if (!item || newText === item.text) {
-        // 如果内容没有变化，直接取消编辑
-        cancelEditClipboardItem(id);
-        return;
-    }
-    
-    // 添加新的记录，不修改原记录
-    await addToClipboardHistory(newText);
-    
-    // 渲染更新后的历史记录
-    renderClipboardHistory();
-}
-
-// 取消编辑剪贴板项
-function cancelEditClipboardItem(id) {
-    // 显示非编辑状态行
-    const contentRow = elements.clipboard_history_list.querySelector(`.content-row`);
-    if (contentRow) {
-        contentRow.style.display = 'flex';
-    }
-    
-    // 隐藏编辑状态行
-    const editRow = elements.clipboard_history_list.querySelector(`.edit-row[data-id="${id}"]`);
-    if (editRow) {
-        editRow.style.display = 'none';
-    }
-}
-
-// 删除剪贴板项
-async function deleteClipboardItem(id) {
-    if (confirm('确定要删除这条剪贴板记录吗？')) {
-        appState.clipboardHistory = appState.clipboardHistory.filter(item => item.id !== id);
-        await saveClipboardHistory();
-        renderClipboardHistory();
-        showNotification('已删除剪贴板记录');
-    }
-}
-
-// 切换剪贴板历史显示
-function toggleClipboardHistory() {
-    if (!elements.clipboard_history_container) return;
-    
-    appState.clipboardHistoryVisible = !appState.clipboardHistoryVisible;
-    elements.clipboard_history_container.style.display = appState.clipboardHistoryVisible ? 'block' : 'none';
-}
-
-// 切换批量操作模式
-function toggleBatchOperations() {
-    if (!elements.batch_toolbar || !elements.batch_operations_btn) return;
-    
-    appState.clipboardBatchMode = !appState.clipboardBatchMode;
-    
-    // 显示/隐藏批量操作工具栏
-    elements.batch_toolbar.style.display = appState.clipboardBatchMode ? 'inline-flex' : 'none';
-    
-    // 更新批量操作按钮文本（保留图标）
-    const buttonText = elements.batch_operations_btn.querySelector('span') || elements.batch_operations_btn;
-    buttonText.textContent = appState.clipboardBatchMode ? '取消批量' : '批量操作';
-    
-    // 显示/隐藏所有勾选框
-    const checkboxes = document.querySelectorAll('.clipboard-checkbox');
-    checkboxes.forEach(checkbox => {
-        checkbox.style.display = appState.clipboardBatchMode ? 'inline-block' : 'none';
-    });
-    
-    // 如果取消批量操作，清空所有选中状态
-    if (!appState.clipboardBatchMode) {
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        appState.selectedItems.clear();
-    } else {
-        // 进入批量模式时，确保selectedItems已初始化
-        if (!appState.selectedItems) {
-            appState.selectedItems = new Set();
-        }
-    }
-}
-
-
-
-// 全选剪贴板项
-function selectAllClipboardItems() {
-    appState.selectedItems.clear();
-    appState.clipboardHistory.forEach(item => {
-        appState.selectedItems.add(item.id);
-    });
-    renderClipboardHistory();
-    updateBatchCounter();
-}
-
-// 取消全选
-function deselectAllClipboardItems() {
-    appState.selectedItems.clear();
-    renderClipboardHistory();
-    updateBatchCounter();
-}
-
-
-
-
-
-// 批量搜索选中的剪贴板项
-function batchSearchSelectedItems() {
-    if (appState.selectedItems.size === 0) {
-        showNotification('请先选择要搜索的项目', false);
-        return;
-    }
-    
-    const selectedTexts = appState.clipboardHistory
-        .filter(item => appState.selectedItems.has(item.id))
-        .map(item => item.text);
-    
-    if (selectedTexts.length > 0) {
-        // 将选中的文本合并到搜索框
-        elements.search_input.value = selectedTexts.join(' ');
-        
-        // 触发搜索
-        handleSearch();
-        
-        showNotification(`已将 ${selectedTexts.length} 条记录添加到搜索框`);
-    }
-}
-
-// 更新批量操作计数
-function updateBatchCounter() {
-    if (!elements.batch_operations_btn) return;
-    
-    const count = appState.selectedItems ? appState.selectedItems.size : 0;
-    if (count > 0) {
-        elements.batch_operations_btn.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list">
-                <line x1="8" x2="21" y1="6" y2="6"/>
-                <line x1="8" x2="21" y1="12" y2="12"/>
-                <line x1="8" x2="21" y1="18" y2="18"/>
-                <line x1="3" x2="3.01" y1="6" y2="6"/>
-                <line x1="3" x2="3.01" y1="12" y2="12"/>
-                <line x1="3" x2="3.01" y1="18" y2="18"/>
-            </svg>
-            <span>批量<span class="batch-counter">${count}</span></span>
-        `;
-    } else {
-        elements.batch_operations_btn.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list">
-                <line x1="8" x2="21" y1="6" y2="6"/>
-                <line x1="8" x2="21" y1="12" y2="12"/>
-                <line x1="8" x2="21" y1="18" y2="18"/>
-                <line x1="3" x2="3.01" y1="6" y2="6"/>
-                <line x1="3" x2="3.01" y1="12" y2="12"/>
-                <line x1="3" x2="3.01" y1="18" y2="18"/>
-            </svg>
-            <span>批量</span>
-        `;
-    }
-}
-
-// 获取选中的剪贴板项
-function getSelectedClipboardItems() {
-    return appState.clipboardHistory.filter(item => appState.selectedItems.has(item.id));
-}
-
-// 更新批量操作工具栏状态
-
-
-// 删除选中的剪贴板项
-async function deleteSelectedClipboardItems() {
-    if (appState.selectedItems.size === 0) {
-        showNotification('请先选择要删除的项', false);
-        return;
-    }
-    
-    if (confirm(`确定要删除选中的 ${appState.selectedItems.size} 条记录吗？`)) {
-        appState.clipboardHistory = appState.clipboardHistory.filter(
-            item => !appState.selectedItems.has(item.id)
-        );
-        await saveClipboardHistory();
-        // 清空选择
-        appState.selectedItems.clear();
-        renderClipboardHistory();
-        showNotification(`已删除 ${appState.selectedItems.size} 条记录`);
-    }
-}
-
-// 复制选中的剪贴板项
-async function copySelectedClipboardItems() {
-    if (appState.selectedItems.size === 0) {
-        showNotification('请先选择要复制的项', false);
-        return;
-    }
-    
-    const selectedItems = appState.clipboardHistory.filter(
-        item => appState.selectedItems.has(item.id)
-    );
-    
-    // 每条记录之间用空一行隔开
-    const textToCopy = selectedItems.map(item => item.text).join('\n\n');
-    
-    try {
-        await copyTextToClipboard(textToCopy);
-        showNotification(`已复制 ${selectedItems.length} 条记录`);
-    } catch (error) {
-        logger.error('复制选中项失败:', error);
-        showNotification('复制失败', false);
-    }
-}
-
-// 清空剪贴板历史功能
-const clearClipboardHistory = async () => {
-    if (confirm('确定要清空所有剪贴板历史吗？')) {
-        appState.clipboardHistory = [];
-        await saveClipboardHistory();
-        renderClipboardHistory();
-        showNotification('已清空剪贴板历史');
-    }
-};
 
 // 搜索引擎渲染
 function renderEngineSelect() {
@@ -776,22 +349,6 @@ function handleInputChange() {
         updateMultiFormatState(text);
         // 显示原始文本
         displayMultiFormatResult(text);
-    }
-}
-
-// 处理开关变化 - 确保多格式分析的按钮和界面只在勾选时显示
-function handleMultiFormatSwitchChange(checkbox) {
-    const multiFormatContainer = document.getElementById('multi-format-container');
-    if (multiFormatContainer) {
-        if (checkbox.checked) {
-            multiFormatContainer.style.display = 'block';
-            // 如果输入框有内容，触发输入处理
-            if (elements.search_input && elements.search_input.value.trim()) {
-                handleInputChange();
-            }
-        } else {
-            multiFormatContainer.style.display = 'none';
-        }
     }
 }
 
@@ -1138,34 +695,16 @@ function handleFormatButtonClick(e) {
             processedResult = currentText.replace(/\\/g, '/');
             break;
         case 'convert-slash-to-double':
-                // /转//，只对单个/生效，对//不生效
-                // 使用更兼容的方式实现，避免使用负向断言
-                processedResult = currentText.replace(/\//g, (match, offset, string) => {
-                    // 检查前面和后面是否也是斜杠
-                    const prevChar = string[offset - 1];
-                    const nextChar = string[offset + 1];
-                    if (prevChar !== '/' && nextChar !== '/') {
-                        return '//';
-                    }
-                    return match;
-                });
-                break;
+            // /转//，只对单个/生效，对//不生效
+            processedResult = currentText.replace(/(?<!\/)/(?!\/)/g, '//');
+            break;
         case 'remove-spaces':
             // 去除空格
             processedResult = currentText.replace(/\s+/g, '');
             break;
         case 'convert-backslash-to-double':
             // \转\\，只对单个\生效，对\\不生效
-            // 使用更兼容的方式实现，避免使用负向断言
-            processedResult = currentText.replace(/\\/g, (match, offset, string) => {
-                // 检查前面和后面是否也是反斜杠
-                const prevChar = string[offset - 1];
-                const nextChar = string[offset + 1];
-                if (prevChar !== '\\' && nextChar !== '\\') {
-                    return '\\\\';
-                }
-                return match;
-            });
+            processedResult = currentText.replace(/(?<!\\)\\(?!\\)/g, '\\\\');
             break;
         default:
             break;
@@ -1661,43 +1200,6 @@ function setupEventListeners() {
         searchResultButton.addEventListener('click', handleSearchResult);
     }
     
-    // 剪贴板历史监听器
-    // 显示/隐藏剪贴板历史
-    if (elements.show_clipboard_history_btn) {
-        elements.show_clipboard_history_btn.addEventListener('click', toggleClipboardHistory);
-    }
-    
-    // 批量操作按钮
-    if (elements.batch_operations_btn) {
-        elements.batch_operations_btn.addEventListener('click', toggleBatchOperations);
-    }
-    
-    // 批量操作工具栏按钮
-    if (elements.select_all_clipboard_btn) {
-        elements.select_all_clipboard_btn.addEventListener('click', selectAllClipboardItems);
-    }
-    
-    if (elements.deselect_all_clipboard_btn) {
-        elements.deselect_all_clipboard_btn.addEventListener('click', deselectAllClipboardItems);
-    }
-    
-    if (elements.delete_selected_clipboard_btn) {
-        elements.delete_selected_clipboard_btn.addEventListener('click', deleteSelectedClipboardItems);
-    }
-    
-    if (elements.copy_selected_clipboard_btn) {
-        elements.copy_selected_clipboard_btn.addEventListener('click', copySelectedClipboardItems);
-    }
-    
-    if (elements.batch_search_btn) {
-        elements.batch_search_btn.addEventListener('click', batchSearchSelectedItems);
-    }
-    
-    // 清空剪贴板历史按钮
-    if (elements.clear_clipboard_history_btn) {
-        elements.clear_clipboard_history_btn.addEventListener('click', clearClipboardHistory);
-    }
-    
     // 注意：Alt+K快捷键已在manifest.json中定义为全局命令
     // 由background.js处理，不需要在popup中重复定义
     
@@ -1711,14 +1213,6 @@ function setupSwitchContainerListeners() {
     switchContainers.forEach(container => {
         const checkbox = container.querySelector('input[type="checkbox"]');
         if (!checkbox) return;
-        
-        // 初始化时，隐藏多格式分析面板（只在勾选时显示）
-        if (checkbox.id === 'switch-multi-format') {
-            const multiFormatContainer = document.getElementById('multi-format-container');
-            if (multiFormatContainer) {
-                multiFormatContainer.style.display = checkbox.checked ? 'block' : 'none';
-            }
-        }
         
         container.addEventListener('click', (e) => {
             // 如果点击的是checkbox本身，不处理（避免双重触发）
@@ -1741,23 +1235,7 @@ function setupSwitchContainerListeners() {
                     handleSwitchChange(checkbox, 'link-gen-container');
                     break;
                 case 'multi-format':
-                    handleMultiFormatSwitchChange(checkbox);
-                    break;
-            }
-        });
-        
-        // 直接点击checkbox时的处理
-        checkbox.addEventListener('change', () => {
-            const switchType = container.dataset.switch;
-            switch (switchType) {
-                case 'extract':
-                    handleSwitchChange(checkbox, 'extract-container');
-                    break;
-                case 'link-gen':
-                    handleSwitchChange(checkbox, 'link-gen-container');
-                    break;
-                case 'multi-format':
-                    handleMultiFormatSwitchChange(checkbox);
+                    handleSwitchChange(checkbox, 'multi-format-container');
                     break;
             }
         });

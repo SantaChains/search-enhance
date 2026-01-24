@@ -291,7 +291,7 @@
                             <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
                             <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
                         </svg>
-                        剪贴历史
+                        剪贴板历史
                     </h3>
                     <div class="clipboard-controls">
                         <button id="show-clipboard-history-btn" class="btn-sm">
@@ -301,38 +301,20 @@
                             </svg>
                             历史
                         </button>
-                        <button id="batch-operations-btn" class="btn-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list">
-                                <line x1="8" x2="21" y1="6" y2="6"/>
-                                <line x1="8" x2="21" y1="12" y2="12"/>
-                                <line x1="8" x2="21" y1="18" y2="18"/>
-                                <line x1="3" x2="3.01" y1="6" y2="6"/>
-                                <line x1="3" x2="3.01" y1="12" y2="12"/>
-                                <line x1="3" x2="3.01" y1="18" y2="18"/>
-                            </svg>
-                            <span>批量</span>
-                        </button>
-                        <!-- 批量操作工具栏 -->
-                        <div class="batch-toolbar" style="display:none;">
-                            <button id="select-all-clipboard-btn" class="btn-sm">全选</button>
-                            <button id="deselect-all-clipboard-btn" class="btn-sm">取消全选</button>
-                            <button id="delete-selected-clipboard-btn" class="btn-sm">删除</button>
-                            <button id="copy-selected-clipboard-btn" class="btn-sm">复制</button>
-                            <button id="batch-search-btn" class="btn-sm">批量搜索</button>
-                        </div>
-                        <button id="clear-clipboard-history-btn" class="btn-sm">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2">
-                                <path d="M3 6h18"/>
-                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
-                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-                                <line x1="10" x2="10" y1="11" y2="17"/>
-                                <line x1="14" x2="14" y1="11" y2="17"/>
-                            </svg>
-                            清空
-                        </button>
                     </div>
                 </div>
                 <div id="clipboard-history-container" style="display:none;">
+                    <!-- 批量操作工具栏 -->
+                    <div class="batch-toolbar" style="display:none;">
+                        <button id="select-all-clipboard-btn" class="btn-sm">全选</button>
+                        <button id="deselect-all-clipboard-btn" class="btn-sm">取消全选</button>
+                        <button id="delete-selected-clipboard-btn" class="btn-sm">删除选中</button>
+                        <button id="copy-selected-clipboard-btn" class="btn-sm">复制选中</button>
+                    </div>
+                    <!-- 批量操作切换按钮 -->
+                    <div class="batch-toggle">
+                        <button id="batch-operations-btn" class="btn-sm">批量操作</button>
+                    </div>
                     <div id="clipboard-history-list"></div>
                 </div>
             </section>

@@ -535,7 +535,23 @@ function deselectAllClipboardItems() {
 
 
 
-
+// 复制选中的剪贴板项
+function copySelectedClipboardItems() {
+    if (appState.selectedItems.size === 0) {
+        showNotification('请先选择要复制的项目', false);
+        return;
+    }
+    
+    const selectedTexts = appState.clipboardHistory
+        .filter(item => appState.selectedItems.has(item.id))
+        .map(item => item.text);
+    
+    if (selectedTexts.length > 0) {
+        const combinedText = selectedTexts.join('\n');
+        copyTextToClipboard(combinedText);
+        showNotification(`已复制 ${selectedTexts.length} 条记录`);
+    }
+}
 
 // 批量搜索选中的剪贴板项
 function batchSearchSelectedItems() {
