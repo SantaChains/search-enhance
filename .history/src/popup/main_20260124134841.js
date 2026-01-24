@@ -35,13 +35,7 @@ let appState = {
     clipboardMonitoring: false,
     lastClipboardContent: '',
     clipboardInterval: null,
-    linkHistory: [],
-    // 多格式分析状态
-    multiFormatState: {
-        originalText: '',
-        processingHistory: [],
-        currentIndex: -1
-    }
+    linkHistory: []
 };
 
 // DOM 元素映射
@@ -331,10 +325,7 @@ function handleInputChange() {
         renderLinkGenerationUI(text);
     } else if (elements.switch_multi_format.checked) {
         elements.multi_format_container.style.display = 'block';
-        // 更新多格式分析状态
-        updateMultiFormatState(text);
-        // 显示原始文本
-        displayMultiFormatResult(text);
+        renderMultiFormatAnalysis(text);
     }
 }
 
@@ -538,178 +529,10 @@ function renderMultiFormatAnalysis(text) {
         });
     });
     
-    }
-
-// 更新多格式分析状态
-function updateMultiFormatState(text) {
-    appState.multiFormatState.originalText = text;
-    appState.multiFormatState.processingHistory = [text];
-    appState.multiFormatState.currentIndex = 0;
-    // 更新回到上一次处理结果按钮状态
-    updateBackButtonState();
-}
-
-// 显示多格式分析结果
-function displayMultiFormatResult(text) {
-    const resultContainer = document.getElementById('multi-format-result');
-    if (!resultContainer) return;
-    
-    resultContainer.innerHTML = text;
-}
-
-// 更新回到上一次处理结果按钮状态
-function updateBackButtonState() {
-    const backButton = document.getElementById('back-to-previous');
-    if (!backButton) return;
-    
-    // 当currentIndex > 0时，按钮可用，否则禁用
-    backButton.disabled = appState.multiFormatState.currentIndex <= 0;
-    if (backButton.disabled) {
-        backButton.style.opacity = '0.5';
-        backButton.style.cursor = 'not-allowed';
-    } else {
-        backButton.style.opacity = '1';
-        backButton.style.cursor = 'pointer';
-    }
-}
-
-// 回到上一次处理结果
-function handleBackToPrevious() {
-    if (appState.multiFormatState.currentIndex > 0) {
-        appState.multiFormatState.currentIndex--;
-        const previousResult = appState.multiFormatState.processingHistory[appState.multiFormatState.currentIndex];
-        displayMultiFormatResult(previousResult);
-        // 更新按钮状态
-        updateBackButtonState();
-    }
-}
-
-// 复制结果到剪贴板
-async function handleCopyResult() {
-    const resultContainer = document.getElementById('multi-format-result');
-    if (!resultContainer) return;
-    
-    const resultText = resultContainer.innerText;
-    if (!resultText) return;
-    
-    try {
-        await copyTextToClipboard(resultText);
-        showNotification('已复制到剪贴板');
-    } catch (err) {
-        logger.error("复制结果失败:", err);
-        showNotification("复制失败", false);
-    }
-}
-
-// 搜索结果
-function handleSearchResult() {
-    const resultContainer = document.getElementById('multi-format-result');
-    if (!resultContainer) return;
-    
-    const resultText = resultContainer.innerText;
-    if (!resultText) return;
-    
-    // 如果是URL，直接跳转
-    if (isURL(resultText)) {
-        window.open(resultText, '_blank');
-        addToHistoryEnhanced(resultText);
-        return;
-    }
-    
-    // 否则使用当前选中的搜索引擎搜索
-    let selectedEngineName = appState.settings.defaultEngine;
-    if (elements.engine_select && elements.engine_select.value) {
-        selectedEngineName = elements.engine_select.value;
-    }
-    
-    const selectedEngine = appState.settings.searchEngines.find(e => e.name === selectedEngineName);
-    
-    if (selectedEngine) {
-        const searchUrl = selectedEngine.template.replace('%s', encodeURIComponent(resultText));
-        window.open(searchUrl, '_blank');
-        addToHistoryEnhanced(resultText);
-    } else {
-        showNotification("没有找到搜索引擎配置", false);
-    }
-}
-
-// 处理多格式分析按钮点击
-function handleFormatButtonClick(e) {
-    const btn = e.target;
-    const action = btn.dataset.action;
-    const currentText = appState.multiFormatState.processingHistory[appState.multiFormatState.currentIndex] || '';
-    
-    if (!currentText) {
-        const inputText = elements.search_input.value.trim();
-        if (!inputText) {
-            displayMultiFormatResult('请先在输入框中输入文本，然后点击下方按钮进行处理');
-            return;
-        }
-        updateMultiFormatState(inputText);
-        return;
-    }
-    
-    // 执行处理
-    let processedResult = currentText;
-    
-    switch (action) {
-        case 'remove-chinese':
-            // 去除中文和中文符号
-            processedResult = currentText.replace(/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/g, '');
-            break;
-        case 'remove-non-url-chars':
-            // 去除非URL字符（包含中文和非URL的标点符号）
-            // 保留URL、英文字母、数字和URL允许的符号
-            processedResult = currentText.replace(/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef<>{}\|^`\'"\s]+/g, ' ')
-                                         .replace(/\s+/g, ' ')  // 将多个空格合并为一个
-                                         .trim();             // 去除首尾空格
-            break;
-        case 'convert-to-url-chars':
-            // 非URL符号转URL符号
-            processedResult = encodeURIComponent(currentText);
-            break;
-        case 'convert-period':
-            // 。转.符号
-            processedResult = currentText.replace(/。/g, '.');
-            break;
-        case 'convert-slash-to-backslash':
-            // /转\
-            processedResult = currentText.replace(/\//g, '\\');
-            break;
-        case 'convert-backslash-to-slash':
-            // \\转/
-            processedResult = currentText.replace(/\\/g, '/');
-            break;
-        case 'convert-slash-to-double':
-            // /转//，只对单个/生效，对//不生效
-            processedResult = currentText.replace(/(?<!\/)/(?!\/)/g, '//');
-            break;
-        case 'remove-spaces':
-            // 去除空格
-            processedResult = currentText.replace(/\s+/g, '');
-            break;
-        case 'convert-backslash-to-double':
-            // \转\\，只对单个\生效，对\\不生效
-            processedResult = currentText.replace(/(?<!\\)\\(?!\\)/g, '\\\\');
-            break;
-        default:
-            break;
-    }
-    
-    // 更新处理历史
-    if (processedResult !== currentText) {
-        // 如果当前不在历史记录末尾，截断历史记录
-        if (appState.multiFormatState.currentIndex < appState.multiFormatState.processingHistory.length - 1) {
-            appState.multiFormatState.processingHistory = appState.multiFormatState.processingHistory.slice(0, appState.multiFormatState.currentIndex + 1);
-        }
-        // 添加新的处理结果到历史记录
-        appState.multiFormatState.processingHistory.push(processedResult);
-        appState.multiFormatState.currentIndex++;
-        // 显示处理结果
-        displayMultiFormatResult(processedResult);
-        // 更新回到上一次处理结果按钮状态
-        updateBackButtonState();
-    }
+    // 绑定单独处理事件
+    elements.multi_format_container.querySelectorAll('.process-btn').forEach(btn => {
+        btn.addEventListener('click', handleSingleFormatProcessing);
+    });
 }
 
 // 处理单独格式分析
@@ -1161,30 +984,6 @@ function setupEventListeners() {
     
     // 添加手动调整大小的监听器
     setupTextareaResizeHandle();
-    
-    // 多格式分析按钮监听器
-    const formatButtons = document.querySelectorAll('.format-btn');
-    formatButtons.forEach(btn => {
-        btn.addEventListener('click', handleFormatButtonClick);
-    });
-    
-    // 回到上一次处理结果按钮监听器
-    const backButton = document.getElementById('back-to-previous');
-    if (backButton) {
-        backButton.addEventListener('click', handleBackToPrevious);
-    }
-    
-    // 复制结果按钮监听器
-    const copyResultButton = document.getElementById('copy-result-btn');
-    if (copyResultButton) {
-        copyResultButton.addEventListener('click', handleCopyResult);
-    }
-    
-    // 搜索结果按钮监听器
-    const searchResultButton = document.getElementById('search-result-btn');
-    if (searchResultButton) {
-        searchResultButton.addEventListener('click', handleSearchResult);
-    }
     
     // 注意：Alt+K快捷键已在manifest.json中定义为全局命令
     // 由background.js处理，不需要在popup中重复定义

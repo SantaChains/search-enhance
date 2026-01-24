@@ -906,40 +906,6 @@ body {
   color: var(--text-dark);
 }
 
-.result-actions {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.result-btn {
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-4);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-  white-space: nowrap;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0.5;
-  min-width: 80px;
-}
-
-.result-btn:hover {
-  background: var(--primary-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(124, 158, 232, 0.3);
-}
-
-.result-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(124, 158, 232, 0.2);
-}
-
 .result-content {
   background: var(--bg-lighter);
   border: 1px solid var(--border-color);

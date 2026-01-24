@@ -830,14 +830,6 @@ body {
 }
 
 /* 多格式分析 */
-.multi-format-controls {
-  display: flex;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--bg-lighter);
-  border-bottom: 1px solid var(--border-color);
-}
-
 .multi-format-buttons {
   display: flex;
   flex-wrap: wrap;
@@ -861,17 +853,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 0.5;
-  min-width: 80px;
-}
-
-#back-to-previous {
-  background: var(--warning);
-  margin-right: auto;
-}
-
-#back-to-previous:hover {
-  background: #d8a15a;
+  flex: 1;
+  min-width: 100px;
 }
 
 .format-btn:hover {
@@ -885,83 +868,6 @@ body {
   box-shadow: 0 1px 4px rgba(124, 158, 232, 0.2);
 }
 
-/* 处理结果区域 */
-.processing-result {
-  padding: var(--space-4);
-  background: var(--bg-white);
-}
-
-.result-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--space-3);
-  padding-bottom: var(--space-2);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.result-header span {
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--text-dark);
-}
-
-.result-actions {
-  display: flex;
-  gap: var(--space-3);
-}
-
-.result-btn {
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: var(--space-2) var(--space-4);
-  font-size: 13px;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-  white-space: nowrap;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0.5;
-  min-width: 80px;
-}
-
-.result-btn:hover {
-  background: var(--primary-dark);
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(124, 158, 232, 0.3);
-}
-
-.result-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 1px 4px rgba(124, 158, 232, 0.2);
-}
-
-.result-content {
-  background: var(--bg-lighter);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: var(--space-4);
-  min-height: 100px;
-  white-space: pre-wrap;
-  word-break: break-all;
-  font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-  font-size: 13px;
-  color: var(--text-dark);
-  line-height: 1.6;
-  overflow: auto;
-}
-
-.original-text {
-  color: var(--text-light);
-  font-style: italic;
-  text-align: center;
-  padding: var(--space-8) var(--space-5);
-}
-
 /* 响应式布局调整 */
 @media (max-width: 768px) {
   .format-btn {
@@ -973,14 +879,6 @@ body {
 @media (max-width: 480px) {
   .format-btn {
     flex: 1 0 100%;
-  }
-  
-  .multi-format-controls {
-    flex-direction: column;
-  }
-  
-  #back-to-previous {
-    margin-right: 0;
   }
 }
 

@@ -201,34 +201,9 @@
                         <path d="m22 12.5-8.58 3.9a2 2 0 0 1-1.66 0L2 12.5"/>
                         <path d="m22 17.5-8.58 3.9a2 2 0 0 1-1.66 0L2 17.5"/>
                     </svg>
-                    多格式分析
+                    多格式分析结果
                 </h4>
-                <div class="multi-format-controls">
-                    <button class="format-btn" id="back-to-previous">回到上一次处理结果</button>
-                </div>
-                <div class="multi-format-buttons">
-                    <button class="format-btn" data-action="remove-chinese">去除中文和中文符号</button>
-                    <button class="format-btn" data-action="remove-non-url-chars">去除非url字符</button>
-                    <button class="format-btn" data-action="remove-spaces">去除空格</button>
-                    <button class="format-btn" data-action="convert-to-url-chars">非URL符号转URL符号</button>
-                    <button class="format-btn" data-action="convert-period">。转.符号</button>
-                    <button class="format-btn" data-action="convert-slash-to-backslash">/转\</button>
-                    <button class="format-btn" data-action="convert-backslash-to-slash">\转/</button>
-                    <button class="format-btn" data-action="convert-slash-to-double">/转//</button>
-                    <button class="format-btn" data-action="convert-backslash-to-double">\转\\</button>
-                </div>
-                <div class="processing-result">
-                    <div class="result-header">
-                        <span>处理结果</span>
-                        <div class="result-actions">
-                            <button class="result-btn" id="copy-result-btn">复制结果</button>
-                            <button class="result-btn" id="search-result-btn">搜索结果</button>
-                        </div>
-                    </div>
-                    <div class="result-content" id="multi-format-result">
-                        <div class="original-text" id="original-text">请在输入框中输入文本，然后点击下方按钮进行处理</div>
-                    </div>
-                </div>
+                <div id="multi-format-result"></div>
             </section>
 
             <!-- 链接历史区域 -->

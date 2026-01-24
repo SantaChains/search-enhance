@@ -245,7 +245,7 @@ function splitEnglishSentences(text) {
  * @param {number} maxWordLength 最大词长，默认5
  * @returns {Array} 分词结果数组
  */
-export function chineseWordSegmentation(text, maxWordLength = 5) {
+function chineseWordSegmentation(text, maxWordLength = 5) {
     if (!text || !text.trim()) return [];
     
     // 简化的常用词词典

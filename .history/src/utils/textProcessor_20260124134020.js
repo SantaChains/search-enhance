@@ -245,7 +245,7 @@ function splitEnglishSentences(text) {
  * @param {number} maxWordLength 最大词长，默认5
  * @returns {Array} 分词结果数组
  */
-export function chineseWordSegmentation(text, maxWordLength = 5) {
+function chineseWordSegmentation(text, maxWordLength = 5) {
     if (!text || !text.trim()) return [];
     
     // 简化的常用词词典
@@ -785,79 +785,6 @@ export function classifyText(text) {
     }
 
     return classification;
-}
-
-/**
- * 复制文本到剪贴板（现代方法）
- * @param {string} text - 要复制的文本内容
- * @returns {Promise<boolean>} - 复制成功返回true，失败返回false
- */
-export async function copyToClipboardModern(text) {
-    try {
-        await navigator.clipboard.writeText(text);
-        return true;
-    } catch (err) {
-        console.error('复制失败:', err);
-        return false;
-    }
-}
-
-/**
- * 从剪贴板读取文本（现代方法）
- * @returns {Promise<string|null>} - 剪贴板内容，失败返回null
- */
-export async function readFromClipboardModern() {
-    try {
-        const text = await navigator.clipboard.readText();
-        return text;
-    } catch (err) {
-        console.error('读取剪贴板失败:', err);
-        return null;
-    }
-}
-
-/**
- * 复制文本到剪贴板（传统方法）
- * @param {string} text - 要复制的文本内容
- * @returns {boolean} - 复制成功返回true，失败返回false
- */
-export function copyToClipboardLegacy(text) {
-    // 创建临时textarea元素
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    
-    // 设置样式，避免影响页面布局
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    
-    // 添加到DOM并选中内容
-    document.body.appendChild(textarea);
-    textarea.select();
-    
-    try {
-        // 执行复制命令
-        const success = document.execCommand('copy');
-        return success;
-    } catch (err) {
-        console.error('复制失败:', err);
-        return false;
-    } finally {
-        // 清理临时元素
-        document.body.removeChild(textarea);
-    }
-}
-
-/**
- * 智能复制到剪贴板 - 自动选择合适的方法
- * @param {string} text - 要复制的文本内容
- * @returns {Promise<boolean>} - 复制成功返回true，失败返回false
- */
-export async function copyToClipboard(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        return await copyToClipboardModern(text);
-    } else {
-        return copyToClipboardLegacy(text);
-    }
 }
 
 /**

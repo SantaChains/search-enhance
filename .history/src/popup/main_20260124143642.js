@@ -681,16 +681,16 @@ function handleFormatButtonClick(e) {
             processedResult = currentText.replace(/\\/g, '/');
             break;
         case 'convert-slash-to-double':
-            // /转//，只对单个/生效，对//不生效
-            processedResult = currentText.replace(/(?<!\/)/(?!\/)/g, '//');
+            // /转//
+            processedResult = currentText.replace(/\//g, '//');
             break;
         case 'remove-spaces':
             // 去除空格
             processedResult = currentText.replace(/\s+/g, '');
             break;
         case 'convert-backslash-to-double':
-            // \转\\，只对单个\生效，对\\不生效
-            processedResult = currentText.replace(/(?<!\\)\\(?!\\)/g, '\\\\');
+            // \转\\
+            processedResult = currentText.replace(/\\/g, '\\\\');
             break;
         default:
             break;

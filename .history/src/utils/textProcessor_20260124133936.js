@@ -129,8 +129,6 @@ function applySingleSplitRule(text, rule) {
             return splitEnglishSentences(text);
         case 'zh-sentence':
             return splitChineseSentences(text);
-        case 'zh-word':
-            return chineseWordSegmentation(text);
         case 'mixed-sentence':
             return splitMixedLanguageSentences(text);
         case 'code-naming':
@@ -245,7 +243,7 @@ function splitEnglishSentences(text) {
  * @param {number} maxWordLength 最大词长，默认5
  * @returns {Array} 分词结果数组
  */
-export function chineseWordSegmentation(text, maxWordLength = 5) {
+function chineseWordSegmentation(text, maxWordLength = 5) {
     if (!text || !text.trim()) return [];
     
     // 简化的常用词词典
@@ -788,79 +786,6 @@ export function classifyText(text) {
 }
 
 /**
- * 复制文本到剪贴板（现代方法）
- * @param {string} text - 要复制的文本内容
- * @returns {Promise<boolean>} - 复制成功返回true，失败返回false
- */
-export async function copyToClipboardModern(text) {
-    try {
-        await navigator.clipboard.writeText(text);
-        return true;
-    } catch (err) {
-        console.error('复制失败:', err);
-        return false;
-    }
-}
-
-/**
- * 从剪贴板读取文本（现代方法）
- * @returns {Promise<string|null>} - 剪贴板内容，失败返回null
- */
-export async function readFromClipboardModern() {
-    try {
-        const text = await navigator.clipboard.readText();
-        return text;
-    } catch (err) {
-        console.error('读取剪贴板失败:', err);
-        return null;
-    }
-}
-
-/**
- * 复制文本到剪贴板（传统方法）
- * @param {string} text - 要复制的文本内容
- * @returns {boolean} - 复制成功返回true，失败返回false
- */
-export function copyToClipboardLegacy(text) {
-    // 创建临时textarea元素
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    
-    // 设置样式，避免影响页面布局
-    textarea.style.position = 'fixed';
-    textarea.style.opacity = '0';
-    
-    // 添加到DOM并选中内容
-    document.body.appendChild(textarea);
-    textarea.select();
-    
-    try {
-        // 执行复制命令
-        const success = document.execCommand('copy');
-        return success;
-    } catch (err) {
-        console.error('复制失败:', err);
-        return false;
-    } finally {
-        // 清理临时元素
-        document.body.removeChild(textarea);
-    }
-}
-
-/**
- * 智能复制到剪贴板 - 自动选择合适的方法
- * @param {string} text - 要复制的文本内容
- * @returns {Promise<boolean>} - 复制成功返回true，失败返回false
- */
-export async function copyToClipboard(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        return await copyToClipboardModern(text);
-    } else {
-        return copyToClipboardLegacy(text);
-    }
-}
-
-/**
  * 多格式分析功能 - 为UI提供统一的分析接口
  * @param {string} text 输入文本
  * @returns {Array} 包含各种检测结果的数组
@@ -944,7 +869,6 @@ export function getSplitRuleDescription(rule) {
         'auto': '智能分析：根据内容类型自动选择最适合的分隔方式，支持列表、代码、包裹内容等复杂场景',
         'en-sentence': '英文句子：按句号、感叹号、问号拆分英文句子，长句子会按逗号进一步拆分',
         'zh-sentence': '中文句子：按中文标点（。！？；）拆分句子，长句按逗号、顿号拆分并过滤虚词',
-        'zh-word': '中文分词：基于正向最大匹配算法，将中文文本拆分为有意义的词语序列',
         'mixed-sentence': '中英混合：按语言边界智能拆分，中文部分用中文规则，英文部分用英文规则',
         'code-naming': '代码命名：识别驼峰、蛇形、串式命名法，拆分函数名和变量名为基础语义单元',
         'list-items': '列表项目：提取有序列表（1. 一、 ①）和无序列表（- * •）的内容，自动过滤序号标记',
@@ -967,7 +891,6 @@ export function getAvailableSplitRules() {
         { value: 'auto', label: '智能分析', description: getSplitRuleDescription('auto') },
         { value: 'mixed-sentence', label: '中英混合', description: getSplitRuleDescription('mixed-sentence') },
         { value: 'zh-sentence', label: '中文句子', description: getSplitRuleDescription('zh-sentence') },
-        { value: 'zh-word', label: '中文分词', description: getSplitRuleDescription('zh-word') },
         { value: 'en-sentence', label: '英文句子', description: getSplitRuleDescription('en-sentence') },
         { value: 'code-naming', label: '代码命名', description: getSplitRuleDescription('code-naming') },
         { value: 'list-items', label: '列表项目', description: getSplitRuleDescription('list-items') },

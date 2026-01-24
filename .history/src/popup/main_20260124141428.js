@@ -545,8 +545,6 @@ function updateMultiFormatState(text) {
     appState.multiFormatState.originalText = text;
     appState.multiFormatState.processingHistory = [text];
     appState.multiFormatState.currentIndex = 0;
-    // 更新回到上一次处理结果按钮状态
-    updateBackButtonState();
 }
 
 // 显示多格式分析结果
@@ -557,79 +555,12 @@ function displayMultiFormatResult(text) {
     resultContainer.innerHTML = text;
 }
 
-// 更新回到上一次处理结果按钮状态
-function updateBackButtonState() {
-    const backButton = document.getElementById('back-to-previous');
-    if (!backButton) return;
-    
-    // 当currentIndex > 0时，按钮可用，否则禁用
-    backButton.disabled = appState.multiFormatState.currentIndex <= 0;
-    if (backButton.disabled) {
-        backButton.style.opacity = '0.5';
-        backButton.style.cursor = 'not-allowed';
-    } else {
-        backButton.style.opacity = '1';
-        backButton.style.cursor = 'pointer';
-    }
-}
-
 // 回到上一次处理结果
 function handleBackToPrevious() {
     if (appState.multiFormatState.currentIndex > 0) {
         appState.multiFormatState.currentIndex--;
         const previousResult = appState.multiFormatState.processingHistory[appState.multiFormatState.currentIndex];
         displayMultiFormatResult(previousResult);
-        // 更新按钮状态
-        updateBackButtonState();
-    }
-}
-
-// 复制结果到剪贴板
-async function handleCopyResult() {
-    const resultContainer = document.getElementById('multi-format-result');
-    if (!resultContainer) return;
-    
-    const resultText = resultContainer.innerText;
-    if (!resultText) return;
-    
-    try {
-        await copyTextToClipboard(resultText);
-        showNotification('已复制到剪贴板');
-    } catch (err) {
-        logger.error("复制结果失败:", err);
-        showNotification("复制失败", false);
-    }
-}
-
-// 搜索结果
-function handleSearchResult() {
-    const resultContainer = document.getElementById('multi-format-result');
-    if (!resultContainer) return;
-    
-    const resultText = resultContainer.innerText;
-    if (!resultText) return;
-    
-    // 如果是URL，直接跳转
-    if (isURL(resultText)) {
-        window.open(resultText, '_blank');
-        addToHistoryEnhanced(resultText);
-        return;
-    }
-    
-    // 否则使用当前选中的搜索引擎搜索
-    let selectedEngineName = appState.settings.defaultEngine;
-    if (elements.engine_select && elements.engine_select.value) {
-        selectedEngineName = elements.engine_select.value;
-    }
-    
-    const selectedEngine = appState.settings.searchEngines.find(e => e.name === selectedEngineName);
-    
-    if (selectedEngine) {
-        const searchUrl = selectedEngine.template.replace('%s', encodeURIComponent(resultText));
-        window.open(searchUrl, '_blank');
-        addToHistoryEnhanced(resultText);
-    } else {
-        showNotification("没有找到搜索引擎配置", false);
     }
 }
 
@@ -659,10 +590,9 @@ function handleFormatButtonClick(e) {
             break;
         case 'remove-non-url-chars':
             // 去除非URL字符（包含中文和非URL的标点符号）
-            // 保留URL、英文字母、数字和URL允许的符号
-            processedResult = currentText.replace(/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef<>{}\|^`\'"\s]+/g, ' ')
-                                         .replace(/\s+/g, ' ')  // 将多个空格合并为一个
-                                         .trim();             // 去除首尾空格
+            const urlRegex = /(https?:\/\/[^<>"]+|www\.[^<>"]+)/gi;
+            const urls = currentText.match(urlRegex) || [];
+            processedResult = urls.join('\n');
             break;
         case 'convert-to-url-chars':
             // 非URL符号转URL符号
@@ -681,16 +611,8 @@ function handleFormatButtonClick(e) {
             processedResult = currentText.replace(/\\/g, '/');
             break;
         case 'convert-slash-to-double':
-            // /转//，只对单个/生效，对//不生效
-            processedResult = currentText.replace(/(?<!\/)/(?!\/)/g, '//');
-            break;
-        case 'remove-spaces':
-            // 去除空格
-            processedResult = currentText.replace(/\s+/g, '');
-            break;
-        case 'convert-backslash-to-double':
-            // \转\\，只对单个\生效，对\\不生效
-            processedResult = currentText.replace(/(?<!\\)\\(?!\\)/g, '\\\\');
+            // /转//
+            processedResult = currentText.replace(/\//g, '//');
             break;
         default:
             break;
@@ -707,8 +629,6 @@ function handleFormatButtonClick(e) {
         appState.multiFormatState.currentIndex++;
         // 显示处理结果
         displayMultiFormatResult(processedResult);
-        // 更新回到上一次处理结果按钮状态
-        updateBackButtonState();
     }
 }
 
@@ -1172,18 +1092,6 @@ function setupEventListeners() {
     const backButton = document.getElementById('back-to-previous');
     if (backButton) {
         backButton.addEventListener('click', handleBackToPrevious);
-    }
-    
-    // 复制结果按钮监听器
-    const copyResultButton = document.getElementById('copy-result-btn');
-    if (copyResultButton) {
-        copyResultButton.addEventListener('click', handleCopyResult);
-    }
-    
-    // 搜索结果按钮监听器
-    const searchResultButton = document.getElementById('search-result-btn');
-    if (searchResultButton) {
-        searchResultButton.addEventListener('click', handleSearchResult);
     }
     
     // 注意：Alt+K快捷键已在manifest.json中定义为全局命令

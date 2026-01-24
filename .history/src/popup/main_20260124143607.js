@@ -584,55 +584,6 @@ function handleBackToPrevious() {
     }
 }
 
-// 复制结果到剪贴板
-async function handleCopyResult() {
-    const resultContainer = document.getElementById('multi-format-result');
-    if (!resultContainer) return;
-    
-    const resultText = resultContainer.innerText;
-    if (!resultText) return;
-    
-    try {
-        await copyTextToClipboard(resultText);
-        showNotification('已复制到剪贴板');
-    } catch (err) {
-        logger.error("复制结果失败:", err);
-        showNotification("复制失败", false);
-    }
-}
-
-// 搜索结果
-function handleSearchResult() {
-    const resultContainer = document.getElementById('multi-format-result');
-    if (!resultContainer) return;
-    
-    const resultText = resultContainer.innerText;
-    if (!resultText) return;
-    
-    // 如果是URL，直接跳转
-    if (isURL(resultText)) {
-        window.open(resultText, '_blank');
-        addToHistoryEnhanced(resultText);
-        return;
-    }
-    
-    // 否则使用当前选中的搜索引擎搜索
-    let selectedEngineName = appState.settings.defaultEngine;
-    if (elements.engine_select && elements.engine_select.value) {
-        selectedEngineName = elements.engine_select.value;
-    }
-    
-    const selectedEngine = appState.settings.searchEngines.find(e => e.name === selectedEngineName);
-    
-    if (selectedEngine) {
-        const searchUrl = selectedEngine.template.replace('%s', encodeURIComponent(resultText));
-        window.open(searchUrl, '_blank');
-        addToHistoryEnhanced(resultText);
-    } else {
-        showNotification("没有找到搜索引擎配置", false);
-    }
-}
-
 // 处理多格式分析按钮点击
 function handleFormatButtonClick(e) {
     const btn = e.target;
@@ -681,16 +632,16 @@ function handleFormatButtonClick(e) {
             processedResult = currentText.replace(/\\/g, '/');
             break;
         case 'convert-slash-to-double':
-            // /转//，只对单个/生效，对//不生效
-            processedResult = currentText.replace(/(?<!\/)/(?!\/)/g, '//');
+            // /转//
+            processedResult = currentText.replace(/\//g, '//');
             break;
         case 'remove-spaces':
             // 去除空格
             processedResult = currentText.replace(/\s+/g, '');
             break;
         case 'convert-backslash-to-double':
-            // \转\\，只对单个\生效，对\\不生效
-            processedResult = currentText.replace(/(?<!\\)\\(?!\\)/g, '\\\\');
+            // \转\\
+            processedResult = currentText.replace(/\\/g, '\\\\');
             break;
         default:
             break;
@@ -1172,18 +1123,6 @@ function setupEventListeners() {
     const backButton = document.getElementById('back-to-previous');
     if (backButton) {
         backButton.addEventListener('click', handleBackToPrevious);
-    }
-    
-    // 复制结果按钮监听器
-    const copyResultButton = document.getElementById('copy-result-btn');
-    if (copyResultButton) {
-        copyResultButton.addEventListener('click', handleCopyResult);
-    }
-    
-    // 搜索结果按钮监听器
-    const searchResultButton = document.getElementById('search-result-btn');
-    if (searchResultButton) {
-        searchResultButton.addEventListener('click', handleSearchResult);
     }
     
     // 注意：Alt+K快捷键已在manifest.json中定义为全局命令
