@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Search Buddy - 功能测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .test-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .test-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .test-result {
+            background: white;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+            border-left: 4px solid #007bff;
+        }
+        .rule-item {
+            margin: 5px 0;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .rule-title {
+            font-weight: bold;
+            color: #333;
+            cursor: help;
+        }
+        .rule-description {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .split-item {
+            display: inline-block;
+            background: #e3f2fd;
+            padding: 4px 8px;
+            margin: 2px;
+            border-radius: 4px;
+            border: 1px solid #90caf9;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Enhanced Search Buddy - 功能测试页面</h1>
+    
+    <div class="test-section">
+        <h2>📝 测试用例</h2>
+        <p>以下是各种内容类型的测试用例，点击按钮将内容填入测试区域：</p>
+        
+        <button onclick="loadTestCase('chinese')">中文文本</button>
+        <button onclick="loadTestCase('english')">英文文本</button>
+        <button onclick="loadTestCase('mixed')">中英文混合</button>
+        <button onclick="loadTestCase('code')">代码命名</button>
+        <button onclick="loadTestCase('list')">列表内容</button>
+        <button onclick="loadTestCase('wrapped')">包裹标点</button>
+        <button onclick="loadTestCase('complex')">复杂混合</button>
+    </div>
+
+    <div class="test-section">
+        <h2>🔧 分隔规则说明</h2>
+        <div id="rules-explanation">
+            <div class="rule-item">
+                <div class="rule-title" title="根据内容类型自动选择最适合的分隔规则">auto (智能分析)</div>
+                <div class="rule-description">自动检测内容类型并应用最适合的分隔逻辑</div>
+            </div>
+            <div class="rule-item">
+                <div class="rule-title" title="按英文句号、感叹号、问号分隔，长句按逗号进一步拆分">en-sentence (英文句子)</div>
+                <div class="rule-description">按英文标点符号拆分句子和短语</div>
+            </div>
+            <div class="rule-item">
+                <div class="rule-title" title="按中文句号、感叹号、问号、分号分隔，长句按逗号、顿号拆分">zh-sentence (中文句子)</div>
+                <div class="rule-description">按中文标点符号拆分句子和短语</div>
+            </div>
+            <div class="rule-item">
+                <div class="rule-title" title="按语言边界分隔，中文部分用中文规则，英文部分用英文规则">mixed-sentence (中英文混合)</div>
+                <div class="rule-description">智能处理中英文混合文本</div>
+            </div>
+            <div class="rule-item">
+                <div class="rule-title" title="识别驼峰、蛇形、串式命名法，拆分为基础语义单元">code-naming (代码命名)</div>
+                <div class="rule-description">拆分函数名、变量名等代码标识符</div>
+            </div>
+            <div class="rule-item">
+                <div class="rule-title" title="识别各种列表标记（数字、字母、符号），提取列表项内容">list-items (列表项提取)</div>
+                <div class="rule-description">提取有序和无序列表中的项目</div>
+            </div>
+            <div class="rule-item">
+                <div class="rule-title" title="提取引号、括号、书名号等包裹符号内的内容">wrapped-content (包裹内容)</div>
+                <div class="rule-description">提取被各种标点符号包裹的内容</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>🧪 测试区域</h2>
+        <textarea id="test-input" class="test-input" rows="6" placeholder="在此输入测试文本，或点击上方按钮加载测试用例..."></textarea>
+        
+        <div>
+            <label>
+                <input type="checkbox" id="multi-rule-mode"> 启用多规则模式
+            </label>
+        </div>
+        
+        <div id="single-rule-section">
+            <label for="rule-select">选择分隔规则：</label>
+            <select id="rule-select">
+                <option value="auto">auto (智能分析)</option>
+                <option value="en-sentence">en-sentence (英文句子)</option>
+                <option value="zh-sentence">zh-sentence (中文句子)</option>
+                <option value="mixed-sentence">mixed-sentence (中英文混合)</option>
+                <option value="code-naming">code-naming (代码命名)</option>
+                <option value="list-items">list-items (列表项提取)</option>
+                <option value="wrapped-content">wrapped-content (包裹内容)</option>
+                <option value="space">space (空格分隔)</option>
+                <option value="newline">newline (换行分隔)</option>
+                <option value="punctuation">punctuation (标点分隔)</option>
+                <option value="word">word (单词分隔)</option>
+            </select>
+        </div>
+        
+        <div id="multi-rule-section" style="display: none;">
+            <p>选择多个规则（按优先级顺序应用）：</p>
+            <div id="multi-rule-checkboxes">
+                <label><input type="checkbox" value="list-items"> 列表项提取</label>
+                <label><input type="checkbox" value="wrapped-content"> 包裹内容</label>
+                <label><input type="checkbox" value="code-naming"> 代码命名</label>
+                <label><input type="checkbox" value="mixed-sentence"> 中英文混合</label>
+                <label><input type="checkbox" value="zh-sentence"> 中文句子</label>
+                <label><input type="checkbox" value="en-sentence"> 英文句子</label>
+            </div>
+        </div>
+        
+        <button onclick="testSplit()">🔄 执行拆分</button>
+        <button onclick="testClassify()">🔍 内容分类</button>
+        <button onclick="testMultiFormat()">📊 多格式分析</button>
+        
+        <div id="test-results" class="test-result" style="display: none;">
+            <h3>拆分结果：</h3>
+            <div id="split-results"></div>
+        </div>
+        
+        <div id="classify-results" class="test-result" style="display: none;">
+            <h3>内容分类结果：</h3>
+            <div id="classification-info"></div>
+        </div>
+        
+        <div id="format-results" class="test-result" style="display: none;">
+            <h3>多格式分析结果：</h3>
+            <div id="format-info"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        // 导入处理函数
+        import { splitText, classifyText, processMultiFormat } from './src/utils/textProcessor.js';
+        
+        // 测试用例数据
+        const testCases = {
+            chinese: '我今天去了北京大学，参观了图书馆和实验室。天气很好，心情也不错！你觉得怎么样？',
+            english: 'I visited the library today. It was amazing! The books were well organized, and the staff was helpful. Would you like to go there?',
+            mixed: '我喜欢使用JavaScript编程，特别是React框架。GitHub上有很多open source项目值得学习。',
+            code: 'getUserInfo updateUserProfile handleSubmitButton user_name order_id create-component func(param1, param2)',
+            list: '1. 学习JavaScript\n2. 掌握React框架\n3. 了解Node.js\n• 前端开发\n• 后端开发\n- 数据库设计',
+            wrapped: '他说："今天天气真好！"然后又补充道："我们去公园走走吧。"（这是个好主意）',
+            complex: '1. 调用getUserInfo()函数；2. 处理"用户数据"；3. 更新user_profile表；结果：(success)'
+        };
+        
+        // 全局函数
+        window.loadTestCase = function(type) {
+            document.getElementById('test-input').value = testCases[type] || '';
+        };
+        
+        window.testSplit = function() {
+            const text = document.getElementById('test-input').value.trim();
+            if (!text) {
+                alert('请输入测试文本');
+                return;
+            }
+            
+            let rules;
+            const multiRuleMode = document.getElementById('multi-rule-mode').checked;
+            
+            if (multiRuleMode) {
+                const checkboxes = document.querySelectorAll('#multi-rule-checkboxes input:checked');
+                rules = Array.from(checkboxes).map(cb => cb.value);
+                if (rules.length === 0) {
+                    alert('请至少选择一个规则');
+                    return;
+                }
+            } else {
+                rules = document.getElementById('rule-select').value;
+            }
+            
+            try {
+                const results = splitText(text, rules);
+                displaySplitResults(results, rules);
+            } catch (error) {
+                console.error('拆分失败:', error);
+                alert('拆分失败: ' + error.message);
+            }
+        };
+        
+        window.testClassify = function() {
+            const text = document.getElementById('test-input').value.trim();
+            if (!text) {
+                alert('请输入测试文本');
+                return;
+            }
+            
+            try {
+                const classification = classifyText(text);
+                displayClassificationResults(classification);
+            } catch (error) {
+                console.error('分类失败:', error);
+                alert('分类失败: ' + error.message);
+            }
+        };
+        
+        window.testMultiFormat = function() {
+            const text = document.getElementById('test-input').value.trim();
+            if (!text) {
+                alert('请输入测试文本');
+                return;
+            }
+            
+            try {
+                const formats = processMultiFormat(text);
+                displayFormatResults(formats);
+            } catch (error) {
+                console.error('格式分析失败:', error);
+                alert('格式分析失败: ' + error.message);
+            }
+        };
+        
+        function displaySplitResults(results, rules) {
+            const container = document.getElementById('split-results');
+            const rulesText = Array.isArray(rules) ? rules.join(' + ') : rules;
+            
+            container.innerHTML = `
+                <p><strong>使用规则:</strong> ${rulesText}</p>
+                <p><strong>拆分数量:</strong> ${results.length} 项</p>
+                <div class="split-items">
+                    ${results.map((item, index) => 
+                        `<span class="split-item" title="第${index + 1}项">${item}</span>`
+                    ).join('')}
+                </div>
+            `;
+            
+            document.getElementById('test-results').style.display = 'block';
+        }
+        
+        function displayClassificationResults(classification) {
+            const container = document.getElementById('classification-info');
+            
+            container.innerHTML = `
+                <p><strong>内容类型:</strong> ${classification.type}</p>
+                <p><strong>置信度:</strong> ${(classification.confidence * 100).toFixed(1)}%</p>
+                <p><strong>建议:</strong></p>
+                <ul>
+                    ${classification.suggestions.map(suggestion => 
+                        `<li>${suggestion}</li>`
+                    ).join('')}
+                </ul>
+            `;
+            
+            document.getElementById('classify-results').style.display = 'block';
+        }
+        
+        function displayFormatResults(formats) {
+            const container = document.getElementById('format-info');
+            
+            let html = '';
+            for (const [key, value] of Object.entries(formats)) {
+                if (Array.isArray(value) && value.length > 0) {
+                    html += `
+                        <div>
+                            <strong>${key}:</strong>
+                            <ul>
+                                ${value.map(item => `<li>${item}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                }
+            }
+            
+            if (!html) {
+                html = '<p>未检测到特殊格式内容</p>';
+            }
+            
+            container.innerHTML = html;
+            document.getElementById('format-results').style.display = 'block';
+        }
+        
+        // 多规则模式切换
+        document.getElementById('multi-rule-mode').addEventListener('change', function() {
+            const singleSection = document.getElementById('single-rule-section');
+            const multiSection = document.getElementById('multi-rule-section');
+            
+            if (this.checked) {
+                singleSection.style.display = 'none';
+                multiSection.style.display = 'block';
+            } else {
+                singleSection.style.display = 'block';
+                multiSection.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

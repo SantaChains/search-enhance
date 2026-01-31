@@ -1,17 +1,144 @@
 // src/utils/textProcessor.js
 
 /**
- * Checks if a string is a valid URL.
- * @param {string} str The string to check.
- * @returns {boolean}
+ * Enhanced Text Processing Utilities
+ * Provides comprehensive text analysis and processing capabilities
+ * 包含中文分词、剪贴板操作和文本分析功能
  */
-export function isURL(str) {
+
+/**
+ * 增强的URL解析与分词功能
+ * @param {string} url URL字符串
+ * @returns {object} 包含详细解析结果的对象
+ */
+export function enhancedUrlParser(url) {
+    if (!url || typeof url !== 'string') return null;
+    
     try {
-        new URL(str);
-        return true;
-    } catch (_) {
-        return false;
+        // 确保URL有协议
+        const normalizedUrl = url.startsWith('http') ? url : `http://${url}`;
+        const urlObj = new URL(normalizedUrl);
+        
+        // 提取路径段，保留-和_符号
+        const pathSegments = urlObj.pathname.split('/').filter(Boolean);
+        
+        // 提取查询参数
+        const searchParams = {};
+        for (const [key, value] of urlObj.searchParams.entries()) {
+            searchParams[key] = value;
+        }
+        
+        // 智能分析URL类型
+        let urlType = 'general';
+        const domainParts = urlObj.hostname.split('.');
+        const tld = domainParts[domainParts.length - 1];
+        
+        // 识别常见平台
+        if (urlObj.hostname.includes('github.com')) {
+            urlType = 'github';
+        } else if (urlObj.hostname.includes('stackoverflow.com') || urlObj.hostname.includes('stackexchange.com')) {
+            urlType = 'stackoverflow';
+        } else if (urlObj.hostname.includes('google.') || urlObj.hostname.includes('bing.') || urlObj.hostname.includes('baidu.com')) {
+            urlType = 'search_engine';
+        } else if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('vimeo.com')) {
+            urlType = 'video';
+        } else if (urlObj.hostname.includes('twitter.com') || urlObj.hostname.includes('facebook.com') || urlObj.hostname.includes('instagram.com')) {
+            urlType = 'social';
+        } else if (tld === 'pdf' || urlObj.pathname.endsWith('.pdf')) {
+            urlType = 'pdf';
+        } else if (urlObj.pathname.includes('/api/') || urlObj.pathname.includes('/v')) {
+            urlType = 'api';
+        }
+        
+        // 提取文件扩展名
+        let fileExtension = '';
+        const pathParts = urlObj.pathname.split('.');
+        if (pathParts.length > 1) {
+            const lastPart = pathParts[pathParts.length - 1];
+            if (lastPart.length <= 6 && /^[a-zA-Z0-9]+$/.test(lastPart)) {
+                fileExtension = lastPart;
+            }
+        }
+        
+        return {
+            original: url,
+            normalized: normalizedUrl,
+            protocol: urlObj.protocol,
+            hostname: urlObj.hostname,
+            port: urlObj.port,
+            pathname: urlObj.pathname,
+            search: urlObj.search,
+            hash: urlObj.hash,
+            origin: urlObj.origin,
+            pathSegments: pathSegments,
+            searchParams: searchParams,
+            fileExtension: fileExtension,
+            urlType: urlType,
+            domainParts: domainParts,
+            tld: tld,
+            // 智能分词结果
+            segments: [
+                urlObj.hostname,
+                ...pathSegments,
+                ...Object.keys(searchParams),
+                ...Object.values(searchParams)
+            ].filter(Boolean)
+        };
+    } catch (error) {
+        logger.warn('URL解析失败:', error);
+        return null;
     }
+}
+
+/**
+ * 批量处理链接 - 从文本中提取并分析多个链接
+ * @param {string} text 输入文本
+ * @returns {array} 包含多个链接分析结果的数组
+ */
+export function batchProcessLinks(text) {
+    if (!text || typeof text !== 'string') return [];
+    
+    // 增强的URL提取正则，确保捕获完整的URL（包括-和_）
+    const urlRegex = /(https?:\/\/(?:[\w.-]+)(?::[0-9]+)?(?:\/(?:[\w\/._-])*(?:\?(?:[\w&=%.+-])*)?(?:#(?:[\w._-])*)?)?)/gi;
+    const rawLinks = text.match(urlRegex) || [];
+    
+    // 去重并处理
+    const uniqueLinks = [...new Set(rawLinks)];
+    return uniqueLinks.map(url => ({
+        url: url,
+        analysis: enhancedUrlParser(url)
+    })).filter(item => item.analysis);
+}
+
+/**
+ * 链接智能分类与分组
+ * @param {array} links 链接分析结果数组
+ * @returns {object} 按类型分组的链接对象
+ */
+export function categorizeLinks(links) {
+    if (!Array.isArray(links)) return {};
+    
+    const categories = {
+        github: [],
+        stackoverflow: [],
+        search_engine: [],
+        video: [],
+        social: [],
+        pdf: [],
+        api: [],
+        general: []
+    };
+    
+    links.forEach(item => {
+        const type = item.analysis?.urlType || 'general';
+        if (categories[type]) {
+            categories[type].push(item);
+        } else {
+            categories.general.push(item);
+        }
+    });
+    
+    return categories;
 }
 
 /**
@@ -25,69 +152,546 @@ export function processTextExtraction(text) {
         extractedLinks: [],
     };
 
-    // 1. Extract links first
-    // More robust URL regex to match the examples and common cases
-    const urlRegex = /https?:\/\/(?:[-\w.])+(?:\:[0-9]+)?(?:\/(?:[\w\/_.])*(?:\?(?:[\w&=%.])*)?(?:\#(?:[\w.])*)?)?/gi;
-    results.extractedLinks = [...new Set(text.match(urlRegex) || [])]; // Use Set to remove duplicates
+    if (!text || !text.trim()) return results;
+
+    // 1. Extract links first - Enhanced URL detection
+    const urlRegex = /https?:\/\/(?:[-\w.])+(?::[0-9]+)?(?:\/(?:[\w\/_.\-])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?/gi;
+    let potentialLinks = text.match(urlRegex) || [];
     
-    // 2. Clean the text
+    // Post-process to validate URLs more strictly
+    results.extractedLinks = [...new Set(potentialLinks.filter(url => {
+        try {
+            // Validate URL format
+            const testUrl = url.startsWith('http') ? url : `http://${url}`;
+            new URL(testUrl);
+            return true;
+        } catch (_) {
+            return false;
+        }
+    }))];
+    
+    // 2. Clean the text for English-focused processing
     let cleaned = text;
-    // Remove links that were found
+    
+    // Remove links that were found to avoid processing them as text
     if (results.extractedLinks.length > 0) {
         results.extractedLinks.forEach(url => {
             // Escape special regex characters in the URL before replacing
             const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            cleaned = cleaned.replace(new RegExp(escapedUrl, 'gi'), '');
+            cleaned = cleaned.replace(new RegExp(escapedUrl, 'gi'), ' ');
         });
     }
-    // Remove Chinese characters and specific Chinese punctuation (based on user example)
-    // Keep only 。 (U+3002) as specified. Other common ones: ， (U+FF0C), ； (U+FF1B), ： (U+FF1A), ？ (U+FF1F), ！ (U+FF01)
+    
+    // Remove Chinese characters (as per original requirement for Switch 1)
     // U+4e00-U+9fa5 covers common CJK characters.
-    cleaned = cleaned.replace(/[\u4e00-\u9fa5]/g, ''); // Remove Chinese characters
-    cleaned = cleaned.replace(/[，；：？！]/g, ''); // Remove specific Chinese punctuation (except 。)
+    cleaned = cleaned.replace(/[\u4e00-\u9fa5]/g, '');
+    
+    // Remove specific Chinese punctuation (based on user example)
+    // Keep only 。 (U+3002) as specified. Other common ones: ， (U+FF0C), ； (U+FF1B), ： (U+FF1A), ？ (U+FF1F), ！ (U+FF01)
+    cleaned = cleaned.replace(/[，；：？！]/g, '');
+    
     // Replace Chinese period with English period
     cleaned = cleaned.replace(/。/g, '.');
-    // Remove content within square brackets
-    cleaned = cleaned.replace(/\[.*?\]/g, '');
-    // Remove all non-English letters, non-digits, non-spaces, non-periods
-    // This step aims to clean the text for subsequent splitting, removing any residual unwanted characters.
-    cleaned = cleaned.replace(/[^a-zA-Z0-9\s.]/g, '');
-    // Trim whitespace and normalize internal spaces
+    
+    // Remove content within square brackets and the brackets themselves
+    cleaned = cleaned.replace(/\[[^\]]*\]/g, '');
+    
+    // Remove all non-English letters, non-digits, non-spaces, non-periods, non-hyphens, non-underscores
+    // This cleaning preserves important characters for links and code while removing unwanted characters.
+    cleaned = cleaned.replace(/[^a-zA-Z0-9\s.\-_]/g, ' ');
+    
+    // Trim whitespace and normalize internal spaces (replace multiple spaces with single space)
     results.cleanedText = cleaned.trim().replace(/\s+/g, ' ');
 
     return results;
 }
 
 /**
- * Splits text based on a given delimiter.
- * @param {string} text The text to split.
- * @param {string} delimiter The splitting rule ('space', 'newline', 'zh-sentence', 'en-sentence', 'punctuation', 'word').
- * @returns {string[]} An array of split parts.
+ * 智能文本拆分 - 支持多种分隔规则和内容类型识别
+ * @param {string} text 输入文本
+ * @param {string|Array} delimiter 分隔规则，支持单个规则或多个规则组合
+ * @returns {Array} 拆分结果数组
  */
 export function splitText(text, delimiter = 'en-sentence') {
-    if (!text) return [];
-    switch (delimiter) {
+    if (!text || !text.trim()) return [];
+    
+    // 支持多规则同时应用
+    const delimiters = Array.isArray(delimiter) ? delimiter : [delimiter];
+    let results = [text.trim()];
+    
+    // 按优先级依次应用分隔规则
+    for (const rule of delimiters) {
+        const newResults = [];
+        for (const segment of results) {
+            newResults.push(...applySingleSplitRule(segment, rule));
+        }
+        results = newResults;
+    }
+    
+    // 后处理：去重、过滤、长度校准
+    return postProcessSplitResults(results);
+}
+
+/**
+ * 应用单个分隔规则
+ * @param {string} text 文本片段
+ * @param {string} rule 分隔规则
+ * @returns {Array} 分隔结果
+ */
+function applySingleSplitRule(text, rule) {
+    if (!text || !text.trim()) return [];
+    
+    const contentType = detectContentType(text);
+    
+    switch (rule) {
+        case 'auto':
+            return autoSplit(text, contentType);
+        case 'en-sentence':
+            return splitEnglishSentences(text);
+        case 'zh-sentence':
+            return splitChineseSentences(text);
+        case 'zh-word':
+            return chineseWordSegmentation(text);
+        case 'mixed-sentence':
+            return splitMixedLanguageSentences(text);
+        case 'code-naming':
+            return splitCodeNaming(text);
+        case 'list-items':
+            return splitListItems(text);
+        case 'wrapped-content':
+            return splitWrappedContent(text);
         case 'space':
             return text.split(/\s+/).filter(Boolean);
         case 'newline':
-            return text.split(/\n+/).filter(Boolean);
-        case 'zh-sentence':
-            return text.match(/[^。！？]+[。！？]?/g) || [];
-        case 'en-sentence':
-            return text.match(/[^.!?]+[.!?]?/g) || [];
+            return text.split(/\r?\n+/).filter(Boolean);
         case 'punctuation':
-            // Split by common punctuation marks, filtering out empty strings
-            // This will create empty parts around punctuation, so we filter them out and also trim parts
-            // A more sophisticated approach might be needed based on exact user expectation
-            return text.split(/[,.!?;:，。！？；：]/).map(part => part.trim()).filter(Boolean);
+            return splitByPunctuation(text);
         case 'word':
-            // Split by non-word characters, effectively getting words
-            // \w includes underscores, which might or might not be desired
             return text.split(/\W+/).filter(Boolean);
         default:
-            // Default to English sentence splitting if an unknown delimiter is passed
-            return text.match(/[^.!?]+[.!?]?/g) || [];
+            return splitEnglishSentences(text);
     }
+}
+
+/**
+ * 检测内容类型
+ * @param {string} text 输入文本
+ * @returns {string} 内容类型
+ */
+function detectContentType(text) {
+    // 1. 优先检测URL
+    if (/^https?:\/\//.test(text) || isURL(text)) {
+        return 'url';
+    }
+    
+    // 2. 检测列表类内容
+    if (/^[\s]*(?:\d+[.)]\s*|[一二三四五六七八九十]+[、.]\s*|[①②③④⑤⑥⑦⑧⑨⑩]\s*|[-*•·]\s*)/m.test(text)) {
+        return 'list';
+    }
+    
+    // 3. 检测代码/函数名（排除URL）
+    if (!/^https?:\/\//.test(text) && 
+        /[a-zA-Z_$][a-zA-Z0-9_$]*[A-Z][a-zA-Z0-9_$]*|[a-zA-Z_$][a-zA-Z0-9_$]*_[a-zA-Z0-9_$]+|[a-zA-Z_$][a-zA-Z0-9_$]*-[a-zA-Z0-9_$]+/.test(text)) {
+        return 'code';
+    }
+    
+    // 4. 检测包裹类标点
+    if (/["""''（）()【】《》<>「」『』]/g.test(text)) {
+        return 'wrapped';
+    }
+    
+    // 5. 检测中英文混合
+    const chineseCount = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
+    const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
+    
+    if (chineseCount > 0 && englishCount > 0) {
+        return 'mixed';
+    } else if (chineseCount > englishCount) {
+        return 'chinese';
+    } else if (englishCount > 0) {
+        return 'english';
+    }
+    
+    return 'unknown';
+}
+
+/**
+ * 自动智能拆分
+ * @param {string} text 输入文本
+ * @param {string} contentType 内容类型
+ * @returns {Array} 拆分结果
+ */
+function autoSplit(text, contentType) {
+    switch (contentType) {
+        case 'list':
+            return splitListItems(text);
+        case 'code':
+            return splitCodeNaming(text);
+        case 'wrapped':
+            return splitWrappedContent(text);
+        case 'url':
+            return [text]; // 不拆分URL，直接返回
+        case 'mixed':
+            return splitMixedLanguageSentences(text);
+        case 'chinese':
+            return splitChineseSentences(text);
+        case 'english':
+            return splitEnglishSentences(text);
+        default:
+            return splitMixedLanguageSentences(text);
+    }
+}
+
+/**
+ * 拆分英文句子
+ * @param {string} text 英文文本
+ * @returns {Array} 句子数组
+ */
+function splitEnglishSentences(text) {
+    // 先按句号、感叹号、问号拆分
+    const sentences = text.match(/[^.!?]+[.!?]?/g) || [];
+    const results = [];
+    
+    for (let sentence of sentences) {
+        sentence = sentence.trim();
+        if (!sentence) continue;
+        
+        // 如果句子过长，按逗号进一步拆分
+        if (sentence.length > 100) {
+            const parts = sentence.split(/,\s+/).filter(Boolean);
+            results.push(...parts);
+        } else {
+            results.push(sentence);
+        }
+    }
+    
+    return results;
+}
+
+/**
+ * 轻量级中文分词算法 - 基于正向最大匹配
+ * @param {string} text 待分词的中文文本
+ * @param {number} maxWordLength 最大词长，默认5
+ * @returns {Array} 分词结果数组
+ */
+export function chineseWordSegmentation(text, maxWordLength = 5) {
+    if (!text || !text.trim()) return [];
+    
+    // 简化的常用词词典
+    const commonWords = new Set([
+        '中文', '分词', '算法', '轻量级', '正向', '最大', '匹配', '文本', '处理', 
+        '浏览器', '扩展', '功能', '工具', '智能', '搜索', '体验', '用户', '开发',
+        '项目', '环境', '规则', '词典', '集成', '实现', '更新', '功能', '代码',
+        '字符', '数组', '函数', '方法', '返回', '结果', '参数', '长度', '循环',
+        '判断', '处理', '过滤', '空格', '标点', '符号', '分割', '提取', '转换',
+        '类型', '检测', '识别', '内容', '句子', '词语', '语言', '混合', '智能',
+        '列表', '项目', '代码', '命名', '包裹', '路径', '链接', '仓库', '检测',
+        '分析', '分类', '规则', '说明', '可用', '选择', '适合', '场景', '基础',
+        '语义', '单元', '序号', '标记', '引号', '括号', '书名号', '空格', '换行',
+        '单词', '多行', '片段', '功能', '接口', 'UI', '统一', '路径', '转换',
+        '链接', '提取', '仓库', '生成', '邮箱', '电话', 'IP', '地址', '转换'
+    ]);
+    
+    const textToProcess = text.trim();
+    const result = [];
+    let index = 0;
+    
+    while (index < textToProcess.length) {
+        let matched = false;
+        let currentWordLength = Math.min(maxWordLength, textToProcess.length - index);
+        
+        // 正向最大匹配
+        while (currentWordLength > 0) {
+            const word = textToProcess.substring(index, index + currentWordLength);
+            
+            // 检查是否为常用词或单字符
+            if (commonWords.has(word) || currentWordLength === 1) {
+                result.push(word);
+                index += currentWordLength;
+                matched = true;
+                break;
+            }
+            
+            currentWordLength--;
+        }
+        
+        // 防止死循环
+        if (!matched) {
+            index++;
+        }
+    }
+    
+    return result;
+}
+
+/**
+ * 拆分中文句子
+ * @param {string} text 中文文本
+ * @returns {Array} 句子数组
+ */
+function splitChineseSentences(text) {
+    // 按中文句号、感叹号、问号、分号拆分
+    const sentences = text.split(/[。！？；]/).filter(Boolean);
+    const results = [];
+    
+    for (let sentence of sentences) {
+        sentence = sentence.trim();
+        if (!sentence) continue;
+        
+        // 如果句子过长，按逗号、顿号进一步拆分
+        if (sentence.length > 50) {
+            const parts = sentence.split(/[，、]/).filter(part => {
+                const trimmed = part.trim();
+                // 过滤掉过短的虚词
+                return trimmed.length > 1 && !/^[的了是在有和与或但而且然后因为所以]$/.test(trimmed);
+            });
+            results.push(...parts);
+        } else {
+            results.push(sentence);
+        }
+    }
+    
+    return results;
+}
+
+/**
+ * 拆分中英文混合句子
+ * @param {string} text 混合语言文本
+ * @returns {Array} 拆分结果
+ */
+function splitMixedLanguageSentences(text) {
+    const results = [];
+    
+    // 按语言边界拆分
+    const segments = text.match(/[\u4e00-\u9fa5，。！？；：""''（）【】《》]+|[a-zA-Z0-9\s,.!?;:()"'<>\[\]{}]+/g) || [];
+    
+    for (let segment of segments) {
+        segment = segment.trim();
+        if (!segment) continue;
+        
+        // 判断是中文还是英文主导
+        const chineseCount = (segment.match(/[\u4e00-\u9fa5]/g) || []).length;
+        const englishCount = (segment.match(/[a-zA-Z]/g) || []).length;
+        
+        if (chineseCount > englishCount) {
+            results.push(...splitChineseSentences(segment));
+        } else {
+            results.push(...splitEnglishSentences(segment));
+        }
+    }
+    
+    return results;
+}
+
+/**
+ * 拆分代码命名
+ * @param {string} text 代码文本
+ * @returns {Array} 拆分结果
+ */
+function splitCodeNaming(text) {
+    const results = [];
+    
+    // 按空格和换行先拆分
+    const tokens = text.split(/\s+/).filter(Boolean);
+    
+    for (const token of tokens) {
+        // 检测驼峰命名法 (camelCase, PascalCase)
+        if (/[a-z][A-Z]/.test(token)) {
+            const parts = token.split(/(?=[A-Z])/).filter(Boolean);
+            // 处理连续大写字母的情况 (如 HTTPRequest -> HTTP, Request)
+            const processed = [];
+            for (let part of parts) {
+                if (/^[A-Z]{2,}/.test(part) && part.length > 2) {
+                    const match = part.match(/^([A-Z]+)([A-Z][a-z].*)$/);
+                    if (match) {
+                        processed.push(match[1].slice(0, -1)); // 前面的大写字母
+                        processed.push(match[1].slice(-1) + match[2]); // 最后一个大写字母+后续
+                    } else {
+                        processed.push(part);
+                    }
+                } else {
+                    processed.push(part);
+                }
+            }
+            results.push(...processed);
+        }
+        // 检测蛇形命名法 (snake_case)
+        else if (token.includes('_')) {
+            results.push(...token.split('_').filter(Boolean));
+        }
+        // 检测串式命名法 (kebab-case)
+        else if (token.includes('-')) {
+            results.push(...token.split('-').filter(Boolean));
+        }
+        // 处理带括号的函数名
+        else if (/\w+\([^)]*\)/.test(token)) {
+            const match = token.match(/(\w+)\(([^)]*)\)/);
+            if (match) {
+                results.push(match[1]); // 函数名
+                if (match[2].trim()) {
+                    results.push(...match[2].split(',').map(p => p.trim()).filter(Boolean));
+                }
+            }
+        }
+        else {
+            results.push(token);
+        }
+    }
+    
+    return results;
+}
+
+/**
+ * 拆分列表项
+ * @param {string} text 列表文本
+ * @returns {Array} 列表项数组
+ */
+function splitListItems(text) {
+    const results = [];
+    
+    // 按行拆分
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    
+    for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        
+        // 匹配各种列表标记
+        const patterns = [
+            /^\d+[.)]\s*(.+)$/,           // 1. 或 1) 
+            /^[一二三四五六七八九十]+[、.]\s*(.+)$/,  // 一、
+            /^[①②③④⑤⑥⑦⑧⑨⑩]\s*(.+)$/,        // ①
+            /^[a-zA-Z][.)]\s*(.+)$/,      // a. 或 a)
+            /^[-*•·]\s*(.+)$/,            // - * • ·
+            /^[▪▫◦‣⁃]\s*(.+)$/           // 其他符号
+        ];
+        
+        let matched = false;
+        for (const pattern of patterns) {
+            const match = trimmed.match(pattern);
+            if (match) {
+                results.push(match[1].trim());
+                matched = true;
+                break;
+            }
+        }
+        
+        // 如果没有匹配到列表标记，直接添加
+        if (!matched) {
+            results.push(trimmed);
+        }
+    }
+    
+    return results;
+}
+
+/**
+ * 拆分包裹内容
+ * @param {string} text 包含包裹标点的文本
+ * @returns {Array} 拆分结果
+ */
+function splitWrappedContent(text) {
+    const results = [];
+    
+    // 定义包裹符号对
+    const wrappers = [
+        { open: '"', close: '"' },
+        { open: '"', close: '"' },
+        { open: "'", close: "'" },
+        { open: "'", close: "'" },
+        { open: '（', close: '）' },
+        { open: '(', close: ')' },
+        { open: '【', close: '】' },
+        { open: '[', close: ']' },
+        { open: '《', close: '》' },
+        { open: '<', close: '>' },
+        { open: '「', close: '」' },
+        { open: '『', close: '』' }
+    ];
+    
+    let remaining = text;
+    
+    for (const wrapper of wrappers) {
+        const regex = new RegExp(`\\${wrapper.open}([^\\${wrapper.close}]*)\\${wrapper.close}`, 'g');
+        let match;
+        
+        while ((match = regex.exec(remaining)) !== null) {
+            const content = match[1].trim();
+            if (content) {
+                results.push(content);
+            }
+            // 移除已处理的部分
+            remaining = remaining.replace(match[0], ' ');
+        }
+    }
+    
+    // 处理剩余的非包裹内容
+    const leftover = remaining.trim();
+    if (leftover) {
+        // 按标点符号拆分剩余内容
+        results.push(...splitByPunctuation(leftover));
+    }
+    
+    return results;
+}
+
+/**
+ * 按标点符号拆分
+ * @param {string} text 文本
+ * @returns {Array} 拆分结果
+ */
+function splitByPunctuation(text) {
+    // 中英文标点符号
+    return text.split(/[,.!?;:，。！？；：、]/)
+               .map(part => part.trim())
+               .filter(Boolean);
+}
+
+/**
+ * 后处理拆分结果
+ * @param {Array} results 原始拆分结果
+ * @returns {Array} 处理后的结果
+ */
+function postProcessSplitResults(results) {
+    if (!results || results.length === 0) return [];
+    
+    // 1. 去重
+    const uniqueResults = [...new Set(results.map(item => item.trim()))].filter(Boolean);
+    
+    // 2. 长度校准 - 合并过短的片段
+    const processed = [];
+    let i = 0;
+    
+    while (i < uniqueResults.length) {
+        let current = uniqueResults[i];
+        
+        // 如果当前项过短（1-2个字符），尝试与相邻项合并
+        if (current.length <= 2 && i < uniqueResults.length - 1) {
+            const next = uniqueResults[i + 1];
+            // 检查是否为无意义的虚词或单字符
+            if (/^[的了是在有和与或但而且然后因为所以a-zA-Z]$/.test(current)) {
+                current = current + next;
+                i += 2; // 跳过下一项
+            } else {
+                processed.push(current);
+                i++;
+            }
+        } else {
+            processed.push(current);
+            i++;
+        }
+    }
+    
+    // 3. 语义补全 - 保护固定搭配
+    const protectedPhrases = [
+        '北京大学', '清华大学', '中国科学院', 'HTTP', 'HTTPS', 'API', 'URL', 'JSON', 'XML',
+        'JavaScript', 'TypeScript', 'GitHub', 'Google', 'Microsoft', 'Apple'
+    ];
+    
+    return processed.filter(item => {
+        // 保留长度合适的项目
+        return item.length >= 1 && item.length <= 200;
+    });
 }
 
 /**
@@ -96,14 +700,18 @@ export function splitText(text, delimiter = 'en-sentence') {
  * @returns {string[]|null} An array of path formats or null if not a valid path.
  */
 export function processPath(path) {
+    if (!path || !path.trim()) return null;
+    
+    const input = path.trim();
+    
     // Strictly check for Windows path format, distinguishes between quoted and unquoted
     // Matches paths like: D:\Users\Jliu Pureey\Downloads\gitmine\Edge-Homepage\README.md
     // And quoted paths like: "C:\Program Files\Microsoft Office\Office16\WINWORD.EXE"
     
     // Check for path with quotes
-    const matchWithQuotes = path.match(/^"([a-zA-Z]:\\[^"<>|?*]*)"/);
+    const matchWithQuotes = input.match(/^"([a-zA-Z]:\\[^"<>|?*]*)"$/);
     // Check for path without quotes 
-    const matchWithoutQuotes = path.match(/^([a-zA-Z]:\\[^"<>|?*]*)$/);
+    const matchWithoutQuotes = input.match(/^([a-zA-Z]:\\[^"<>|?*]*)$/);
     
     let cleanPath = null;
     if (matchWithQuotes) {
@@ -114,20 +722,18 @@ export function processPath(path) {
         return null; // Not a valid Windows path format
     }
 
-    // 1. D:\Users\Jliu Pureey\Downloads\gitmine\Edge-Homepage\README.md (Original clean path)
+    // 1. Original clean path
     const originalPath = cleanPath;
     
-    // 2. file:///D:/Users/Jliu%20Pureey/Downloads/gitmine/Edge-Homepage/README.md (Unix-style file URL)
+    // 2. Unix-style file URL
     const unixPath = cleanPath.replace(/\\/g, '/');
-    const fileUrlUnix = 'file:///' + unixPath; // encodeURI is not needed for basic path conversion and can cause issues with spaces if not used correctly everywhere
+    const fileUrlUnix = 'file:///' + unixPath;
     
-    // 3. D:\\Users\\Jliu Pureey\\Downloads\\gitmine\\Edge-Homepage\\README.md (Double backslash escaped)
+    // 3. Double backslash escaped
     const escapedPath = cleanPath.replace(/\\/g, '\\\\'); 
     
-    // 4. file://D:\Users\Jliu Pureey\Downloads\gitmine\Edge-Homepage\README.md (Alternative file URL format from example)
-    // The example format file://D:/... seems to be a typo or unconventional. 
-    // A more plausible interpretation based on the example's structure (file:// followed by a Windows path) is:
-    const fileUrlAlt = 'file://' + cleanPath.replace(/\\/g, '\\'); // file://D:\Users\... -> file://D:\Users\...
+    // 4. Alternative file URL format (encoded)
+    const fileUrlAlt = 'file:///' + encodeURI(unixPath);
 
     return [
         originalPath,
@@ -137,13 +743,14 @@ export function processPath(path) {
     ];
 }
 
-
 /**
  * Generates various repository links from a "user/repo" string or a known URL.
  * @param {string} text The input text.
- * @returns {string[]|null} An array of generated links or null.
+ * @returns {object|null} An object containing the original GitHub link and an array of generated links, or null.
  */
 export function processLinkGeneration(text) {
+    if (!text || !text.trim()) return null;
+    
     const knownDomains = ['github.com', 'zread.ai', 'deepwiki.com', 'context7.com'];
     const templates = {
         github: 'https://github.com/{user_repo}',
@@ -153,19 +760,26 @@ export function processLinkGeneration(text) {
     };
 
     let userRepo = '';
+    let originalGithubLink = null;
 
     // Check for "user/repo" format
     const shortMatch = text.trim().match(/^([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)$/);
     if (shortMatch) {
         userRepo = text.trim();
+        // originalGithubLink is only captured when the original input is a GitHub URL
     } else {
         // Check for known URLs
         try {
             const url = new URL(text);
-            if (knownDomains.includes(url.hostname.replace('www.', ''))) {
+            const hostname = url.hostname.replace('www.', '');
+            if (knownDomains.includes(hostname)) {
                 const pathParts = url.pathname.split('/').filter(Boolean);
                 if (pathParts.length >= 2) {
                     userRepo = `${pathParts[0]}/${pathParts[1]}`;
+                    // Capture the original link only when the input was a GitHub URL
+                    if (hostname === 'github.com') {
+                        originalGithubLink = text.trim();
+                    }
                 }
             }
         } catch (e) {
@@ -174,7 +788,13 @@ export function processLinkGeneration(text) {
     }
 
     if (userRepo) {
-        return Object.values(templates).map(template => template.replace('{user_repo}', userRepo));
+        const generatedLinks = Object.values(templates).map(template => 
+            template.replace('{user_repo}', userRepo)
+        );
+        return {
+            originalGithubLink,
+            generatedLinks
+        };
     }
 
     return null;
@@ -208,7 +828,7 @@ export function processMultiFormat(text) {
     ))];
 
     // 路径检测 (Windows和Unix路径)
-    const pathRegex = /(?:[a-zA-Z]:[\\\/]|[\\\/])[^<>"*?|]+|~\/[^<>"*?|]+/g;
+    const pathRegex = /(?:[a-zA-Z]:[\\/]|[\\/])[^<>"*?|]+|~\/[^<>"*?|]+/g;
     results.paths = [...new Set(text.match(pathRegex) || [])];
 
     // 邮箱检测
@@ -297,6 +917,79 @@ export function classifyText(text) {
 }
 
 /**
+ * 复制文本到剪贴板（现代方法）
+ * @param {string} text - 要复制的文本内容
+ * @returns {Promise<boolean>} - 复制成功返回true，失败返回false
+ */
+export async function copyToClipboardModern(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+        return true;
+    } catch (err) {
+        console.error('复制失败:', err);
+        return false;
+    }
+}
+
+/**
+ * 从剪贴板读取文本（现代方法）
+ * @returns {Promise<string|null>} - 剪贴板内容，失败返回null
+ */
+export async function readFromClipboardModern() {
+    try {
+        const text = await navigator.clipboard.readText();
+        return text;
+    } catch (err) {
+        console.error('读取剪贴板失败:', err);
+        return null;
+    }
+}
+
+/**
+ * 复制文本到剪贴板（传统方法）
+ * @param {string} text - 要复制的文本内容
+ * @returns {boolean} - 复制成功返回true，失败返回false
+ */
+export function copyToClipboardLegacy(text) {
+    // 创建临时textarea元素
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    
+    // 设置样式，避免影响页面布局
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    
+    // 添加到DOM并选中内容
+    document.body.appendChild(textarea);
+    textarea.select();
+    
+    try {
+        // 执行复制命令
+        const success = document.execCommand('copy');
+        return success;
+    } catch (err) {
+        console.error('复制失败:', err);
+        return false;
+    } finally {
+        // 清理临时元素
+        document.body.removeChild(textarea);
+    }
+}
+
+/**
+ * 智能复制到剪贴板 - 自动选择合适的方法
+ * @param {string} text - 要复制的文本内容
+ * @returns {Promise<boolean>} - 复制成功返回true，失败返回false
+ */
+export async function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        return await copyToClipboardModern(text);
+    } else {
+        return copyToClipboardLegacy(text);
+    }
+}
+
+/**
  * 多格式分析功能 - 为UI提供统一的分析接口
  * @param {string} text 输入文本
  * @returns {Array} 包含各种检测结果的数组
@@ -325,12 +1018,19 @@ export function analyzeTextForMultipleFormats(text) {
     }
 
     // 仓库链接生成
-    const repoLinks = processLinkGeneration(text);
-    if (repoLinks) {
+    const repoResult = processLinkGeneration(text);
+    if (repoResult) {
         results.push({
             type: '仓库链接',
-            data: repoLinks.map(url => ({ url }))
+            data: repoResult.generatedLinks.map(url => ({ url }))
         });
+        // Also push the original GitHub link if it exists
+        if (repoResult.originalGithubLink) {
+            results.push({
+                type: 'GitHub链接',
+                data: [{ url: repoResult.originalGithubLink }]
+            });
+        }
     }
 
     // 多格式检测
@@ -361,4 +1061,49 @@ export function analyzeTextForMultipleFormats(text) {
     }
 
     return results;
+}
+
+/**
+ * 获取分隔规则的说明信息
+ * @param {string} rule 分隔规则名称
+ * @returns {string} 规则说明
+ */
+export function getSplitRuleDescription(rule) {
+    const descriptions = {
+        'auto': '智能分析：根据内容类型自动选择最适合的分隔方式，支持列表、代码、包裹内容等复杂场景',
+        'en-sentence': '英文句子：按句号、感叹号、问号拆分英文句子，长句子会按逗号进一步拆分',
+        'zh-sentence': '中文句子：按中文标点（。！？；）拆分句子，长句按逗号、顿号拆分并过滤虚词',
+        'zh-word': '中文分词：基于正向最大匹配算法，将中文文本拆分为有意义的词语序列',
+        'mixed-sentence': '中英混合：按语言边界智能拆分，中文部分用中文规则，英文部分用英文规则',
+        'code-naming': '代码命名：识别驼峰、蛇形、串式命名法，拆分函数名和变量名为基础语义单元',
+        'list-items': '列表项目：提取有序列表（1. 一、 ①）和无序列表（- * •）的内容，自动过滤序号标记',
+        'wrapped-content': '包裹内容：提取引号、括号、书名号等包裹符号内的内容，支持中英文标点',
+        'space': '空格分隔：按空格拆分单词，适合英文文本的基础分词',
+        'newline': '换行分隔：按换行符拆分，适合处理多行文本内容',
+        'punctuation': '标点分隔：按中英文标点符号拆分，获取基础文本片段',
+        'word': '单词分隔：按非字母数字字符拆分，提取纯单词内容'
+    };
+    
+    return descriptions[rule] || '未知规则';
+}
+
+/**
+ * 获取所有可用的分隔规则
+ * @returns {Array} 规则列表
+ */
+export function getAvailableSplitRules() {
+    return [
+        { value: 'auto', label: '智能分析', description: getSplitRuleDescription('auto') },
+        { value: 'mixed-sentence', label: '中英混合', description: getSplitRuleDescription('mixed-sentence') },
+        { value: 'zh-sentence', label: '中文句子', description: getSplitRuleDescription('zh-sentence') },
+        { value: 'zh-word', label: '中文分词', description: getSplitRuleDescription('zh-word') },
+        { value: 'en-sentence', label: '英文句子', description: getSplitRuleDescription('en-sentence') },
+        { value: 'code-naming', label: '代码命名', description: getSplitRuleDescription('code-naming') },
+        { value: 'list-items', label: '列表项目', description: getSplitRuleDescription('list-items') },
+        { value: 'wrapped-content', label: '包裹内容', description: getSplitRuleDescription('wrapped-content') },
+        { value: 'space', label: '空格分隔', description: getSplitRuleDescription('space') },
+        { value: 'newline', label: '换行分隔', description: getSplitRuleDescription('newline') },
+        { value: 'punctuation', label: '标点分隔', description: getSplitRuleDescription('punctuation') },
+        { value: 'word', label: '单词分隔', description: getSplitRuleDescription('word') }
+    ];
 }
