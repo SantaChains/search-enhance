@@ -23,31 +23,35 @@ class LinkHistoryManager {
    * 添加链接到历史记录
    * @param {string} url - 链接URL
    * @param {string} title - 链接标题（可选）
-   * @param {string} source - 来源（如：'text_processing', 'clipboard'）
+   * @param {string} source - 来源（如：'text_processing', 'clipboard', 'direct_navigation'）
    */
   async addLink(url, title = '', source = 'unknown') {
     try {
-      if (!this.isValidUrl(url)) {
+      // 处理转义链接，确保存储未转义的版本
+      const unescapedUrl = this.unescapeUrl(url);
+      
+      if (!this.isValidUrl(unescapedUrl)) {
         return false;
       }
 
       const history = await this.getHistory();
-      const linkType = this.detectLinkType(url);
+      const linkType = this.detectLinkType(unescapedUrl);
       
-      // 检查是否已存在相同链接
-      const existingIndex = history.findIndex(item => item.url === url);
+      // 检查是否已存在相同链接（使用未转义的URL进行比较）
+      const existingIndex = history.findIndex(item => item.url === unescapedUrl);
       
       const historyItem = {
         id: this.generateId(),
-        url: url,
-        title: title || this.extractTitleFromUrl(url),
+        url: unescapedUrl, // 存储未转义的URL
+        originalUrl: url, // 保存原始URL（如果有转义）
+        title: title || this.extractTitleFromUrl(unescapedUrl),
         type: linkType,
         source: source,
         timestamp: Date.now(),
         accessCount: 1,
         lastAccessed: Date.now(),
-        tags: this.generateTags(url, linkType),
-        metadata: this.extractMetadata(url)
+        tags: this.generateTags(unescapedUrl, linkType),
+        metadata: this.extractMetadata(unescapedUrl)
       };
 
       if (existingIndex !== -1) {
@@ -56,7 +60,8 @@ class LinkHistoryManager {
           ...history[existingIndex],
           accessCount: history[existingIndex].accessCount + 1,
           lastAccessed: Date.now(),
-          title: title || history[existingIndex].title
+          title: title || history[existingIndex].title,
+          source: source
         };
       } else {
         // 添加新记录
@@ -74,6 +79,37 @@ class LinkHistoryManager {
       console.error('添加链接历史失败:', error);
       return false;
     }
+  }
+
+  /**
+   * 处理转义链接，返回未转义的URL
+   * @param {string} url - 可能包含转义的URL
+   * @returns {string} 未转义的URL
+   */
+  unescapeUrl(url) {
+    try {
+      // 处理常见的URL转义字符
+      return decodeURIComponent(url.replace(/\+/g, ' '));
+    } catch {
+      // 如果解码失败，返回原始URL
+      return url;
+    }
+  }
+
+  /**
+   * 记录直接导航的链接
+   * @param {string} url - 导航的URL
+   */
+  async recordDirectNavigation(url) {
+    return this.addLink(url, '', 'direct_navigation');
+  }
+
+  /**
+   * 记录链接分析处理的链接
+   * @param {string} url - 分析的URL
+   */
+  async recordLinkAnalysis(url) {
+    return this.addLink(url, '', 'link_analysis');
   }
 
   /**

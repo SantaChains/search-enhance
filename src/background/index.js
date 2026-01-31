@@ -156,18 +156,11 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
             break;
             
         case 'toggle_clipboard_monitoring':
-<<<<<<< HEAD
-            // Alt+K - 切换剪贴板监控
+            // Alt+K - Toggle global clipboard monitoring
             try {
-                // 从 storage 读取当前状态
-                const result = await chrome.storage.local.get('clipboardMonitoring');
-                const currentState = result.clipboardMonitoring || false;
-                const newState = !currentState;
-
-                // 更新 storage 状态
-                await chrome.storage.local.set({ clipboardMonitoring: newState });
-                logger.info(`剪贴板监控状态已切换: ${currentState} -> ${newState}`);
-
+                const newState = await toggleGlobalClipboardMonitoring();
+                logger.info(`Alt+K快捷键已触发剪贴板监控切换，新状态: ${newState ? '开启' : '关闭'}`);
+                
                 // 创建系统通知
                 try {
                     await chrome.notifications.create({
@@ -179,67 +172,6 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
                 } catch (error) {
                     logger.debug('创建通知失败:', error.message);
                 }
-
-                // 通知当前标签页的 content script（用于显示通知）
-                try {
-                    await chrome.tabs.sendMessage(tab.id, {
-                        action: 'refreshClipboardMonitoring',
-                        enabled: newState
-                    });
-                } catch (error) {
-                    // content script 可能未加载，尝试注入
-                    logger.debug('Content script 未加载，尝试注入:', error.message);
-                    try {
-                        await chrome.scripting.executeScript({
-                            target: { tabId: tab.id },
-                            files: ['src/content/index.js']
-                        });
-                        
-                        // 延迟发送消息
-                        setTimeout(async () => {
-                            try {
-                                await chrome.tabs.sendMessage(tab.id, {
-                                    action: 'refreshClipboardMonitoring',
-                                    enabled: newState
-                                });
-                            } catch (retryError) {
-                                logger.debug('重试发送消息失败:', retryError.message);
-                            }
-                        }, 100);
-                    } catch (injectError) {
-                        logger.debug('注入 content script 失败:', injectError.message);
-                    }
-                }
-
-                // 通知 popup（如果打开）
-                try {
-                    await chrome.runtime.sendMessage({
-                        action: 'clipboardMonitoringChanged',
-                        enabled: newState
-                    });
-                } catch (error) {
-                    logger.debug('通知 popup 失败:', error.message);
-                }
-
-            } catch (error) {
-                logger.error('切换剪贴板监控状态失败:', error);
-                
-                // 创建错误通知
-                try {
-                    await chrome.notifications.create({
-                        type: 'basic',
-                        iconUrl: 'icons/icon48.png',
-                        title: '剪贴板监控',
-                        message: '切换剪贴板监控失败：' + error.message
-                    });
-                } catch (notifyError) {
-                    logger.debug('创建错误通知失败:', notifyError.message);
-                }
-=======
-            // Alt+K - Toggle global clipboard monitoring
-            try {
-                const newState = await toggleGlobalClipboardMonitoring();
-                logger.info(`Alt+K快捷键已触发剪贴板监控切换，新状态: ${newState ? '开启' : '关闭'}`);
                 
                 // 发送通知给当前标签页
                 if (tab?.id) {
@@ -252,7 +184,18 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
                 }
             } catch (error) {
                 logger.error('切换剪贴板监控失败:', error);
->>>>>>> ba5619e15f58aa7a85a23c73997d283b520f0a09
+                
+                // 创建错误通知
+                try {
+                    await chrome.notifications.create({
+                        type: 'basic',
+                        iconUrl: 'icons/icon48.png',
+                        title: '剪贴板监控',
+                        message: '切换剪贴板监控失败：' + error.message
+                    });
+                } catch (notifyError) {
+                    logger.debug('创建错误通知失败:', notifyError.message);
+                }
             }
             break;
             
