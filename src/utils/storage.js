@@ -40,7 +40,7 @@ export const DEFAULTS = {
     userPreferences: {
         theme: 'auto',
         language: 'zh-CN',
-        autoClipboard: false,
+        autoClipboard: true,
         showNotifications: true,
         compactMode: false
     },

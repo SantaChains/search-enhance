@@ -23,7 +23,9 @@ import {
     splitText,
     processPath,
     processLinkGeneration,
-    analyzeTextForMultipleFormats
+    analyzeTextForMultipleFormats,
+    chineseWordSegmentation,
+    copyToClipboard as copyTextToClipboard
 } from '../utils/textProcessor.js';
 
 import linkHistoryManager from '../utils/linkHistory.js';
@@ -49,10 +51,27 @@ let appState = {
     splitItemsState: [],
     clipboardMonitoring: false,
     lastClipboardContent: '',
+<<<<<<< HEAD
     linkHistory: [],
     clipboardHistory: [],
     isClipboardHistoryExpanded: false,
     selectedClipboardItems: new Set()
+=======
+    clipboardInterval: null,
+    linkHistory: [],
+    // 多格式分析状态
+    multiFormatState: {
+        originalText: '',
+        processingHistory: [],
+        currentIndex: -1
+    },
+    // 剪贴板历史状态
+    clipboardHistory: [],
+    clipboardHistoryVisible: false,
+    clipboardBatchMode: false,
+    maxClipboardHistory: 100,
+    selectedItems: new Set() // 批量选择的项目ID集合
+>>>>>>> ba5619e15f58aa7a85a23c73997d283b520f0a09
 };
 
 // DOM 元素映射
@@ -72,13 +91,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 加载历史记录
         appState.linkHistory = await getHistory();
         
+        // 加载剪贴板历史
+        await loadClipboardHistory();
+        
         // 设置事件监听器
         setupEventListeners();
         
         // 初始化UI
         renderEngineSelect();
-        updateClipboardButtonState(false);
+        
+        // 初始化剪贴板监控状态（从background script获取）
+        await initClipboardMonitoringState();
+        
         renderHistory();
+        renderClipboardHistory();
         
         // 初始化textarea自适应高度
         initializeTextareaAutoResize();
@@ -86,6 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 初始化响应式布局
         initializeResponsiveLayout();
         
+<<<<<<< HEAD
         // 从storage读取最后一次剪贴板内容
         const { lastClipboardContent } = await chrome.storage.local.get('lastClipboardContent');
         
@@ -97,6 +124,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 handleTextareaInput();
                 updateSearchControlsPosition();
             }
+=======
+        // 默认启用提取和拆解功能
+        if (elements.switch_extract) {
+            elements.switch_extract.checked = true;
+            // 触发一次输入处理，确保UI面板正确显示
+            handleInputChange();
+>>>>>>> ba5619e15f58aa7a85a23c73997d283b520f0a09
         }
         
         // 从storage读取监控状态，优先使用已保存的状态
@@ -264,7 +298,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 function initializeElements() {
     const elementIds = [
         'search-input', 'search-btn', 'engine-select',
+<<<<<<< HEAD
         'switch-clipboard-monitor', 'switch-extract', 'switch-link-gen', 'switch-multi-format',
+=======
+        'switch-extract', 'switch-link-gen', 'switch-multi-format',
+>>>>>>> ba5619e15f58aa7a85a23c73997d283b520f0a09
         'clipboard-btn', 'settings-btn',
         'extract-container', 'link-gen-container', 'multi-format-container',
         'path-conversion-tool', 'path-quote-checkbox', 'path-conversion-result',
@@ -273,8 +311,17 @@ function initializeElements() {
         'copy-selected-btn', 'copy-opt-space', 'copy-opt-newline', 'copy-opt-tab',
         'select-all-checkbox', 'show-history-btn', 'export-history-btn',
         'clear-history-btn', 'history-container', 'history-search', 'history-list',
+<<<<<<< HEAD
         'clipboard-history-container', 'toggle-clipboard-history-btn', 'clear-clipboard-history-btn',
         'select-all-clipboard-btn', 'batch-delete-clipboard-btn'
+=======
+        // 剪贴板历史相关元素
+        'show-clipboard-history-btn', 'clipboard-history-container',
+        'clipboard-history-list', 'batch-operations-btn', 'batch-toolbar',
+        'select-all-clipboard-btn', 'deselect-all-clipboard-btn',
+        'delete-selected-clipboard-btn', 'copy-selected-clipboard-btn',
+        'batch-search-btn', 'clear-clipboard-history-btn'
+>>>>>>> ba5619e15f58aa7a85a23c73997d283b520f0a09
     ];
     
     elementIds.forEach(id => {
@@ -309,6 +356,7 @@ function showNotification(message, isSuccess = true) {
 }
 
 // 剪贴板监控功能
+<<<<<<< HEAD
 // 快捷键：Alt+K - 全局剪贴板监控（默认关闭）
 // 侧边栏：默认开启，只在点击侧边栏时刷新监控
 
@@ -316,6 +364,122 @@ function showNotification(message, isSuccess = true) {
  * 更新剪贴板按钮状态
  * @param {boolean} isActive - 是否激活
  */
+=======
+async function toggleClipboardMonitoring() {
+    // 切换本地监控状态
+    appState.clipboardMonitoring = !appState.clipboardMonitoring;
+    
+    if (appState.clipboardMonitoring) {
+        try {
+            await startClipboardMonitoring();
+            showNotification('剪贴板监控已启动');
+        } catch (error) {
+            logger.warn('剪贴板监控启动失败:', error);
+            appState.clipboardMonitoring = false;
+            showNotification('无法启动剪贴板监控', false);
+        }
+    } else {
+        stopClipboardMonitoring();
+        showNotification('剪贴板监控已停止');
+    }
+    
+    // 通知background script状态变化
+    chrome.runtime.sendMessage({
+        action: 'clipboardMonitoringToggled',
+        isActive: appState.clipboardMonitoring
+    }).catch(error => {
+        logger.warn('通知background script状态变化失败:', error);
+    });
+    
+    updateClipboardButtonState(appState.clipboardMonitoring);
+}
+
+async function startClipboardMonitoring() {
+    if (appState.clipboardInterval) {
+        clearInterval(appState.clipboardInterval);
+    }
+    
+    appState.clipboardInterval = setInterval(async () => {
+        if (!appState.clipboardMonitoring) return;
+        
+        try {
+            const text = await navigator.clipboard.readText();
+            if (text && text !== appState.lastClipboardContent && text.trim().length > 0) {
+                appState.lastClipboardContent = text;
+                
+                // 更新搜索框内容
+                if (elements.search_input) {
+                    elements.search_input.value = text;
+                    
+                    // 重置手动调整标记，允许自适应调整
+                    elements.search_input.isManuallyResized = false;
+                    
+                    // 触发输入处理和高度调整
+                    handleTextareaInput();
+                    
+                    // 更新搜索控件位置
+                    updateSearchControlsPosition();
+                }
+                
+                // 添加到剪贴板历史
+                await addToClipboardHistory(text);
+                
+                // 通知background script，以便它可以通知其他打开的侧边栏
+                chrome.runtime.sendMessage({
+                    action: 'clipboardChanged',
+                    content: text
+                }).catch(error => {
+                    logger.warn('通知background script剪贴板变化失败:', error);
+                });
+                
+                showNotification('检测到剪贴板内容变化');
+            }
+        } catch (err) {
+            // 静默处理剪贴板读取错误
+        }
+    }, 1000);
+}
+
+function stopClipboardMonitoring() {
+    if (appState.clipboardInterval) {
+        clearInterval(appState.clipboardInterval);
+        appState.clipboardInterval = null;
+    }
+}
+
+// 从background script获取当前剪贴板监控状态
+async function getClipboardMonitoringState() {
+    try {
+        const response = await chrome.runtime.sendMessage({ 
+            action: 'getClipboardMonitoringState' 
+        });
+        return response?.isActive || false;
+    } catch (error) {
+        logger.warn('获取剪贴板监控状态失败:', error);
+        return false;
+    }
+}
+
+// 初始化剪贴板监控状态
+async function initClipboardMonitoringState() {
+    // 从background script获取当前监控状态
+    const isMonitoring = await getClipboardMonitoringState();
+    appState.clipboardMonitoring = isMonitoring;
+    
+    // 如果监控状态为开启，启动监控
+    if (appState.clipboardMonitoring) {
+        await startClipboardMonitoring();
+    }
+    
+    updateClipboardButtonState(appState.clipboardMonitoring);
+    
+    // 更新开关状态
+    if (elements.clipboard_monitor_switch) {
+        elements.clipboard_monitor_switch.checked = appState.clipboardMonitoring;
+    }
+}
+
+>>>>>>> ba5619e15f58aa7a85a23c73997d283b520f0a09
 function updateClipboardButtonState(isActive) {
     if (!elements.clipboard_btn) return;
     
@@ -556,6 +720,471 @@ async function readFromClipboard() {
     }
 }
 
+// 添加消息监听器，处理来自background script的剪贴板变化通知
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    logger.info('收到来自background的消息:', request);
+    
+    switch (request.action) {
+        case 'clipboardChanged':
+            // 处理剪贴板内容变化
+            if (request.content && request.content.trim().length > 0) {
+                // 更新搜索框内容
+                if (elements.search_input) {
+                    elements.search_input.value = request.content;
+                    
+                    // 重置手动调整标记，允许自适应调整
+                    elements.search_input.isManuallyResized = false;
+                    
+                    // 触发输入处理和高度调整
+                    handleTextareaInput();
+                    
+                    // 更新搜索控件位置
+                    updateSearchControlsPosition();
+                }
+                
+                // 添加到剪贴板历史
+                addToClipboardHistory(request.content).catch(error => {
+                    logger.error('添加到剪贴板历史失败:', error);
+                });
+                
+                showNotification('检测到剪贴板内容变化');
+            }
+            break;
+            
+        case 'clipboardMonitoringToggled':
+            // 处理剪贴板监控状态变化
+            appState.clipboardMonitoring = request.isActive;
+            updateClipboardButtonState(appState.clipboardMonitoring);
+            break;
+            
+        default:
+            break;
+    }
+    
+    return true;
+});
+
+// 剪贴板历史功能
+// 加载剪贴板历史
+async function loadClipboardHistory() {
+    try {
+        const settings = await getSettings();
+        appState.clipboardHistory = settings.clipboardHistory || [];
+    } catch (error) {
+        logger.error('加载剪贴板历史失败:', error);
+        appState.clipboardHistory = [];
+    }
+}
+
+// 保存剪贴板历史
+async function saveClipboardHistory() {
+    try {
+        // 限制最大条数
+        if (appState.clipboardHistory.length > appState.maxClipboardHistory) {
+            appState.clipboardHistory = appState.clipboardHistory.slice(0, appState.maxClipboardHistory);
+        }
+        
+        await saveSettings({
+            ...appState.settings,
+            clipboardHistory: appState.clipboardHistory
+        });
+    } catch (error) {
+        logger.error('保存剪贴板历史失败:', error);
+    }
+}
+
+// 添加剪贴板记录
+async function addToClipboardHistory(text) {
+    if (!text || text.trim() === '') return;
+    
+    // 检查是否已有相同的记录，如果有则移除旧记录
+    const existingIndex = appState.clipboardHistory.findIndex(item => item.text === text);
+    if (existingIndex !== -1) {
+        appState.clipboardHistory.splice(existingIndex, 1);
+    }
+    
+    // 添加新记录到开头
+    const newRecord = {
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        text: text,
+        timestamp: new Date().toISOString()
+    };
+    
+    appState.clipboardHistory.unshift(newRecord);
+    
+    // 保存到存储
+    await saveClipboardHistory();
+    
+    // 重新渲染
+    renderClipboardHistory();
+}
+
+// 渲染剪贴板历史
+function renderClipboardHistory() {
+    if (!elements.clipboard_history_list) return;
+    
+    if (appState.clipboardHistory.length === 0) {
+        elements.clipboard_history_list.innerHTML = '<div class="empty-state"><p>暂无剪贴板历史</p><span>复制内容后将显示在这里</span></div>';
+        return;
+    }
+    
+    elements.clipboard_history_list.innerHTML = appState.clipboardHistory.map(item => {
+        const isSelected = appState.selectedItems && appState.selectedItems.has(item.id);
+        return `
+            <div class="history-item" data-id="${item.id}">
+                <div class="clipboard-item-content">
+                    <!-- 非编辑状态：勾选框 + 文本内容 -->
+                    <div class="content-row">
+                        <input type="checkbox" class="clipboard-checkbox" data-id="${item.id}" 
+                               ${appState.clipboardBatchMode ? 'style="display:inline-block;"' : 'style="display:none;"'} 
+                               ${isSelected ? 'checked' : ''}>
+                        <div class="clipboard-text-content" data-id="${item.id}">${escapeHtml(item.text)}</div>
+                        <button class="edit-btn btn-sm" data-id="${item.id}" title="编辑">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- 编辑状态：勾选框 + 文本框 + 保存/取消按钮 -->
+                    <div class="edit-row" data-id="${item.id}" style="display:none;">
+                        <input type="checkbox" class="clipboard-checkbox" data-id="${item.id}" 
+                               ${appState.clipboardBatchMode ? 'style="display:inline-block;"' : 'style="display:none;"'} 
+                               ${isSelected ? 'checked' : ''}>
+                        <textarea class="clipboard-edit-textarea" data-id="${item.id}">${escapeHtml(item.text)}</textarea>
+                        <div class="edit-buttons">
+                            <button class="save-edit-btn btn-sm" data-id="${item.id}">保存</button>
+                            <button class="cancel-edit-btn btn-sm" data-id="${item.id}">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // 绑定事件
+    bindClipboardHistoryEvents();
+    
+    // 更新批量操作计数
+    updateBatchCounter();
+}
+
+// 转义HTML特殊字符
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// 绑定剪贴板历史事件
+function bindClipboardHistoryEvents() {
+    // 复制按钮事件
+    elements.clipboard_history_list.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            const item = appState.clipboardHistory.find(item => item.id === id);
+            if (item) {
+                await copyToClipboard(item.text, btn);
+            }
+        });
+    });
+    
+    // 编辑按钮事件
+    elements.clipboard_history_list.querySelectorAll('.edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.target.dataset.id;
+            startEditClipboardItem(id);
+        });
+    });
+    
+    // 保存编辑按钮事件
+    elements.clipboard_history_list.querySelectorAll('.save-edit-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const id = e.target.dataset.id;
+            await saveEditClipboardItem(id);
+        });
+    });
+    
+    // 取消编辑按钮事件
+    elements.clipboard_history_list.querySelectorAll('.cancel-edit-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.target.dataset.id;
+            cancelEditClipboardItem(id);
+        });
+    });
+    
+    // 删除按钮事件
+    elements.clipboard_history_list.querySelectorAll('.delete-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const id = e.target.dataset.id;
+            deleteClipboardItem(id);
+        });
+    });
+    
+    // 复选框事件
+    elements.clipboard_history_list.querySelectorAll('.clipboard-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', (e) => {
+            const id = e.target.dataset.id;
+            if (e.target.checked) {
+                appState.selectedItems.add(id);
+            } else {
+                appState.selectedItems.delete(id);
+            }
+            updateBatchCounter();
+        });
+    });
+}
+
+// 开始编辑剪贴板项
+function startEditClipboardItem(id) {
+    // 隐藏非编辑状态行
+    const contentRow = elements.clipboard_history_list.querySelector(`.content-row`);
+    if (contentRow) {
+        contentRow.style.display = 'none';
+    }
+    
+    // 显示编辑状态行
+    const editRow = elements.clipboard_history_list.querySelector(`.edit-row[data-id="${id}"]`);
+    if (editRow) {
+        editRow.style.display = 'flex';
+    }
+    
+    // 设置焦点到文本框
+    const textarea = elements.clipboard_history_list.querySelector(`.clipboard-edit-textarea[data-id="${id}"]`);
+    if (textarea) {
+        textarea.focus();
+        // 调整文本框高度以适应内容
+        textarea.style.height = 'auto';
+        textarea.style.height = textarea.scrollHeight + 'px';
+    }
+}
+
+// 保存编辑的剪贴板项
+async function saveEditClipboardItem(id) {
+    const textarea = elements.clipboard_history_list.querySelector(`.clipboard-edit-textarea[data-id="${id}"]`);
+    if (!textarea) return;
+    
+    const newText = textarea.value.trim();
+    if (!newText) return;
+    
+    const item = appState.clipboardHistory.find(item => item.id === id);
+    if (!item || newText === item.text) {
+        // 如果内容没有变化，直接取消编辑
+        cancelEditClipboardItem(id);
+        return;
+    }
+    
+    // 添加新的记录，不修改原记录
+    await addToClipboardHistory(newText);
+    
+    // 渲染更新后的历史记录
+    renderClipboardHistory();
+}
+
+// 取消编辑剪贴板项
+function cancelEditClipboardItem(id) {
+    // 显示非编辑状态行
+    const contentRow = elements.clipboard_history_list.querySelector(`.content-row`);
+    if (contentRow) {
+        contentRow.style.display = 'flex';
+    }
+    
+    // 隐藏编辑状态行
+    const editRow = elements.clipboard_history_list.querySelector(`.edit-row[data-id="${id}"]`);
+    if (editRow) {
+        editRow.style.display = 'none';
+    }
+}
+
+// 删除剪贴板项
+async function deleteClipboardItem(id) {
+    if (confirm('确定要删除这条剪贴板记录吗？')) {
+        appState.clipboardHistory = appState.clipboardHistory.filter(item => item.id !== id);
+        await saveClipboardHistory();
+        renderClipboardHistory();
+        showNotification('已删除剪贴板记录');
+    }
+}
+
+// 切换剪贴板历史显示
+function toggleClipboardHistory() {
+    if (!elements.clipboard_history_container) return;
+    
+    appState.clipboardHistoryVisible = !appState.clipboardHistoryVisible;
+    elements.clipboard_history_container.style.display = appState.clipboardHistoryVisible ? 'block' : 'none';
+}
+
+// 切换批量操作模式
+function toggleBatchOperations() {
+    if (!elements.batch_toolbar || !elements.batch_operations_btn) return;
+    
+    appState.clipboardBatchMode = !appState.clipboardBatchMode;
+    
+    // 显示/隐藏批量操作工具栏
+    elements.batch_toolbar.style.display = appState.clipboardBatchMode ? 'inline-flex' : 'none';
+    
+    // 更新批量操作按钮文本（保留图标）
+    const buttonText = elements.batch_operations_btn.querySelector('span') || elements.batch_operations_btn;
+    buttonText.textContent = appState.clipboardBatchMode ? '取消批量' : '批量操作';
+    
+    // 显示/隐藏所有勾选框
+    const checkboxes = document.querySelectorAll('.clipboard-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.style.display = appState.clipboardBatchMode ? 'inline-block' : 'none';
+    });
+    
+    // 如果取消批量操作，清空所有选中状态
+    if (!appState.clipboardBatchMode) {
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        appState.selectedItems.clear();
+    } else {
+        // 进入批量模式时，确保selectedItems已初始化
+        if (!appState.selectedItems) {
+            appState.selectedItems = new Set();
+        }
+    }
+}
+
+
+
+// 全选剪贴板项
+function selectAllClipboardItems() {
+    appState.selectedItems.clear();
+    appState.clipboardHistory.forEach(item => {
+        appState.selectedItems.add(item.id);
+    });
+    renderClipboardHistory();
+    updateBatchCounter();
+}
+
+// 取消全选
+function deselectAllClipboardItems() {
+    appState.selectedItems.clear();
+    renderClipboardHistory();
+    updateBatchCounter();
+}
+
+
+
+
+
+// 批量搜索选中的剪贴板项
+function batchSearchSelectedItems() {
+    if (appState.selectedItems.size === 0) {
+        showNotification('请先选择要搜索的项目', false);
+        return;
+    }
+    
+    const selectedTexts = appState.clipboardHistory
+        .filter(item => appState.selectedItems.has(item.id))
+        .map(item => item.text);
+    
+    if (selectedTexts.length > 0) {
+        // 将选中的文本合并到搜索框
+        elements.search_input.value = selectedTexts.join(' ');
+        
+        // 触发搜索
+        handleSearch();
+        
+        showNotification(`已将 ${selectedTexts.length} 条记录添加到搜索框`);
+    }
+}
+
+// 更新批量操作计数
+function updateBatchCounter() {
+    if (!elements.batch_operations_btn) return;
+    
+    const count = appState.selectedItems ? appState.selectedItems.size : 0;
+    if (count > 0) {
+        elements.batch_operations_btn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list">
+                <line x1="8" x2="21" y1="6" y2="6"/>
+                <line x1="8" x2="21" y1="12" y2="12"/>
+                <line x1="8" x2="21" y1="18" y2="18"/>
+                <line x1="3" x2="3.01" y1="6" y2="6"/>
+                <line x1="3" x2="3.01" y1="12" y2="12"/>
+                <line x1="3" x2="3.01" y1="18" y2="18"/>
+            </svg>
+            <span>批量<span class="batch-counter">${count}</span></span>
+        `;
+    } else {
+        elements.batch_operations_btn.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-list">
+                <line x1="8" x2="21" y1="6" y2="6"/>
+                <line x1="8" x2="21" y1="12" y2="12"/>
+                <line x1="8" x2="21" y1="18" y2="18"/>
+                <line x1="3" x2="3.01" y1="6" y2="6"/>
+                <line x1="3" x2="3.01" y1="12" y2="12"/>
+                <line x1="3" x2="3.01" y1="18" y2="18"/>
+            </svg>
+            <span>批量</span>
+        `;
+    }
+}
+
+// 获取选中的剪贴板项
+function getSelectedClipboardItems() {
+    return appState.clipboardHistory.filter(item => appState.selectedItems.has(item.id));
+}
+
+// 更新批量操作工具栏状态
+
+
+// 删除选中的剪贴板项
+async function deleteSelectedClipboardItems() {
+    if (appState.selectedItems.size === 0) {
+        showNotification('请先选择要删除的项', false);
+        return;
+    }
+    
+    if (confirm(`确定要删除选中的 ${appState.selectedItems.size} 条记录吗？`)) {
+        appState.clipboardHistory = appState.clipboardHistory.filter(
+            item => !appState.selectedItems.has(item.id)
+        );
+        await saveClipboardHistory();
+        // 清空选择
+        appState.selectedItems.clear();
+        renderClipboardHistory();
+        showNotification(`已删除 ${appState.selectedItems.size} 条记录`);
+    }
+}
+
+// 复制选中的剪贴板项
+async function copySelectedClipboardItems() {
+    if (appState.selectedItems.size === 0) {
+        showNotification('请先选择要复制的项', false);
+        return;
+    }
+    
+    const selectedItems = appState.clipboardHistory.filter(
+        item => appState.selectedItems.has(item.id)
+    );
+    
+    // 每条记录之间用空一行隔开
+    const textToCopy = selectedItems.map(item => item.text).join('\n\n');
+    
+    try {
+        await copyTextToClipboard(textToCopy);
+        showNotification(`已复制 ${selectedItems.length} 条记录`);
+    } catch (error) {
+        logger.error('复制选中项失败:', error);
+        showNotification('复制失败', false);
+    }
+}
+
+// 清空剪贴板历史功能
+const clearClipboardHistory = async () => {
+    if (confirm('确定要清空所有剪贴板历史吗？')) {
+        appState.clipboardHistory = [];
+        await saveClipboardHistory();
+        renderClipboardHistory();
+        showNotification('已清空剪贴板历史');
+    }
+};
+
 // 搜索引擎渲染
 function renderEngineSelect() {
     if (!elements.engine_select || !appState.settings) return;
@@ -681,7 +1310,26 @@ function handleInputChange() {
         renderLinkGenerationUI(text);
     } else if (elements.switch_multi_format.checked) {
         elements.multi_format_container.style.display = 'block';
-        renderMultiFormatAnalysis(text);
+        // 更新多格式分析状态
+        updateMultiFormatState(text);
+        // 显示原始文本
+        displayMultiFormatResult(text);
+    }
+}
+
+// 处理开关变化 - 确保多格式分析的按钮和界面只在勾选时显示
+function handleMultiFormatSwitchChange(checkbox) {
+    const multiFormatContainer = document.getElementById('multi-format-container');
+    if (multiFormatContainer) {
+        if (checkbox.checked) {
+            multiFormatContainer.style.display = 'block';
+            // 如果输入框有内容，触发输入处理
+            if (elements.search_input && elements.search_input.value.trim()) {
+                handleInputChange();
+            }
+        } else {
+            multiFormatContainer.style.display = 'none';
+        }
     }
 }
 
@@ -844,7 +1492,11 @@ function renderMultiFormatAnalysis(text) {
         
         card.innerHTML = `
             <div class="format-header">${result.type}</div>
+            <div class="format-controls">
+                <button class="process-btn" data-type="${result.type}" data-original="${encodeURIComponent(text)}">单独处理</button>
+            </div>
             <div class="format-content" id="format-${result.type.replace(/\s+/g, '-')}"></div>
+            <div class="format-processed-result" id="processed-${result.type.replace(/\s+/g, '-')}"></div>
         `;
         
         const content = card.querySelector(`#format-${result.type.replace(/\s+/g, '-')}`);
@@ -872,6 +1524,18 @@ function renderMultiFormatAnalysis(text) {
                 `;
                 content.appendChild(item);
             });
+        } else if (['邮箱地址', '电话号码', 'IP地址'].includes(result.type)) {
+            result.data.forEach(item => {
+                const value = item.url || item;
+                const displayValue = value.replace(/^(mailto:|tel:|http:\/\/)/, '');
+                const itemEl = document.createElement('div');
+                itemEl.className = 'format-item';
+                itemEl.innerHTML = `
+                    <button class="copy-btn" data-value="${value}">复制</button>
+                    <span class="format-value">${displayValue}</span>
+                `;
+                content.appendChild(itemEl);
+            });
         }
         
         elements.multi_format_container.appendChild(card);
@@ -880,11 +1544,12 @@ function renderMultiFormatAnalysis(text) {
     // 绑定复制事件
     elements.multi_format_container.querySelectorAll('.copy-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
-            const text = e.target.dataset.path || e.target.dataset.link;
+            const text = e.target.dataset.path || e.target.dataset.link || e.target.dataset.value;
             copyToClipboard(text, e.target);
         });
     });
     
+<<<<<<< HEAD
     // 绑定链接点击事件，记录跳转链接到历史
     elements.multi_format_container.querySelectorAll('.link-item a').forEach(link => {
         link.addEventListener('click', (e) => {
@@ -892,6 +1557,324 @@ function renderMultiFormatAnalysis(text) {
             addToHistoryEnhanced(url);
         });
     });
+=======
+    }
+
+// 更新多格式分析状态
+function updateMultiFormatState(text) {
+    appState.multiFormatState.originalText = text;
+    appState.multiFormatState.processingHistory = [text];
+    appState.multiFormatState.currentIndex = 0;
+    // 更新回到上一次处理结果按钮状态
+    updateBackButtonState();
+}
+
+// 显示多格式分析结果
+function displayMultiFormatResult(text) {
+    const resultContainer = document.getElementById('multi-format-result');
+    if (!resultContainer) return;
+    
+    resultContainer.innerHTML = text;
+}
+
+// 更新回到上一次处理结果按钮状态
+function updateBackButtonState() {
+    const backButton = document.getElementById('back-to-previous');
+    if (!backButton) return;
+    
+    // 当currentIndex > 0时，按钮可用，否则禁用
+    backButton.disabled = appState.multiFormatState.currentIndex <= 0;
+    if (backButton.disabled) {
+        backButton.style.opacity = '0.5';
+        backButton.style.cursor = 'not-allowed';
+    } else {
+        backButton.style.opacity = '1';
+        backButton.style.cursor = 'pointer';
+    }
+}
+
+// 回到上一次处理结果
+function handleBackToPrevious() {
+    if (appState.multiFormatState.currentIndex > 0) {
+        appState.multiFormatState.currentIndex--;
+        const previousResult = appState.multiFormatState.processingHistory[appState.multiFormatState.currentIndex];
+        displayMultiFormatResult(previousResult);
+        // 更新按钮状态
+        updateBackButtonState();
+    }
+}
+
+// 复制结果到剪贴板
+async function handleCopyResult() {
+    const resultContainer = document.getElementById('multi-format-result');
+    if (!resultContainer) return;
+    
+    const resultText = resultContainer.innerText;
+    if (!resultText) return;
+    
+    try {
+        await copyTextToClipboard(resultText);
+        showNotification('已复制到剪贴板');
+    } catch (err) {
+        logger.error("复制结果失败:", err);
+        showNotification("复制失败", false);
+    }
+}
+
+// 搜索结果
+function handleSearchResult() {
+    const resultContainer = document.getElementById('multi-format-result');
+    if (!resultContainer) return;
+    
+    const resultText = resultContainer.innerText;
+    if (!resultText) return;
+    
+    // 如果是URL，直接跳转
+    if (isURL(resultText)) {
+        window.open(resultText, '_blank');
+        addToHistoryEnhanced(resultText);
+        return;
+    }
+    
+    // 否则使用当前选中的搜索引擎搜索
+    let selectedEngineName = appState.settings.defaultEngine;
+    if (elements.engine_select && elements.engine_select.value) {
+        selectedEngineName = elements.engine_select.value;
+    }
+    
+    const selectedEngine = appState.settings.searchEngines.find(e => e.name === selectedEngineName);
+    
+    if (selectedEngine) {
+        const searchUrl = selectedEngine.template.replace('%s', encodeURIComponent(resultText));
+        window.open(searchUrl, '_blank');
+        addToHistoryEnhanced(resultText);
+    } else {
+        showNotification("没有找到搜索引擎配置", false);
+    }
+}
+
+// 处理多格式分析按钮点击
+function handleFormatButtonClick(e) {
+    const btn = e.target;
+    const action = btn.dataset.action;
+    const currentText = appState.multiFormatState.processingHistory[appState.multiFormatState.currentIndex] || '';
+    
+    if (!currentText) {
+        const inputText = elements.search_input.value.trim();
+        if (!inputText) {
+            displayMultiFormatResult('请先在输入框中输入文本，然后点击下方按钮进行处理');
+            return;
+        }
+        updateMultiFormatState(inputText);
+        return;
+    }
+    
+    // 执行处理
+    let processedResult = currentText;
+    
+    switch (action) {
+        case 'remove-chinese':
+            // 去除中文和中文符号
+            processedResult = currentText.replace(/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef]/g, '');
+            break;
+        case 'remove-non-url-chars':
+            // 去除非URL字符（包含中文和非URL的标点符号）
+            // 保留URL、英文字母、数字和URL允许的符号
+            processedResult = currentText.replace(/[\u4e00-\u9fa5\u3000-\u303f\uff00-\uffef<>{}\|^`\'"\s]+/g, ' ')
+                                         .replace(/\s+/g, ' ')  // 将多个空格合并为一个
+                                         .trim();             // 去除首尾空格
+            break;
+        case 'convert-to-url-chars':
+            // 非URL符号转URL符号
+            processedResult = encodeURIComponent(currentText);
+            break;
+        case 'convert-period':
+            // 。转.符号
+            processedResult = currentText.replace(/。/g, '.');
+            break;
+        case 'convert-slash-to-backslash':
+            // /转\
+            processedResult = currentText.replace(/\//g, '\\');
+            break;
+        case 'convert-backslash-to-slash':
+            // \\转/
+            processedResult = currentText.replace(/\\/g, '/');
+            break;
+        case 'convert-slash-to-double':
+                // /转//，只对单个/生效，对//不生效
+                // 使用更兼容的方式实现，避免使用负向断言
+                processedResult = currentText.replace(/\//g, (match, offset, string) => {
+                    // 检查前面和后面是否也是斜杠
+                    const prevChar = string[offset - 1];
+                    const nextChar = string[offset + 1];
+                    if (prevChar !== '/' && nextChar !== '/') {
+                        return '//';
+                    }
+                    return match;
+                });
+                break;
+        case 'remove-spaces':
+            // 去除空格
+            processedResult = currentText.replace(/\s+/g, '');
+            break;
+        case 'convert-backslash-to-double':
+            // \转\\，只对单个\生效，对\\不生效
+            // 使用更兼容的方式实现，避免使用负向断言
+            processedResult = currentText.replace(/\\/g, (match, offset, string) => {
+                // 检查前面和后面是否也是反斜杠
+                const prevChar = string[offset - 1];
+                const nextChar = string[offset + 1];
+                if (prevChar !== '\\' && nextChar !== '\\') {
+                    return '\\\\';
+                }
+                return match;
+            });
+            break;
+        default:
+            break;
+    }
+    
+    // 更新处理历史
+    if (processedResult !== currentText) {
+        // 如果当前不在历史记录末尾，截断历史记录
+        if (appState.multiFormatState.currentIndex < appState.multiFormatState.processingHistory.length - 1) {
+            appState.multiFormatState.processingHistory = appState.multiFormatState.processingHistory.slice(0, appState.multiFormatState.currentIndex + 1);
+        }
+        // 添加新的处理结果到历史记录
+        appState.multiFormatState.processingHistory.push(processedResult);
+        appState.multiFormatState.currentIndex++;
+        // 显示处理结果
+        displayMultiFormatResult(processedResult);
+        // 更新回到上一次处理结果按钮状态
+        updateBackButtonState();
+    }
+}
+
+// 处理单独格式分析
+function handleSingleFormatProcessing(e) {
+    const btn = e.target;
+    const formatType = btn.dataset.type;
+    const originalText = decodeURIComponent(btn.dataset.original);
+    const resultContainer = document.getElementById(`processed-${formatType.replace(/\s+/g, '-')}`);
+    
+    // 清空之前的结果
+    resultContainer.innerHTML = '';
+    
+    // 根据格式类型进行不同的处理
+    let processedResult;
+    switch (formatType) {
+        case '路径转换':
+            processedResult = processPath(originalText);
+            break;
+        case '链接提取':
+            processedResult = processTextExtraction(originalText).extractedLinks;
+            break;
+        case '仓库链接':
+        case 'GitHub链接':
+            processedResult = processLinkGeneration(originalText)?.generatedLinks || [];
+            break;
+        case '邮箱地址':
+            // 使用正则表达式提取邮箱
+            const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+            processedResult = [...new Set(originalText.match(emailRegex) || [])];
+            break;
+        case '电话号码':
+            // 使用正则表达式提取电话号码
+            const phoneRegex = /(?:\+86[\s-]?)?(?:1[3-9]\d{9}|0\d{2,3}[\s-]?\d{7,8})/g;
+            processedResult = [...new Set(originalText.match(phoneRegex) || [])];
+            break;
+        case 'IP地址':
+            // 使用正则表达式提取IP地址
+            const ipRegex = /(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/g;
+            processedResult = [...new Set(originalText.match(ipRegex) || [])];
+            break;
+        default:
+            processedResult = [];
+    }
+    
+    // 显示处理结果
+    if (processedResult && processedResult.length > 0) {
+        resultContainer.innerHTML = `
+            <div class="processed-header">处理结果：</div>
+            <div class="processed-content">
+                ${formatProcessedResults(processedResult, formatType)}
+            </div>
+        `;
+        
+        // 为新生成的复制按钮绑定事件
+        resultContainer.querySelectorAll('.copy-btn').forEach(copyBtn => {
+            copyBtn.addEventListener('click', (copyEvent) => {
+                const text = copyEvent.target.dataset.text || copyEvent.target.dataset.link || copyEvent.target.dataset.path;
+                copyToClipboard(text, copyBtn);
+            });
+        });
+    } else {
+        resultContainer.innerHTML = '<div class="no-processed-results">未生成处理结果</div>';
+    }
+}
+
+// 格式化处理结果
+function formatProcessedResults(results, type) {
+    if (!results || results.length === 0) {
+        return '<div class="no-results">无结果</div>';
+    }
+    
+    let html = '';
+    
+    switch (type) {
+        case '路径转换':
+            html = results.map(path => `
+                <div class="processed-item">
+                    <button class="copy-btn" data-path="${path}">复制</button>
+                    <span class="processed-text">${path}</span>
+                </div>
+            `).join('');
+            break;
+        case '链接提取':
+        case '仓库链接':
+        case 'GitHub链接':
+            html = results.map(link => `
+                <div class="processed-item">
+                    <button class="copy-btn" data-link="${link}">复制</button>
+                    <a href="${link}" target="_blank">${link}</a>
+                </div>
+            `).join('');
+            break;
+        case '邮箱地址':
+            html = results.map(email => `
+                <div class="processed-item">
+                    <button class="copy-btn" data-text="${email}">复制</button>
+                    <span class="processed-text">${email}</span>
+                </div>
+            `).join('');
+            break;
+        case '电话号码':
+            html = results.map(phone => `
+                <div class="processed-item">
+                    <button class="copy-btn" data-text="${phone}">复制</button>
+                    <span class="processed-text">${phone}</span>
+                </div>
+            `).join('');
+            break;
+        case 'IP地址':
+            html = results.map(ip => `
+                <div class="processed-item">
+                    <button class="copy-btn" data-text="${ip}">复制</button>
+                    <span class="processed-text">${ip}</span>
+                </div>
+            `).join('');
+            break;
+        default:
+            html = results.map(item => `
+                <div class="processed-item">
+                    <button class="copy-btn" data-text="${item}">复制</button>
+                    <span class="processed-text">${item}</span>
+                </div>
+            `).join('');
+    }
+    
+    return html;
+>>>>>>> ba5619e15f58aa7a85a23c73997d283b520f0a09
 }
 
 // 文本拆分工具渲染
@@ -1101,9 +2084,10 @@ function renderHistory() {
     });
 }
 
-// 复制到剪贴板
+// 复制到剪贴板 - 使用导入的工具函数
 async function copyToClipboard(text, button) {
     try {
+<<<<<<< HEAD
         const success = await copyToClipboardUtil(text);
         if (success) {
             showCopyFeedback(button);
@@ -1111,6 +2095,11 @@ async function copyToClipboard(text, button) {
         } else {
             showNotification("复制失败", false);
         }
+=======
+        await copyTextToClipboard(text);
+        showCopyFeedback(button);
+        showNotification('已复制到剪贴板');
+>>>>>>> ba5619e15f58aa7a85a23c73997d283b520f0a09
     } catch (err) {
         logger.error("复制失败:", err);
         showNotification("复制失败", false);
@@ -1154,11 +2143,20 @@ function setupEventListeners() {
         elements.search_btn.addEventListener('click', handleSearch);
     }
     
+<<<<<<< HEAD
     // 剪贴板监控开关事件
     if (elements.switch_clipboard_monitor) {
         elements.switch_clipboard_monitor.addEventListener('change', toggleClipboardMonitoring);
     }
 
+=======
+    if (elements.clipboard_btn) {
+        elements.clipboard_btn.addEventListener('click', () => {
+            toggleClipboardMonitoring();
+        });
+    }
+    
+>>>>>>> ba5619e15f58aa7a85a23c73997d283b520f0a09
     if (elements.settings_btn) {
         elements.settings_btn.addEventListener('click', () => {
             chrome.runtime.openOptionsPage ? chrome.runtime.openOptionsPage() : 
@@ -1248,6 +2246,70 @@ function setupEventListeners() {
     // 添加手动调整大小的监听器
     setupTextareaResizeHandle();
     
+    // 多格式分析按钮监听器
+    const formatButtons = document.querySelectorAll('.format-btn');
+    formatButtons.forEach(btn => {
+        btn.addEventListener('click', handleFormatButtonClick);
+    });
+    
+    // 回到上一次处理结果按钮监听器
+    const backButton = document.getElementById('back-to-previous');
+    if (backButton) {
+        backButton.addEventListener('click', handleBackToPrevious);
+    }
+    
+    // 复制结果按钮监听器
+    const copyResultButton = document.getElementById('copy-result-btn');
+    if (copyResultButton) {
+        copyResultButton.addEventListener('click', handleCopyResult);
+    }
+    
+    // 搜索结果按钮监听器
+    const searchResultButton = document.getElementById('search-result-btn');
+    if (searchResultButton) {
+        searchResultButton.addEventListener('click', handleSearchResult);
+    }
+    
+    // 剪贴板历史监听器
+    // 显示/隐藏剪贴板历史
+    if (elements.show_clipboard_history_btn) {
+        elements.show_clipboard_history_btn.addEventListener('click', toggleClipboardHistory);
+    }
+    
+    // 批量操作按钮
+    if (elements.batch_operations_btn) {
+        elements.batch_operations_btn.addEventListener('click', toggleBatchOperations);
+    }
+    
+    // 批量操作工具栏按钮
+    if (elements.select_all_clipboard_btn) {
+        elements.select_all_clipboard_btn.addEventListener('click', selectAllClipboardItems);
+    }
+    
+    if (elements.deselect_all_clipboard_btn) {
+        elements.deselect_all_clipboard_btn.addEventListener('click', deselectAllClipboardItems);
+    }
+    
+    if (elements.delete_selected_clipboard_btn) {
+        elements.delete_selected_clipboard_btn.addEventListener('click', deleteSelectedClipboardItems);
+    }
+    
+    if (elements.copy_selected_clipboard_btn) {
+        elements.copy_selected_clipboard_btn.addEventListener('click', copySelectedClipboardItems);
+    }
+    
+    if (elements.batch_search_btn) {
+        elements.batch_search_btn.addEventListener('click', batchSearchSelectedItems);
+    }
+    
+    // 清空剪贴板历史按钮
+    if (elements.clear_clipboard_history_btn) {
+        elements.clear_clipboard_history_btn.addEventListener('click', clearClipboardHistory);
+    }
+    
+    // 注意：Alt+K快捷键已在manifest.json中定义为全局命令
+    // 由background.js处理，不需要在popup中重复定义
+    
     logger.info("事件监听器设置完成");
 }
 
@@ -1258,6 +2320,14 @@ function setupSwitchContainerListeners() {
     switchContainers.forEach(container => {
         const checkbox = container.querySelector('input[type="checkbox"]');
         if (!checkbox) return;
+        
+        // 初始化时，隐藏多格式分析面板（只在勾选时显示）
+        if (checkbox.id === 'switch-multi-format') {
+            const multiFormatContainer = document.getElementById('multi-format-container');
+            if (multiFormatContainer) {
+                multiFormatContainer.style.display = checkbox.checked ? 'block' : 'none';
+            }
+        }
         
         container.addEventListener('click', (e) => {
             // 如果点击的是checkbox本身，不处理（避免双重触发）
@@ -1280,10 +2350,23 @@ function setupSwitchContainerListeners() {
                     handleSwitchChange(checkbox, 'link-gen-container');
                     break;
                 case 'multi-format':
-                    handleSwitchChange(checkbox, 'multi-format-container');
+                    handleMultiFormatSwitchChange(checkbox);
                     break;
-                case 'clipboard':
-                    toggleClipboardMonitoring();
+            }
+        });
+        
+        // 直接点击checkbox时的处理
+        checkbox.addEventListener('change', () => {
+            const switchType = container.dataset.switch;
+            switch (switchType) {
+                case 'extract':
+                    handleSwitchChange(checkbox, 'extract-container');
+                    break;
+                case 'link-gen':
+                    handleSwitchChange(checkbox, 'link-gen-container');
+                    break;
+                case 'multi-format':
+                    handleMultiFormatSwitchChange(checkbox);
                     break;
             }
         });

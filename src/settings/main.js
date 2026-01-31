@@ -30,6 +30,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     exportBtn.addEventListener('click', handleExport);
     importFileInput.addEventListener('change', handleImport);
     historyLimitInput.addEventListener('change', handleHistoryLimitChange);
+    
+    // 初始化响应式布局
+    initResponsiveLayout();
 
     // --- Functions ---
     function renderEngineList() {
@@ -283,3 +286,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 3000);
     }
 });
+
+/**
+ * 初始化响应式布局
+ * 监听容器大小变化，根据宽度调整body的类名以应用不同的布局样式
+ */
+function initResponsiveLayout() {
+    // 监听窗口大小变化
+    const resizeObserver = new ResizeObserver(entries => {
+        for (let entry of entries) {
+            // 根据容器宽度调整布局
+            const width = entry.contentRect.width;
+            const container = document.getElementById('resizable-container');
+            
+            if (width < 480) {
+                // 窄屏布局
+                document.body.classList.add('narrow-layout');
+                document.body.classList.remove('medium-layout', 'wide-layout');
+            } else if (width < 768) {
+                // 中等屏幕布局
+                document.body.classList.add('medium-layout');
+                document.body.classList.remove('narrow-layout', 'wide-layout');
+            } else {
+                // 宽屏布局
+                document.body.classList.add('wide-layout');
+                document.body.classList.remove('narrow-layout', 'medium-layout');
+            }
+        }
+    });
+    
+    // 开始观察容器大小变化
+    const container = document.getElementById('resizable-container');
+    if (container) {
+        resizeObserver.observe(container);
+    }
+}
