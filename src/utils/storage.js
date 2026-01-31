@@ -10,9 +10,14 @@ export const STORAGE_KEYS = {
     SEARCH_ENGINES: 'searchEngines',
     HISTORY: 'history',
     HISTORY_LIMIT: 'historyLimit',
+    CLIPBOARD_HISTORY: 'clipboardHistory',
+    CLIPBOARD_HISTORY_LIMIT: 'clipboardHistoryLimit',
     DEFAULT_ENGINE: 'defaultEngine',
     USER_PREFERENCES: 'userPreferences',
-    LAST_BACKUP: 'lastBackup'
+    LAST_BACKUP: 'lastBackup',
+    CLIPBOARD_MONITORING: 'clipboardMonitoring',
+    CLIPBOARD_MONITORING_TYPE: 'clipboardMonitoringType', // 'shortcut' or 'sidebar'
+    LAST_CLIPBOARD_CONTENT: 'lastClipboardContent'
 };
 
 // Default settings with enhanced search engines
@@ -29,6 +34,8 @@ export const DEFAULTS = {
     ],
     history: [],
     historyLimit: 100,
+    clipboardHistory: [],
+    clipboardHistoryLimit: 50,
     defaultEngine: 'Bing',
     userPreferences: {
         theme: 'auto',
@@ -321,6 +328,203 @@ export async function removeFromHistory(url) {
         return success;
     } catch (error) {
         logger.error('Failed to remove from history:', error);
+        return false;
+    }
+}
+
+/**
+ * Add an entry to clipboard history
+ * @param {string} content - Clipboard content
+ * @param {string} source - Source of the clipboard content
+ * @returns {Promise<boolean>} Success status
+ */
+export async function addToClipboardHistory(content, source = 'clipboard') {
+    try {
+        if (!content || !content.trim()) {
+            logger.warn('Invalid clipboard content provided');
+            return false;
+        }
+        
+        const { clipboardHistory, clipboardHistoryLimit } = await getSettings();
+        const trimmedContent = content.trim();
+        
+        // Create clipboard history entry
+        const entry = {
+            id: Date.now().toString(),
+            content: trimmedContent,
+            source,
+            timestamp: new Date().toISOString(),
+            isEdited: false,
+            originalContent: trimmedContent
+        };
+        
+        // Remove duplicates by content
+        const filteredHistory = clipboardHistory.filter(item => item.content !== trimmedContent);
+        
+        // Add new entry to the front
+        const newHistory = [entry, ...filteredHistory];
+        
+        // Enforce history limit
+        if (newHistory.length > clipboardHistoryLimit) {
+            newHistory.length = clipboardHistoryLimit;
+        }
+        
+        const success = await saveSettings({ clipboardHistory: newHistory });
+        if (success) {
+            logger.info('Added to clipboard history');
+        }
+        
+        return success;
+    } catch (error) {
+        logger.error('Failed to add to clipboard history:', error);
+        return false;
+    }
+}
+
+/**
+ * Get clipboard history
+ * @param {number} limit - Maximum number of entries to return
+ * @returns {Promise<Array>} Clipboard history entries
+ */
+export async function getClipboardHistory(limit = null) {
+    try {
+        const { clipboardHistory } = await getSettings();
+        let result = [...clipboardHistory];
+        
+        // Apply limit if provided
+        if (limit && typeof limit === 'number' && limit > 0) {
+            result = result.slice(0, limit);
+        }
+        
+        return result;
+    } catch (error) {
+        logger.error('Failed to get clipboard history:', error);
+        return [];
+    }
+}
+
+/**
+ * Clear clipboard history
+ * @returns {Promise<boolean>} Success status
+ */
+export async function clearClipboardHistory() {
+    try {
+        const success = await saveSettings({ clipboardHistory: [] });
+        if (success) {
+            logger.info('Clipboard history cleared successfully');
+        }
+        return success;
+    } catch (error) {
+        logger.error('Failed to clear clipboard history:', error);
+        return false;
+    }
+}
+
+/**
+ * Remove specific item from clipboard history
+ * @param {string} id - ID of the item to remove
+ * @returns {Promise<boolean>} Success status
+ */
+export async function removeFromClipboardHistory(id) {
+    try {
+        const { clipboardHistory } = await getSettings();
+        const filteredHistory = clipboardHistory.filter(item => item.id !== id);
+        
+        const success = await saveSettings({ clipboardHistory: filteredHistory });
+        if (success) {
+            logger.info(`Removed from clipboard history: ${id}`);
+        }
+        
+        return success;
+    } catch (error) {
+        logger.error('Failed to remove from clipboard history:', error);
+        return false;
+    }
+}
+
+/**
+ * Remove multiple items from clipboard history
+ * @param {Array<string>} ids - Array of IDs to remove
+ * @returns {Promise<boolean>} Success status
+ */
+export async function removeMultipleFromClipboardHistory(ids) {
+    try {
+        const { clipboardHistory } = await getSettings();
+        const filteredHistory = clipboardHistory.filter(item => !ids.includes(item.id));
+        
+        const success = await saveSettings({ clipboardHistory: filteredHistory });
+        if (success) {
+            logger.info(`Removed ${ids.length} items from clipboard history`);
+        }
+        
+        return success;
+    } catch (error) {
+        logger.error('Failed to remove multiple items from clipboard history:', error);
+        return false;
+    }
+}
+
+/**
+ * Update a clipboard history entry
+ * @param {string} id - ID of the item to update
+ * @param {string} newContent - New content for the item
+ * @returns {Promise<boolean>} Success status
+ */
+export async function updateClipboardHistoryItem(id, newContent) {
+    try {
+        const { clipboardHistory } = await getSettings();
+        const updatedHistory = clipboardHistory.map(item => {
+            if (item.id === id) {
+                return {
+                    ...item,
+                    content: newContent.trim(),
+                    isEdited: true,
+                    editedAt: new Date().toISOString()
+                };
+            }
+            return item;
+        });
+        
+        const success = await saveSettings({ clipboardHistory: updatedHistory });
+        if (success) {
+            logger.info(`Updated clipboard history item: ${id}`);
+        }
+        
+        return success;
+    } catch (error) {
+        logger.error('Failed to update clipboard history item:', error);
+        return false;
+    }
+}
+
+/**
+ * Restore an edited clipboard history item to its original content
+ * @param {string} id - ID of the item to restore
+ * @returns {Promise<boolean>} Success status
+ */
+export async function restoreClipboardHistoryItem(id) {
+    try {
+        const { clipboardHistory } = await getSettings();
+        const updatedHistory = clipboardHistory.map(item => {
+            if (item.id === id && item.isEdited) {
+                return {
+                    ...item,
+                    content: item.originalContent,
+                    isEdited: false,
+                    editedAt: null
+                };
+            }
+            return item;
+        });
+        
+        const success = await saveSettings({ clipboardHistory: updatedHistory });
+        if (success) {
+            logger.info(`Restored clipboard history item: ${id}`);
+        }
+        
+        return success;
+    } catch (error) {
+        logger.error('Failed to restore clipboard history item:', error);
         return false;
     }
 }

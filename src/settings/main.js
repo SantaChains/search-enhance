@@ -1,5 +1,6 @@
 // src/settings/main.js
 import { getSettings, saveSettings } from '../utils/storage.js';
+import { copyToClipboard } from '../utils/clipboard.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
     // --- DOM Elements ---
@@ -123,11 +124,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         // 添加复制按钮事件
         historyList.querySelectorAll('.engine-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', async (e) => {
                 const url = e.currentTarget.dataset.url;
-                navigator.clipboard.writeText(url)
-                    .then(() => showNotification('已复制到剪贴板'))
-                    .catch(err => console.error('复制失败:', err));
+                try {
+                    const success = await copyToClipboard(url);
+                    if (success) {
+                        showNotification('已复制到剪贴板');
+                    } else {
+                        showNotification('复制失败', false);
+                    }
+                } catch (err) {
+                    console.error('复制失败:', err);
+                    showNotification('复制失败', false);
+                }
             });
         });
     }

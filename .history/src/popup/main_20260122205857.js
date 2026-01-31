@@ -224,34 +224,44 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const newMonitoringState = changes.clipboardMonitoring.newValue;
                     appState.clipboardMonitoring = newMonitoringState;
                     updateClipboardButtonState(newMonitoringState);
-
-                    // 根据新状态启动或停止监控
-                    if (newMonitoringState) {
-                        startClipboardMonitoring();
-                    } else {
-                        stopClipboardMonitoring();
+                }
+            }
+        });
+        
+        // 监听剪贴板变化消息，添加到历史记录
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === 'clipboardChanged') {
+            // 防抖处理：避免频繁更新历史记录
+            debounce(() => {
+                // 添加到剪贴历史
+                addToClipboardHistory(request.content, 'clipboard-monitor')
+                    .then(() => {
+                        // 仅当剪贴历史展开时才更新UI，减少不必要的渲染
+                        if (appState.isClipboardHistoryExpanded) {
+                            return getClipboardHistory();
+                        }
+                        return null;
+                    })
+                    .then(history => {
+                        if (history) {
+                            appState.clipboardHistory = history;
+                            renderClipboardHistory();
+                        }
+                    });
+                
+                // 根据消息源显示不同通知
+                if (request.source === 'global') {
+                    // 全局监控：显示通知
+                    showNotification('检测到剪贴板内容变化');
+                } else {
+                    // 侧边栏监控：只在剪贴历史展开时显示通知
+                    if (appState.isClipboardHistoryExpanded) {
+                        showNotification('检测到剪贴板内容变化');
                     }
                 }
-            }
-        });
-
-        // 监听来自 background script 的消息
-        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-            if (request.action === 'clipboardMonitoringChanged') {
-                const newState = request.enabled;
-                appState.clipboardMonitoring = newState;
-                updateClipboardButtonState(newState);
-                
-                // 根据新状态启动或停止监控
-                if (newState) {
-                    startClipboardMonitoring();
-                } else {
-                    stopClipboardMonitoring();
-                }
-                
-                sendResponse({ success: true });
-            }
-        });
+            }, 300);
+        }
+    });
         
         logger.info("Search Buddy 初始化完成");
     } catch (error) {
@@ -264,7 +274,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function initializeElements() {
     const elementIds = [
         'search-input', 'search-btn', 'engine-select',
-        'switch-clipboard-monitor', 'switch-extract', 'switch-link-gen', 'switch-multi-format',
+        'switch-extract', 'switch-link-gen', 'switch-multi-format',
         'clipboard-btn', 'settings-btn',
         'extract-container', 'link-gen-container', 'multi-format-container',
         'path-conversion-tool', 'path-quote-checkbox', 'path-conversion-result',
@@ -331,228 +341,45 @@ function updateClipboardButtonState(isActive) {
     }
 }
 
-// 剪贴板监控相关变量
-let clipboardMonitorInterval = null;
-let lastClipboardContent = '';
-let clipboardDebounceTimer = null;
-
 /**
  * 切换剪贴板监控状态
  */
 async function toggleClipboardMonitoring() {
+    appState.clipboardMonitoring = !appState.clipboardMonitoring;
+    
+    // 更新UI状态
+    updateClipboardButtonState(appState.clipboardMonitoring);
+    
+    // 保存监控状态到storage
     try {
-        // 检查剪贴板权限
-        const hasPermission = await checkClipboardPermission();
-        if (!hasPermission && appState.clipboardMonitoring === false) {
-            // 如果是从关闭状态切换到开启状态，且没有权限
-            const permissionGranted = await requestClipboardPermission();
-            if (!permissionGranted) {
-                showNotification('需要剪贴板权限才能开启监控', false);
-                return;
-            }
-        }
-
-        appState.clipboardMonitoring = !appState.clipboardMonitoring;
-
-        // 更新UI状态
-        updateClipboardButtonState(appState.clipboardMonitoring);
-
-        // 保存监控状态到storage
         await chrome.storage.local.set({
             clipboardMonitoring: appState.clipboardMonitoring
         });
-
-        if (appState.clipboardMonitoring) {
-            // 启动监控
-            const success = await startClipboardMonitoring();
-            if (success) {
-                showNotification('剪贴板监控已开启');
-            } else {
-                appState.clipboardMonitoring = false;
-                updateClipboardButtonState(false);
+        
+        // 发送消息给content script，更新监控状态
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (tab) {
+            const isAllowedUrl = !tab.url.startsWith('chrome://') && 
+                                 !tab.url.startsWith('edge://') && 
+                                 !tab.url.startsWith('about:') &&
+                                 !tab.url.startsWith('file://');
+            
+            if (isAllowedUrl) {
+                try {
+                    await chrome.tabs.sendMessage(tab.id, {
+                        action: 'refreshClipboardMonitoring',
+                        enabled: appState.clipboardMonitoring
+                    });
+                } catch (sendError) {
+                    logger.warn('向content脚本发送消息失败:', sendError.message);
+                }
             }
-        } else {
-            // 停止监控
-            stopClipboardMonitoring();
-            showNotification('剪贴板监控已关闭');
         }
+        
+        showNotification(appState.clipboardMonitoring ? '剪贴板监控已开启' : '剪贴板监控已关闭');
     } catch (error) {
         logger.error('切换剪贴板监控状态失败:', error);
-        showNotification('切换剪贴板监控状态失败：' + error.message, false);
-    }
-}
-
-/**
- * 请求剪贴板权限
- */
-async function requestClipboardPermission() {
-    try {
-        // 尝试读取剪贴板来触发权限请求
-        const text = await navigator.clipboard.readText();
-        return true;
-    } catch (error) {
-        logger.error('请求剪贴板权限失败:', error);
-        return false;
-    }
-}
-
-/**
- * 启动剪贴板监控
- */
-async function startClipboardMonitoring() {
-    try {
-        // 检查剪贴板权限
-        const hasPermission = await checkClipboardPermission();
-        if (!hasPermission) {
-            logger.warn('没有剪贴板读取权限，尝试请求权限');
-            
-            // 尝试通过用户交互获取权限
-            const text = await readFromClipboard();
-            if (!text && text !== '') {
-                showNotification('需要剪贴板权限，请在弹出的权限请求中允许', false);
-                return false;
-            }
-        }
-
-        if (clipboardMonitorInterval) {
-            clearInterval(clipboardMonitorInterval);
-        }
-
-        // 立即检查一次
-        await checkClipboard();
-
-        // 设置定时检查
-        clipboardMonitorInterval = setInterval(async () => {
-            if (appState.clipboardMonitoring) {
-                await checkClipboard();
-            }
-        }, 500); // 每500ms检查一次
-
-        logger.info('剪贴板监控已启动');
-        return true;
-    } catch (error) {
-        logger.error('启动剪贴板监控失败:', error);
-        showNotification('启动剪贴板监控失败：' + error.message, false);
-        return false;
-    }
-}
-
-/**
- * 停止剪贴板监控
- */
-function stopClipboardMonitoring() {
-    if (clipboardMonitorInterval) {
-        clearInterval(clipboardMonitorInterval);
-        clipboardMonitorInterval = null;
-    }
-
-    if (clipboardDebounceTimer) {
-        clearTimeout(clipboardDebounceTimer);
-        clipboardDebounceTimer = null;
-    }
-
-    lastClipboardContent = '';
-    logger.info('剪贴板监控已停止');
-}
-
-/**
- * 检查剪贴板内容
- */
-async function checkClipboard() {
-    try {
-        // 检查剪贴板权限
-        const hasPermission = await checkClipboardPermission();
-        if (!hasPermission) {
-            logger.warn('没有剪贴板读取权限');
-            return;
-        }
-
-        // 读取剪贴板内容
-        const text = await readFromClipboard();
-
-        if (!text || text === lastClipboardContent) {
-            return; // 内容未变化
-        }
-
-        lastClipboardContent = text;
-
-        // 防抖处理
-        if (clipboardDebounceTimer) {
-            clearTimeout(clipboardDebounceTimer);
-        }
-
-        clipboardDebounceTimer = setTimeout(async () => {
-            try {
-                // 安全处理：检查内容长度
-                let processedText = text;
-                if (processedText.length > 10000) {
-                    logger.warn('剪贴板内容过大，已截断处理');
-                    processedText = processedText.substring(0, 10000);
-                }
-
-                // 保存到 storage
-                const timestamp = Date.now();
-                await chrome.storage.local.set({
-                    lastClipboardContent: processedText,
-                    clipboardHistoryUpdated: timestamp
-                });
-
-                // 添加到剪贴板历史
-                await addToClipboardHistory(processedText, 'clipboard-monitor');
-
-                // 更新UI
-                if (elements.search_input && appState.clipboardMonitoring) {
-                    elements.search_input.value = processedText;
-                    handleTextareaInput();
-                    updateSearchControlsPosition();
-                }
-
-                // 通知 content script（用于显示页面通知）
-                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-                if (tab) {
-                    try {
-                        await chrome.tabs.sendMessage(tab.id, {
-                            action: 'clipboardChanged',
-                            content: processedText,
-                            source: 'clipboard-monitor',
-                            timestamp: timestamp
-                        });
-                    } catch (error) {
-                        // content script 可能未加载，忽略错误
-                        logger.debug('向content script发送消息失败:', error.message);
-                    }
-                }
-
-                logger.info('检测到剪贴板内容变化');
-            } catch (error) {
-                logger.error('处理剪贴板内容失败:', error);
-            }
-        }, 100); // 100ms防抖
-    } catch (error) {
-        logger.error('读取剪贴板失败:', error);
-        
-        // 如果是权限错误，停止监控
-        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-            logger.warn('剪贴板权限被拒绝，停止监控');
-            stopClipboardMonitoring();
-            updateClipboardButtonState(false);
-        }
-    }
-}
-
-/**
- * 从剪贴板读取文本（需要导入 clipboard.js）
- */
-async function readFromClipboard() {
-    try {
-        if (navigator.clipboard && navigator.clipboard.readText) {
-            const text = await navigator.clipboard.readText();
-            return text;
-        }
-        return null;
-    } catch (error) {
-        logger.error('读取剪贴板失败:', error);
-        return null;
+        showNotification('切换剪贴板监控状态失败', false);
     }
 }
 
@@ -1154,11 +981,8 @@ function setupEventListeners() {
         elements.search_btn.addEventListener('click', handleSearch);
     }
     
-    // 剪贴板监控开关事件
-    if (elements.switch_clipboard_monitor) {
-        elements.switch_clipboard_monitor.addEventListener('change', toggleClipboardMonitoring);
-    }
-
+    // 移除了clipboard-monitor-switch元素，现在通过快捷键和侧边栏自动管理剪贴板监控
+    
     if (elements.settings_btn) {
         elements.settings_btn.addEventListener('click', () => {
             chrome.runtime.openOptionsPage ? chrome.runtime.openOptionsPage() : 

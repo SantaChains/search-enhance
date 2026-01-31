@@ -234,24 +234,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         });
-
-        // 监听来自 background script 的消息
-        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-            if (request.action === 'clipboardMonitoringChanged') {
-                const newState = request.enabled;
-                appState.clipboardMonitoring = newState;
-                updateClipboardButtonState(newState);
-                
-                // 根据新状态启动或停止监控
-                if (newState) {
-                    startClipboardMonitoring();
-                } else {
-                    stopClipboardMonitoring();
-                }
-                
-                sendResponse({ success: true });
-            }
-        });
         
         logger.info("Search Buddy 初始化完成");
     } catch (error) {
@@ -340,37 +322,21 @@ let clipboardDebounceTimer = null;
  * 切换剪贴板监控状态
  */
 async function toggleClipboardMonitoring() {
+    appState.clipboardMonitoring = !appState.clipboardMonitoring;
+
+    // 更新UI状态
+    updateClipboardButtonState(appState.clipboardMonitoring);
+
+    // 保存监控状态到storage
     try {
-        // 检查剪贴板权限
-        const hasPermission = await checkClipboardPermission();
-        if (!hasPermission && appState.clipboardMonitoring === false) {
-            // 如果是从关闭状态切换到开启状态，且没有权限
-            const permissionGranted = await requestClipboardPermission();
-            if (!permissionGranted) {
-                showNotification('需要剪贴板权限才能开启监控', false);
-                return;
-            }
-        }
-
-        appState.clipboardMonitoring = !appState.clipboardMonitoring;
-
-        // 更新UI状态
-        updateClipboardButtonState(appState.clipboardMonitoring);
-
-        // 保存监控状态到storage
         await chrome.storage.local.set({
             clipboardMonitoring: appState.clipboardMonitoring
         });
 
         if (appState.clipboardMonitoring) {
             // 启动监控
-            const success = await startClipboardMonitoring();
-            if (success) {
-                showNotification('剪贴板监控已开启');
-            } else {
-                appState.clipboardMonitoring = false;
-                updateClipboardButtonState(false);
-            }
+            startClipboardMonitoring();
+            showNotification('剪贴板监控已开启');
         } else {
             // 停止监控
             stopClipboardMonitoring();
@@ -378,21 +344,7 @@ async function toggleClipboardMonitoring() {
         }
     } catch (error) {
         logger.error('切换剪贴板监控状态失败:', error);
-        showNotification('切换剪贴板监控状态失败：' + error.message, false);
-    }
-}
-
-/**
- * 请求剪贴板权限
- */
-async function requestClipboardPermission() {
-    try {
-        // 尝试读取剪贴板来触发权限请求
-        const text = await navigator.clipboard.readText();
-        return true;
-    } catch (error) {
-        logger.error('请求剪贴板权限失败:', error);
-        return false;
+        showNotification('切换剪贴板监控状态失败', false);
     }
 }
 

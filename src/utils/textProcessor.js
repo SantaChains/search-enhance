@@ -6,17 +6,138 @@
  */
 
 /**
- * Checks if a string is a valid URL.
- * @param {string} str The string to check.
- * @returns {boolean}
+ * 增强的URL解析与分词功能
+ * @param {string} url URL字符串
+ * @returns {object} 包含详细解析结果的对象
  */
-export function isURL(str) {
+export function enhancedUrlParser(url) {
+    if (!url || typeof url !== 'string') return null;
+    
     try {
-        new URL(str);
-        return true;
-    } catch (_) {
-        return false;
+        // 确保URL有协议
+        const normalizedUrl = url.startsWith('http') ? url : `http://${url}`;
+        const urlObj = new URL(normalizedUrl);
+        
+        // 提取路径段，保留-和_符号
+        const pathSegments = urlObj.pathname.split('/').filter(Boolean);
+        
+        // 提取查询参数
+        const searchParams = {};
+        for (const [key, value] of urlObj.searchParams.entries()) {
+            searchParams[key] = value;
+        }
+        
+        // 智能分析URL类型
+        let urlType = 'general';
+        const domainParts = urlObj.hostname.split('.');
+        const tld = domainParts[domainParts.length - 1];
+        
+        // 识别常见平台
+        if (urlObj.hostname.includes('github.com')) {
+            urlType = 'github';
+        } else if (urlObj.hostname.includes('stackoverflow.com') || urlObj.hostname.includes('stackexchange.com')) {
+            urlType = 'stackoverflow';
+        } else if (urlObj.hostname.includes('google.') || urlObj.hostname.includes('bing.') || urlObj.hostname.includes('baidu.com')) {
+            urlType = 'search_engine';
+        } else if (urlObj.hostname.includes('youtube.com') || urlObj.hostname.includes('vimeo.com')) {
+            urlType = 'video';
+        } else if (urlObj.hostname.includes('twitter.com') || urlObj.hostname.includes('facebook.com') || urlObj.hostname.includes('instagram.com')) {
+            urlType = 'social';
+        } else if (tld === 'pdf' || urlObj.pathname.endsWith('.pdf')) {
+            urlType = 'pdf';
+        } else if (urlObj.pathname.includes('/api/') || urlObj.pathname.includes('/v')) {
+            urlType = 'api';
+        }
+        
+        // 提取文件扩展名
+        let fileExtension = '';
+        const pathParts = urlObj.pathname.split('.');
+        if (pathParts.length > 1) {
+            const lastPart = pathParts[pathParts.length - 1];
+            if (lastPart.length <= 6 && /^[a-zA-Z0-9]+$/.test(lastPart)) {
+                fileExtension = lastPart;
+            }
+        }
+        
+        return {
+            original: url,
+            normalized: normalizedUrl,
+            protocol: urlObj.protocol,
+            hostname: urlObj.hostname,
+            port: urlObj.port,
+            pathname: urlObj.pathname,
+            search: urlObj.search,
+            hash: urlObj.hash,
+            origin: urlObj.origin,
+            pathSegments: pathSegments,
+            searchParams: searchParams,
+            fileExtension: fileExtension,
+            urlType: urlType,
+            domainParts: domainParts,
+            tld: tld,
+            // 智能分词结果
+            segments: [
+                urlObj.hostname,
+                ...pathSegments,
+                ...Object.keys(searchParams),
+                ...Object.values(searchParams)
+            ].filter(Boolean)
+        };
+    } catch (error) {
+        logger.warn('URL解析失败:', error);
+        return null;
     }
+}
+
+/**
+ * 批量处理链接 - 从文本中提取并分析多个链接
+ * @param {string} text 输入文本
+ * @returns {array} 包含多个链接分析结果的数组
+ */
+export function batchProcessLinks(text) {
+    if (!text || typeof text !== 'string') return [];
+    
+    // 增强的URL提取正则，确保捕获完整的URL（包括-和_）
+    const urlRegex = /(https?:\/\/(?:[\w.-]+)(?::[0-9]+)?(?:\/(?:[\w\/._-])*(?:\?(?:[\w&=%.+-])*)?(?:#(?:[\w._-])*)?)?)/gi;
+    const rawLinks = text.match(urlRegex) || [];
+    
+    // 去重并处理
+    const uniqueLinks = [...new Set(rawLinks)];
+    return uniqueLinks.map(url => ({
+        url: url,
+        analysis: enhancedUrlParser(url)
+    })).filter(item => item.analysis);
+}
+
+/**
+ * 链接智能分类与分组
+ * @param {array} links 链接分析结果数组
+ * @returns {object} 按类型分组的链接对象
+ */
+export function categorizeLinks(links) {
+    if (!Array.isArray(links)) return {};
+    
+    const categories = {
+        github: [],
+        stackoverflow: [],
+        search_engine: [],
+        video: [],
+        social: [],
+        pdf: [],
+        api: [],
+        general: []
+    };
+    
+    links.forEach(item => {
+        const type = item.analysis?.urlType || 'general';
+        if (categories[type]) {
+            categories[type].push(item);
+        } else {
+            categories.general.push(item);
+        }
+    });
+    
+    return categories;
 }
 
 /**
@@ -33,7 +154,7 @@ export function processTextExtraction(text) {
     if (!text || !text.trim()) return results;
 
     // 1. Extract links first - Enhanced URL detection
-    const urlRegex = /https?:\/\/(?:[-\w.])+(?::[0-9]+)?(?:\/(?:[\w\/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?/gi;
+    const urlRegex = /https?:\/\/(?:[-\w.])+(?::[0-9]+)?(?:\/(?:[\w\/_.\-])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?/gi;
     let potentialLinks = text.match(urlRegex) || [];
     
     // Post-process to validate URLs more strictly
@@ -74,9 +195,9 @@ export function processTextExtraction(text) {
     // Remove content within square brackets and the brackets themselves
     cleaned = cleaned.replace(/\[[^\]]*\]/g, '');
     
-    // Remove all non-English letters, non-digits, non-spaces, non-periods
-    // This aggressive cleaning is for the specific use case of this tool (Switch 1).
-    cleaned = cleaned.replace(/[^a-zA-Z0-9\s.]/g, ' ');
+    // Remove all non-English letters, non-digits, non-spaces, non-periods, non-hyphens, non-underscores
+    // This cleaning preserves important characters for links and code while removing unwanted characters.
+    cleaned = cleaned.replace(/[^a-zA-Z0-9\s.\-_]/g, ' ');
     
     // Trim whitespace and normalize internal spaces (replace multiple spaces with single space)
     results.cleanedText = cleaned.trim().replace(/\s+/g, ' ');
@@ -155,22 +276,28 @@ function applySingleSplitRule(text, rule) {
  * @returns {string} 内容类型
  */
 function detectContentType(text) {
-    // 1. 检测列表类内容
+    // 1. 优先检测URL
+    if (/^https?:\/\//.test(text) || isURL(text)) {
+        return 'url';
+    }
+    
+    // 2. 检测列表类内容
     if (/^[\s]*(?:\d+[.)]\s*|[一二三四五六七八九十]+[、.]\s*|[①②③④⑤⑥⑦⑧⑨⑩]\s*|[-*•·]\s*)/m.test(text)) {
         return 'list';
     }
     
-    // 2. 检测代码/函数名
-    if (/[a-zA-Z_$][a-zA-Z0-9_$]*[A-Z][a-zA-Z0-9_$]*|[a-zA-Z_$][a-zA-Z0-9_$]*_[a-zA-Z0-9_$]+|[a-zA-Z_$][a-zA-Z0-9_$]*-[a-zA-Z0-9_$]+/.test(text)) {
+    // 3. 检测代码/函数名（排除URL）
+    if (!/^https?:\/\//.test(text) && 
+        /[a-zA-Z_$][a-zA-Z0-9_$]*[A-Z][a-zA-Z0-9_$]*|[a-zA-Z_$][a-zA-Z0-9_$]*_[a-zA-Z0-9_$]+|[a-zA-Z_$][a-zA-Z0-9_$]*-[a-zA-Z0-9_$]+/.test(text)) {
         return 'code';
     }
     
-    // 3. 检测包裹类标点
+    // 4. 检测包裹类标点
     if (/["""''（）()【】《》<>「」『』]/g.test(text)) {
         return 'wrapped';
     }
     
-    // 4. 检测中英文混合
+    // 5. 检测中英文混合
     const chineseCount = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
     const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
     
@@ -199,6 +326,8 @@ function autoSplit(text, contentType) {
             return splitCodeNaming(text);
         case 'wrapped':
             return splitWrappedContent(text);
+        case 'url':
+            return [text]; // 不拆分URL，直接返回
         case 'mixed':
             return splitMixedLanguageSentences(text);
         case 'chinese':

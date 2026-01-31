@@ -859,8 +859,8 @@ body {
   font-size: 14px;
 }
 
-/* 历史记录区域 */
-.history-section {
+/* 历史记录和剪贴历史通用样式 */
+.history-section, .clipboard-history-section {
   background: var(--bg-lighter);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
@@ -875,6 +875,145 @@ body {
   align-items: center;
   border-bottom: 1px solid var(--border-color);
 }
+
+/* 剪贴历史区域 */
+.clipboard-history-section {
+  margin-bottom: var(--space-2);
+}
+
+.clipboard-controls {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.clipboard-history-item {
+  display: flex;
+  align-items: flex-start;
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-color);
+  transition: all var(--transition-normal);
+}
+
+.clipboard-history-item:hover {
+  background: var(--bg-card);
+}
+
+.clipboard-history-item:last-child {
+  border-bottom: none;
+}
+
+.clipboard-item-selection {
+  margin-right: var(--space-3);
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: var(--space-2);
+}
+
+.clipboard-item-checkbox {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.clipboard-item-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.clipboard-item-text {
+  width: 100%;
+  min-height: 32px;
+  max-height: 120px;
+  padding: var(--space-2);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  background: var(--bg-lighter);
+  transition: all var(--transition-normal);
+  outline: none;
+  color: var(--text-dark);
+  resize: vertical;
+  overflow-y: auto;
+  font-family: inherit;
+  line-height: 1.4;
+  margin-bottom: var(--space-2);
+}
+
+.clipboard-item-text:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(124, 158, 232, 0.2);
+  background: var(--bg-card);
+}
+
+.clipboard-item-info {
+  display: flex;
+  gap: var(--space-3);
+  font-size: 11px;
+  color: var(--text-light);
+}
+
+.clipboard-item-edited {
+  background: rgba(232, 165, 165, 0.15);
+  color: var(--danger);
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 9px;
+  font-weight: 500;
+}
+
+.clipboard-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-left: var(--space-3);
+  flex-shrink: 0;
+}
+
+.clipboard-item-actions button {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  cursor: pointer;
+  font-size: 11px;
+  transition: all var(--transition-normal);
+  color: var(--text-medium);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.clipboard-item-actions button:hover {
+  background: var(--bg-light);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.clipboard-item-actions button:active {
+  transform: scale(0.95);
+}
+
+.clipboard-history-empty {
+  text-align: center;
+  padding: var(--space-8) var(--space-5);
+  color: var(--text-light);
+}
+
+.clipboard-history-empty p {
+  font-size: 14px;
+  margin-bottom: var(--space-2);
+}
+
+.clipboard-history-empty span {
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* 历史记录区域 */
 
 .section-header h3 {
   font-size: 12px;

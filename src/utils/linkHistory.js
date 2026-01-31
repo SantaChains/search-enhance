@@ -1,13 +1,22 @@
 /**
  * 链接历史管理模块
  * 负责记录、存储和管理处理过的链接历史
+ * 提供链接分类、搜索、统计和导出功能
  */
 
+/**
+ * 链接历史管理器类
+ * 实现了完整的链接历史管理功能，包括添加、查询、删除、统计和导出
+ */
 class LinkHistoryManager {
+  /**
+   * 构造函数
+   * 初始化链接历史管理器的配置
+   */
   constructor() {
-    this.storageKey = 'linkHistory';
-    this.maxHistoryItems = 1000;
-    this.githubPattern = /^https?:\/\/(www\.)?github\.com\//i;
+    this.storageKey = 'linkHistory'; // 存储键名
+    this.maxHistoryItems = 1000; // 最大历史记录数量
+    this.githubPattern = /^https?:\/\/(www\.)?github\.com\//i; // GitHub链接匹配正则
   }
 
   /**
