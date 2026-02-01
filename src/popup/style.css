@@ -356,6 +356,71 @@ body {
     color: #0984e3;
 }
 
+/* 提取按钮容器 */
+.extract-buttons {
+    display: flex;
+    gap: 14px;
+    margin: 24px 0;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(116, 185, 255, 0.06), rgba(9, 132, 227, 0.04));
+    border-radius: 12px;
+    border: 1px solid rgba(116, 185, 255, 0.12);
+}
+
+/* 提取按钮 */
+.extract-btn {
+    flex: 1;
+    background: linear-gradient(135deg, #74b9ff, #0984e3);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(116, 185, 255, 0.2);
+    letter-spacing: -0.1px;
+}
+
+.extract-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(116, 185, 255, 0.3);
+    background: linear-gradient(135deg, #0984e3, #74b9ff);
+}
+
+/* 提取结果 */
+#extract-results {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(44, 62, 80, 0.06);
+}
+
+.extract-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+    padding: 14px;
+    background: #f8fafb;
+    border-radius: 10px;
+    border: 1px solid rgba(44, 62, 80, 0.06);
+    transition: all 0.3s ease;
+}
+
+.extract-item:hover {
+    background: #f0f8ff;
+    border-color: rgba(116, 185, 255, 0.2);
+}
+
+.extract-item span {
+    flex: 1;
+    font-size: 13px;
+    color: #34495e;
+    word-break: break-all;
+    line-height: 1.4;
+}
+
 /* 文本拆分工具 */
 .split-controls {
     display: flex;

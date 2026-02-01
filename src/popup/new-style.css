@@ -588,6 +588,72 @@ body {
   color: var(--primary-dark);
 }
 
+/* 提取按钮容器 */
+.extract-buttons {
+  display: flex;
+  gap: var(--space-3);
+  margin: var(--space-3) 0;
+  padding: var(--space-3);
+  background: var(--bg-lighter);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+}
+
+/* 提取按钮 */
+.extract-btn {
+  flex: 1;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.extract-btn:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(124, 158, 232, 0.3);
+}
+
+/* 提取结果 */
+#extract-results {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-color);
+}
+
+.extract-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+  padding: var(--space-3);
+  background: var(--bg-lighter);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-normal);
+}
+
+.extract-item:hover {
+  border-color: var(--primary-light);
+}
+
+.extract-item span {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-dark);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
 /* 文本拆分工具 */
 .split-controls {
   display: flex;

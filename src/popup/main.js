@@ -14,7 +14,9 @@ import {
     processLinkGeneration,
     analyzeTextForMultipleFormats,
     chineseWordSegmentation,
-    copyToClipboard as copyTextToClipboard
+    copyToClipboard as copyTextToClipboard,
+    extractEmails,
+    extractPhoneNumbers
 } from '../utils/textProcessor.js';
 
 import linkHistoryManager from '../utils/linkHistory.js';
@@ -994,6 +996,15 @@ function renderLinkGenerationUI(text) {
                 <a href="${link}" target="_blank">${link}</a>
             </div>`;
         }).join('');
+        
+        // 添加提取按钮
+        html += `
+            <div class="extract-buttons">
+                <button id="extract-emails-btn" class="extract-btn">提取邮箱</button>
+                <button id="extract-phones-btn" class="extract-btn">提取号码</button>
+            </div>
+            <div id="extract-results"></div>
+        `;
     } else {
         html = '<p>请输入 "用户名/仓库名" 或已知的仓库URL。</p>';
     }
@@ -1007,6 +1018,57 @@ function renderLinkGenerationUI(text) {
             copyToClipboard(link, e.target);
         });
     });
+    
+    // 绑定提取按钮事件
+    const extractEmailsBtn = document.getElementById('extract-emails-btn');
+    const extractPhonesBtn = document.getElementById('extract-phones-btn');
+    
+    if (extractEmailsBtn) {
+        extractEmailsBtn.addEventListener('click', () => handleExtractEmails(text));
+    }
+    
+    if (extractPhonesBtn) {
+        extractPhonesBtn.addEventListener('click', () => handleExtractPhones(text));
+    }
+}
+
+// 处理邮箱提取
+function handleExtractEmails(text) {
+    const emails = extractEmails(text);
+    displayExtractResults('邮箱地址', emails);
+}
+
+// 处理号码提取
+function handleExtractPhones(text) {
+    const phones = extractPhoneNumbers(text);
+    displayExtractResults('号码', phones);
+}
+
+// 显示提取结果
+function displayExtractResults(type, results) {
+    const resultsContainer = document.getElementById('extract-results');
+    if (!resultsContainer) return;
+    
+    if (results.length > 0) {
+        let html = `<h5>提取的${type}</h5>`;
+        html += results.map(item => {
+            return `<div class="extract-item">
+                <button class="copy-btn" data-text="${item}">复制</button>
+                <span>${item}</span>
+            </div>`;
+        }).join('');
+        resultsContainer.innerHTML = html;
+        
+        // 绑定复制事件
+        resultsContainer.querySelectorAll('.copy-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const text = e.target.dataset.text;
+                copyToClipboard(text, e.target);
+            });
+        });
+    } else {
+        resultsContainer.innerHTML = `<p>未找到${type}。</p>`;
+    }
 }
 
 // 渲染多格式分析
