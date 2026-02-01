@@ -130,7 +130,7 @@ function applySingleSplitRule(text, rule) {
         case 'zh-sentence':
             return splitChineseSentences(text);
         case 'zh-word':
-            return chineseWordSegmentation(text);
+            return intelligentSegmentation(text);
         case 'mixed-sentence':
             return splitMixedLanguageSentences(text);
         case 'code-naming':
@@ -240,28 +240,59 @@ function splitEnglishSentences(text) {
 }
 
 /**
- * 轻量级中文分词算法 - 基于正向最大匹配
+ * 增强版中文分词算法 - 基于正向最大匹配
  * @param {string} text 待分词的中文文本
  * @param {number} maxWordLength 最大词长，默认5
+ * @param {Object} options 分词选项
+ * @param {boolean} options.useEnhancedDict 是否使用增强词典，默认true
  * @returns {Array} 分词结果数组
  */
-export function chineseWordSegmentation(text, maxWordLength = 5) {
+export function chineseWordSegmentation(text, maxWordLength = 5, options = { useEnhancedDict: true }) {
     if (!text || !text.trim()) return [];
     
-    // 简化的常用词词典
-    const commonWords = new Set([
-        '中文', '分词', '算法', '轻量级', '正向', '最大', '匹配', '文本', '处理', 
-        '浏览器', '扩展', '功能', '工具', '智能', '搜索', '体验', '用户', '开发',
-        '项目', '环境', '规则', '词典', '集成', '实现', '更新', '功能', '代码',
-        '字符', '数组', '函数', '方法', '返回', '结果', '参数', '长度', '循环',
-        '判断', '处理', '过滤', '空格', '标点', '符号', '分割', '提取', '转换',
-        '类型', '检测', '识别', '内容', '句子', '词语', '语言', '混合', '智能',
-        '列表', '项目', '代码', '命名', '包裹', '路径', '链接', '仓库', '检测',
-        '分析', '分类', '规则', '说明', '可用', '选择', '适合', '场景', '基础',
-        '语义', '单元', '序号', '标记', '引号', '括号', '书名号', '空格', '换行',
-        '单词', '多行', '片段', '功能', '接口', 'UI', '统一', '路径', '转换',
-        '链接', '提取', '仓库', '生成', '邮箱', '电话', 'IP', '地址', '转换'
-    ]);
+    // 根据选项选择词典
+    let commonWords;
+    if (options.useEnhancedDict !== false) {
+        // 增强的常用词词典
+        commonWords = new Set([
+            // 基础词汇
+            '中文', '分词', '算法', '轻量级', '正向', '最大', '匹配', '文本', '处理', 
+            '浏览器', '扩展', '功能', '工具', '智能', '搜索', '体验', '用户', '开发',
+            '项目', '环境', '规则', '词典', '集成', '实现', '更新', '功能', '代码',
+            
+            // 技术词汇
+            '字符', '数组', '函数', '方法', '返回', '结果', '参数', '长度', '循环',
+            '判断', '处理', '过滤', '空格', '标点', '符号', '分割', '提取', '转换',
+            '类型', '检测', '识别', '内容', '句子', '词语', '语言', '混合', '智能',
+            '列表', '项目', '代码', '命名', '包裹', '路径', '链接', '仓库', '检测',
+            '分析', '分类', '规则', '说明', '可用', '选择', '适合', '场景', '基础',
+            
+            // 语义词汇
+            '语义', '单元', '序号', '标记', '引号', '括号', '书名号', '空格', '换行',
+            '单词', '多行', '片段', '功能', '接口', 'UI', '统一', '路径', '转换',
+            '链接', '提取', '仓库', '生成', '邮箱', '电话', 'IP', '地址', '转换',
+            
+            // 常用词汇
+            '的', '了', '是', '在', '有', '和', '与', '或', '但', '而', '且', '然后', '因为', '所以',
+            '可以', '可能', '应该', '需要', '必须', '如何', '什么', '为什么', '哪里', '时候',
+            '方法', '步骤', '流程', '过程', '结果', '效果', '影响', '意义', '价值', '作用',
+            '系统', '平台', '框架', '库', '工具', '应用', '程序', '软件', '硬件', '网络',
+            '数据', '信息', '知识', '内容', '资源', '服务', '产品', '解决方案', '技术', '方案',
+            
+            // 专业词汇
+            'JavaScript', 'TypeScript', 'HTML', 'CSS', 'React', 'Vue', 'Angular', 'Node.js',
+            'API', 'HTTP', 'HTTPS', 'URL', 'JSON', 'XML', 'DOM', 'BOM', 'AJAX', 'REST',
+            '算法', '数据结构', '数据库', '缓存', '性能', '优化', '安全', '加密', '解密',
+            '前端', '后端', '全栈', '开发', '测试', '部署', '维护', '版本', '控制', 'Git'
+        ]);
+    } else {
+        // 简化的常用词词典
+        commonWords = new Set([
+            '中文', '分词', '算法', '轻量级', '正向', '最大', '匹配', '文本', '处理', 
+            '浏览器', '扩展', '功能', '工具', '智能', '搜索', '体验', '用户', '开发',
+            '项目', '环境', '规则', '词典', '集成', '实现', '更新', '功能', '代码'
+        ]);
+    }
     
     const textToProcess = text.trim();
     const result = [];
@@ -292,7 +323,72 @@ export function chineseWordSegmentation(text, maxWordLength = 5) {
         }
     }
     
-    return result;
+    // 后处理：过滤无意义的单字符和虚词
+    return postProcessSegmentationResult(result);
+}
+
+/**
+ * 分词结果后处理函数
+ * @param {Array} segmentationResult 原始分词结果
+ * @returns {Array} 处理后的分词结果
+ */
+function postProcessSegmentationResult(segmentationResult) {
+    if (!segmentationResult || segmentationResult.length === 0) return [];
+    
+    // 无意义单字符列表
+    const meaninglessChars = new Set(['的', '了', '是', '在', '有', '和', '与', '或', '但', '而', '且', '然后', '因为', '所以']);
+    
+    // 过滤无意义的单字符和虚词
+    const filtered = segmentationResult.filter(word => {
+        // 保留长度大于1的词
+        if (word.length > 1) return true;
+        // 过滤无意义的单字符
+        return !meaninglessChars.has(word);
+    });
+    
+    // 合并相邻的单字符（如果它们组合起来有意义）
+    const merged = [];
+    let i = 0;
+    
+    while (i < filtered.length) {
+        const current = filtered[i];
+        
+        // 如果当前是单字符，尝试与下一个单字符合并
+        if (current.length === 1 && i < filtered.length - 1 && filtered[i + 1].length === 1) {
+            const combined = current + filtered[i + 1];
+            merged.push(combined);
+            i += 2;
+        } else {
+            merged.push(current);
+            i++;
+        }
+    }
+    
+    return merged;
+}
+
+/**
+ * 智能分词函数 - 根据文本长度和复杂度选择合适的分词策略
+ * @param {string} text 待分词的文本
+ * @param {Object} options 分词选项
+ * @returns {Array} 分词结果数组
+ */
+export function intelligentSegmentation(text, options = {}) {
+    if (!text || !text.trim()) return [];
+    
+    const trimmedText = text.trim();
+    
+    // 根据文本长度选择分词策略
+    if (trimmedText.length < 10) {
+        // 短文本使用简单分词
+        return chineseWordSegmentation(trimmedText, 3, { useEnhancedDict: false });
+    } else if (trimmedText.length < 100) {
+        // 中等长度文本使用标准分词
+        return chineseWordSegmentation(trimmedText, 4);
+    } else {
+        // 长文本使用增强分词
+        return chineseWordSegmentation(trimmedText, 5);
+    }
 }
 
 /**
@@ -467,8 +563,6 @@ function splitWrappedContent(text) {
     // 定义包裹符号对
     const wrappers = [
         { open: '"', close: '"' },
-        { open: '"', close: '"' },
-        { open: "'", close: "'" },
         { open: "'", close: "'" },
         { open: '（', close: '）' },
         { open: '(', close: ')' },
@@ -983,7 +1077,7 @@ export function getSplitRuleDescription(rule) {
         'auto': '智能分析：根据内容类型自动选择最适合的分隔方式，支持列表、代码、包裹内容等复杂场景',
         'en-sentence': '英文句子：按句号、感叹号、问号拆分英文句子，长句子会按逗号进一步拆分',
         'zh-sentence': '中文句子：按中文标点（。！？；）拆分句子，长句按逗号、顿号拆分并过滤虚词',
-        'zh-word': '中文分词：基于正向最大匹配算法，将中文文本拆分为有意义的词语序列',
+        'zh-word': '中文分词：基于增强的正向最大匹配算法，使用扩展词典，支持智能分词策略和结果优化',
         'mixed-sentence': '中英混合：按语言边界智能拆分，中文部分用中文规则，英文部分用英文规则',
         'code-naming': '代码命名：识别驼峰、蛇形、串式命名法，拆分函数名和变量名为基础语义单元',
         'list-items': '列表项目：提取有序列表（1. 一、 ①）和无序列表（- * •）的内容，自动过滤序号标记',

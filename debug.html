@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分词功能测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        button {
+            margin: 10px 5px 10px 0;
+            padding: 8px 16px;
+            font-size: 14px;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .result h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .segmentation-result {
+            font-family: monospace;
+            white-space: pre-wrap;
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>分词功能测试</h1>
+        <p>测试改进后的中文分词功能</p>
+        
+        <div>
+            <textarea id="test-text" placeholder="请输入要分词的中文文本...">
+中文分词是中文文本处理的基础步骤，在浏览器扩展中实现智能搜索功能需要高效的分词算法。本项目使用增强的正向最大匹配算法，支持智能分词策略和结果优化。
+
+JavaScript是一种广泛使用的编程语言，主要用于Web开发。它可以在浏览器端运行，也可以在服务器端通过Node.js运行。
+
+智能分词功能可以根据文本长度和复杂度自动选择合适的分词策略，提高分词的准确性和效率。</textarea>
+        </div>
+        
+        <div>
+            <button onclick="testSegmentation()">测试分词</button>
+            <button onclick="clearResult()">清空结果</button>
+        </div>
+        
+        <div class="result" id="result-container">
+            <h3>分词结果</h3>
+            <div id="segmentation-result" class="segmentation-result">
+                请点击上方按钮进行测试
+            </div>
+        </div>
+    </div>
+    
+    <script type="module">
+        // 导入分词函数
+        import { chineseWordSegmentation, intelligentSegmentation, splitText } from './src/utils/textProcessor.js';
+        
+        function testSegmentation() {
+            const text = document.getElementById('test-text').value;
+            const resultContainer = document.getElementById('segmentation-result');
+            
+            if (!text.trim()) {
+                resultContainer.textContent = '请输入要分词的文本';
+                return;
+            }
+            
+            try {
+                // 测试增强版分词
+                const enhancedResult = chineseWordSegmentation(text);
+                
+                // 测试智能分词
+                const intelligentResult = intelligentSegmentation(text);
+                
+                // 测试通过splitText函数的分词
+                const splitTextResult = splitText(text, 'zh-word');
+                
+                let resultText = '增强版分词结果:\n';
+                resultText += enhancedResult.join(' / ') + '\n\n';
+                
+                resultText += '智能分词结果:\n';
+                resultText += intelligentResult.join(' / ') + '\n\n';
+                
+                resultText += 'splitText分词结果:\n';
+                resultText += splitTextResult.join(' / ');
+                
+                resultContainer.textContent = resultText;
+            } catch (error) {
+                resultContainer.textContent = '测试出错: ' + error.message;
+            }
+        }
+        
+        function clearResult() {
+            document.getElementById('segmentation-result').textContent = '请点击上方按钮进行测试';
+        }
+        
+        // 页面加载完成后自动测试
+        window.onload = function() {
+            testSegmentation();
+        };
+    </script>
+</body>
+</html>
