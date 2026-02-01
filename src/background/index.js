@@ -106,7 +106,19 @@ async function toggleGlobalClipboardMonitoring() {
 // 从存储加载剪贴板监控状态
 async function loadClipboardMonitoringState() {
     const result = await chrome.storage.local.get([STORAGE_KEY_CLIPBOARD_MONITORING, STORAGE_KEY_LAST_CLIPBOARD_CONTENT]);
-    isClipboardMonitoring = result[STORAGE_KEY_CLIPBOARD_MONITORING] || false;
+    
+    // 检查存储中是否有剪贴板监控状态
+    const hasMonitoringState = STORAGE_KEY_CLIPBOARD_MONITORING in result;
+    
+    // 如果存储中没有状态，默认设置为开启
+    if (!hasMonitoringState) {
+        isClipboardMonitoring = true;
+        await chrome.storage.local.set({ [STORAGE_KEY_CLIPBOARD_MONITORING]: true });
+        logger.info('存储中无剪贴板监控状态，默认设置为开启');
+    } else {
+        isClipboardMonitoring = result[STORAGE_KEY_CLIPBOARD_MONITORING];
+    }
+    
     lastClipboardContent = result[STORAGE_KEY_LAST_CLIPBOARD_CONTENT] || '';
     
     // 如果监控状态为开启，启动监控
@@ -116,7 +128,7 @@ async function loadClipboardMonitoringState() {
 }
 
 // Initialize extension
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async (details) => {
     try {
         // Set up side panel behavior
         await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
@@ -130,8 +142,16 @@ chrome.runtime.onInstalled.addListener(async () => {
         });
         logger.info('Context menu created successfully');
         
-        // Load and initialize clipboard monitoring state
-        await loadClipboardMonitoringState();
+        // For first install, set clipboard monitoring to true by default
+        if (details.reason === 'install') {
+            logger.info('首次安装，设置剪贴板监控为默认开启');
+            isClipboardMonitoring = true;
+            await chrome.storage.local.set({ [STORAGE_KEY_CLIPBOARD_MONITORING]: true });
+            await startGlobalClipboardMonitoring();
+        } else {
+            // Load and initialize clipboard monitoring state
+            await loadClipboardMonitoringState();
+        }
 
     } catch (error) {
         logger.error('Failed to initialize extension:', error);

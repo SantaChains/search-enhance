@@ -24,13 +24,15 @@ class LinkHistoryManager {
 
       const history = await this.getHistory();
       const linkType = this.detectLinkType(url);
+      const unescapedUrl = this.unescapeUrl(url);
       
-      // 检查是否已存在相同链接
-      const existingIndex = history.findIndex(item => item.url === url);
+      // 检查是否已存在相同链接（使用未转义的URL进行比较）
+      const existingIndex = history.findIndex(item => item.unescapedUrl === unescapedUrl);
       
       const historyItem = {
         id: this.generateId(),
         url: url,
+        unescapedUrl: unescapedUrl,
         title: title || this.extractTitleFromUrl(url),
         type: linkType,
         source: source,
@@ -270,6 +272,20 @@ class LinkHistoryManager {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * 解码转义的URL
+   * @param {string} url - 转义的URL
+   * @returns {string} 未转义的URL
+   */
+  unescapeUrl(url) {
+    try {
+      return decodeURIComponent(url);
+    } catch {
+      // 如果解码失败，返回原始URL
+      return url;
     }
   }
 
