@@ -3,10 +3,6 @@
 import { 
     getSettings, 
     saveSettings, 
-    addToHistory, 
-    clearHistory,
-    getHistory,
-    createHistoryEntry,
     DEFAULTS 
 } from '../utils/storage.js';
 
@@ -20,6 +16,8 @@ import {
     chineseWordSegmentation,
     copyToClipboard as copyTextToClipboard
 } from '../utils/textProcessor.js';
+
+import linkHistoryManager from '../utils/linkHistory.js';
 
 // 日志工具
 const logger = {
@@ -65,7 +63,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         appState.settings = await getSettings();
         
         // 加载历史记录
-        appState.linkHistory = await getHistory();
+        appState.linkHistory = await linkHistoryManager.getHistory();
         
         // 加载剪贴板历史
         await loadClipboardHistory();
@@ -794,13 +792,13 @@ async function addToHistoryEnhanced(item) {
         
         // 如果是GitHub仓库链接，优先记录GitHub链接
         if (isGithubRepo.isRepo && isGithubRepo.githubUrl) {
-            await addToHistory(isGithubRepo.githubUrl);
+            await linkHistoryManager.addLink(isGithubRepo.githubUrl, '', 'github_repo');
         } else {
-            await addToHistory(item);
+            await linkHistoryManager.addLink(item, '', 'general');
         }
         
         // 更新本地历史状态
-        appState.linkHistory = await getHistory();
+        appState.linkHistory = await linkHistoryManager.getHistory();
         renderHistory();
     } catch (error) {
         logger.error('添加历史记录失败:', error);
@@ -1524,12 +1522,14 @@ function renderHistory() {
     
     elements.history_list.innerHTML = appState.linkHistory.map(item => {
         // 处理新旧格式兼容性
-        let url, isGithub, domain;
+        let url, displayUrl, isGithub, domain, id;
         
         if (typeof item === 'string') {
             // 旧格式：直接是字符串
             url = item;
+            displayUrl = item;
             isGithub = url.includes('github.com');
+            id = item;
             try {
                 // 尝试解析URL
                 const urlObj = new URL(url);
@@ -1541,8 +1541,10 @@ function renderHistory() {
         } else if (item && typeof item === 'object') {
             // 新格式：对象
             url = item.url || item.toString();
+            displayUrl = item.unescapedUrl || url;
             isGithub = item.type === 'github' || item.isGitHubRepo || (url && url.includes('github.com'));
             domain = item.domain || item.title || '未知域名';
+            id = item.id;
         } else {
             // 异常情况，跳过该项
             logger.warn('遇到异常历史记录项:', item);
@@ -1557,12 +1559,12 @@ function renderHistory() {
         return `
             <div class="history-item ${isGithub ? 'github-item' : 'other-item'}">
                 <div class="history-content">
-                    <a href="${url}" target="_blank" class="history-link">${url}</a>
+                    <a href="${url}" target="_blank" class="history-link">${displayUrl}</a>
                     <span class="history-domain">${domain}</span>
                 </div>
                 <div class="history-actions">
                     <button class="copy-btn btn-sm" data-link="${url}">复制</button>
-                    <button class="remove-btn btn-sm" data-link="${url}">删除</button>
+                    <button class="remove-btn btn-sm" data-id="${id}" data-link="${url}">删除</button>
                 </div>
             </div>
         `;
@@ -1580,16 +1582,24 @@ function renderHistory() {
     document.querySelectorAll('.history-item .remove-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
             const link = e.target.dataset.link;
+            const id = e.target.dataset.id;
             if (confirm(`确定要删除这个历史记录吗？\n${link}`)) {
                 try {
-                    // 从历史记录中移除
-                    appState.linkHistory = appState.linkHistory.filter(item => {
-                        const itemUrl = typeof item === 'string' ? item : item.url;
-                        return itemUrl !== link;
-                    });
+                    // 使用 linkHistoryManager 删除记录
+                    if (id && id !== link) {
+                        // 新格式：使用 id 删除
+                        await linkHistoryManager.removeItem(id);
+                    } else {
+                        // 旧格式：通过 URL 查找并删除
+                        const history = await linkHistoryManager.getHistory();
+                        const itemToRemove = history.find(item => item.url === link);
+                        if (itemToRemove && itemToRemove.id) {
+                            await linkHistoryManager.removeItem(itemToRemove.id);
+                        }
+                    }
                     
-                    // 保存到存储
-                    await saveSettings({ history: appState.linkHistory });
+                    // 更新本地历史状态
+                    appState.linkHistory = await linkHistoryManager.getHistory();
                     
                     // 重新渲染
                     renderHistory();
@@ -2125,7 +2135,7 @@ async function exportHistory() {
 async function handleClearHistory() {
     if (confirm('确定要清空所有历史记录吗？此操作不可恢复。')) {
         try {
-            await clearHistory();
+            await linkHistoryManager.clearHistory();
             appState.linkHistory = [];
             renderHistory();
             showNotification('历史记录已清空');
