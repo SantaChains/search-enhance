@@ -91,9 +91,25 @@ async function toggleGlobalClipboardMonitoring() {
     
     // 通知所有打开的popup和侧边栏
     try {
+        // 先通知所有tab的内容脚本显示通知
+        const tabs = await chrome.tabs.query({ status: 'complete' });
+        for (const tab of tabs) {
+            if (tab.id) {
+                await chrome.tabs.sendMessage(tab.id, {
+                    action: 'clipboardMonitoringToggled',
+                    isActive: isClipboardMonitoring
+                }).catch(() => {
+                    // 忽略错误，可能内容脚本未加载
+                });
+            }
+        }
+        
+        // 再通知所有打开的popup/sidebar更新状态
         await chrome.runtime.sendMessage({
             action: 'clipboardMonitoringToggled',
             isActive: isClipboardMonitoring
+        }).catch(() => {
+            // 忽略错误，可能没有打开的popup或侧边栏
         });
     } catch (error) {
         // 忽略错误，可能没有打开的popup或侧边栏
@@ -268,7 +284,14 @@ chrome.runtime.onMessage.addListener(async (request, sender, sendResponse) => {
             // 处理来自popup或content script的剪贴板变化通知
             // 转发给其他打开的popup和侧边栏
             try {
-                // 保存到存储中，以便新打开的popup访问
+                // 检查内容是否真的变化了
+                if (request.content === lastClipboardContent) {
+                    sendResponse({ success: true, message: '内容未变化，跳过通知' });
+                    return;
+                }
+                
+                // 更新本地存储的最后剪贴板内容
+                lastClipboardContent = request.content;
                 await chrome.storage.local.set({ [STORAGE_KEY_LAST_CLIPBOARD_CONTENT]: request.content });
                 
                 // 转发给其他tab

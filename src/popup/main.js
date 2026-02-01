@@ -285,7 +285,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     switch (request.action) {
         case 'clipboardChanged':
             // 处理剪贴板内容变化
-            if (request.content && request.content.trim().length > 0) {
+            if (request.content && request.content.trim().length > 0 && request.content !== appState.lastClipboardContent) {
+                // 更新本地最后剪贴板内容
+                appState.lastClipboardContent = request.content;
+                
                 // 更新搜索框内容
                 if (elements.search_input) {
                     elements.search_input.value = request.content;
@@ -313,6 +316,20 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             // 处理剪贴板监控状态变化
             appState.clipboardMonitoring = request.isActive;
             updateClipboardButtonState(appState.clipboardMonitoring);
+            
+            // 根据状态更新本地监控逻辑
+            if (appState.clipboardMonitoring) {
+                startClipboardMonitoring().catch(error => {
+                    logger.warn('启动剪贴板监控失败:', error);
+                });
+            } else {
+                stopClipboardMonitoring();
+            }
+            
+            // 更新开关状态
+            if (elements.clipboard_monitor_switch) {
+                elements.clipboard_monitor_switch.checked = appState.clipboardMonitoring;
+            }
             break;
             
         default:
