@@ -633,28 +633,43 @@ export function processLinkGeneration(text) {
     let userRepo = '';
     let originalGithubLink = null;
 
-    // Check for "user/repo" format
-    const shortMatch = text.trim().match(/^([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)$/);
-    if (shortMatch) {
-        userRepo = text.trim();
-        // originalGithubLink is only captured when the original input is a GitHub URL
-    } else {
-        // Check for known URLs
-        try {
-            const url = new URL(text);
-            const hostname = url.hostname.replace('www.', '');
-            if (knownDomains.includes(hostname)) {
-                const pathParts = url.pathname.split('/').filter(Boolean);
-                if (pathParts.length >= 2) {
-                    userRepo = `${pathParts[0]}/${pathParts[1]}`;
-                    // Capture the original link only when the input was a GitHub URL
-                    if (hostname === 'github.com') {
-                        originalGithubLink = text.trim();
-                    }
+    // Check for various formats
+    const trimmedText = text.trim();
+    
+    // 1. Check for URL formats
+    try {
+        const url = new URL(trimmedText);
+        const hostname = url.hostname.replace('www.', '');
+        if (knownDomains.includes(hostname)) {
+            const pathParts = url.pathname.split('/').filter(Boolean);
+            if (pathParts.length >= 2) {
+                userRepo = `${pathParts[0]}/${pathParts[1]}`;
+                // Capture the original link only when the input was a GitHub URL
+                if (hostname === 'github.com') {
+                    originalGithubLink = trimmedText;
                 }
             }
-        } catch (e) {
-            // Not a valid URL, do nothing
+        }
+    } catch (e) {
+        // Not a valid URL, check other formats
+    }
+    
+    // 2. Check for user/repo formats
+    if (!userRepo) {
+        // Match formats like:
+        // - SantaChains/search-enhance
+        // - SantaChains/search-enhance/
+        // - /SantaChains/search-enhance/
+        // - /SantaChains/search-enhance
+        const repoMatch = trimmedText.match(/^\/?([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)\/?$/);
+        if (repoMatch) {
+            userRepo = `${repoMatch[1]}/${repoMatch[2]}`;
+        } else {
+            // 3. Check for repo pattern within text
+            const embeddedMatch = trimmedText.match(/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)/);
+            if (embeddedMatch) {
+                userRepo = `${embeddedMatch[1]}/${embeddedMatch[2]}`;
+            }
         }
     }
 
@@ -858,6 +873,30 @@ export async function copyToClipboard(text) {
     } else {
         return copyToClipboardLegacy(text);
     }
+}
+
+/**
+ * 提取文本中的邮箱地址
+ * @param {string} text 输入文本
+ * @returns {Array} 提取的邮箱地址数组
+ */
+export function extractEmails(text) {
+    if (!text || !text.trim()) return [];
+    
+    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
+    return [...new Set(text.match(emailRegex) || [])];
+}
+
+/**
+ * 提取文本中的手机号码
+ * @param {string} text 输入文本
+ * @returns {Array} 提取的手机号码数组
+ */
+export function extractPhoneNumbers(text) {
+    if (!text || !text.trim()) return [];
+    
+    const phoneRegex = /(?:\+86[\s-]?)?(?:1[3-9]\d{9}|0\d{2,3}[\s-]?\d{7,8})/g;
+    return [...new Set(text.match(phoneRegex) || [])];
 }
 
 /**
