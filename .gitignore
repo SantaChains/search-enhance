@@ -4,3 +4,6 @@ build/
 dist/
 .env
 .history/
+.cursor/
+.superdesign/
+.vscode
