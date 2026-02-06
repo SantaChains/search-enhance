@@ -4,7 +4,169 @@
  * Enhanced Text Processing Utilities
  * Provides comprehensive text analysis and processing capabilities
  * 包含中文分词、剪贴板操作和文本分析功能
+ * 
+ * 性能优化版本：
+ * - 词典和正则表达式提取为模块级常量
+ * - 预编译正则表达式避免重复创建
+ * - 优化字符串操作减少中间对象创建
+ * - 添加浏览器API兼容性检查
  */
+
+// ============================================================================
+// 模块级常量定义（预编译，避免重复创建）
+// ============================================================================
+
+const COMMON_WORDS = new Set([
+    '中文', '分词', '算法', '轻量级', '正向', '最大', '匹配', '文本', '处理', 
+    '浏览器', '扩展', '功能', '工具', '智能', '搜索', '体验', '用户', '开发',
+    '项目', '环境', '规则', '词典', '集成', '实现', '更新', '功能', '代码',
+    
+    '字符', '数组', '函数', '方法', '返回', '结果', '参数', '长度', '循环',
+    '判断', '处理', '过滤', '空格', '标点', '符号', '分割', '提取', '转换',
+    '类型', '检测', '识别', '内容', '句子', '词语', '语言', '混合', '智能',
+    '列表', '项目', '代码', '命名', '包裹', '路径', '链接', '仓库', '检测',
+    '分析', '分类', '规则', '说明', '可用', '选择', '适合', '场景', '基础',
+    
+    '语义', '单元', '序号', '标记', '引号', '括号', '书名号', '空格', '换行',
+    '单词', '多行', '片段', '功能', '接口', 'UI', '统一', '路径', '转换',
+    '链接', '提取', '仓库', '生成', '邮箱', '电话', 'IP', '地址', '转换',
+    
+    '的', '了', '是', '在', '有', '和', '与', '或', '但', '而', '且', '然后', '因为', '所以',
+    '可以', '可能', '应该', '需要', '必须', '如何', '什么', '为什么', '哪里', '时候',
+    '方法', '步骤', '流程', '过程', '结果', '效果', '影响', '意义', '价值', '作用',
+    '系统', '平台', '框架', '库', '工具', '应用', '程序', '软件', '硬件', '网络',
+    '数据', '信息', '知识', '内容', '资源', '服务', '产品', '解决方案', '技术', '方案',
+    
+    'JavaScript', 'TypeScript', 'HTML', 'CSS', 'React', 'Vue', 'Angular', 'Node.js',
+    'API', 'HTTP', 'HTTPS', 'URL', 'JSON', 'XML', 'DOM', 'BOM', 'AJAX', 'REST',
+    '算法', '数据结构', '数据库', '缓存', '性能', '优化', '安全', '加密', '解密',
+    '前端', '后端', '全栈', '开发', '测试', '部署', '维护', '版本', '控制', 'Git'
+]);
+
+const SIMPLE_COMMON_WORDS = new Set([
+    '中文', '分词', '算法', '轻量级', '正向', '最大', '匹配', '文本', '处理', 
+    '浏览器', '扩展', '功能', '工具', '智能', '搜索', '体验', '用户', '开发',
+    '项目', '环境', '规则', '词典', '集成', '实现', '更新', '功能', '代码'
+]);
+
+const MEANINGLESS_CHARS = new Set(['的', '了', '是', '在', '有', '和', '与', '或', '但', '而', '且', '然后', '因为', '所以']);
+
+const PROTECTED_PHRASES = [
+    '北京大学', '清华大学', '中国科学院', 'HTTP', 'HTTPS', 'API', 'URL', 'JSON', 'XML',
+    'JavaScript', 'TypeScript', 'GitHub', 'Google', 'Microsoft', 'Apple'
+];
+
+const KNOWN_DOMAINS = ['github.com', 'zread.ai', 'deepwiki.com', 'context7.com'];
+
+const LINK_TEMPLATES = {
+    github: 'https://github.com/{user_repo}',
+    zread: 'https://zread.ai/{user_repo}',
+    deepwiki: 'https://deepwiki.com/{user_repo}',
+    context7: 'https://context7.com/{user_repo}',
+};
+
+// ============================================================================
+// 预编译正则表达式
+// ============================================================================
+
+const REGEX_PATTERNS = {
+    url: {
+        extraction: /(?:https?:\/\/|www\.)[^\s<>""']+/gi,
+        comprehensive: /(https?:\/\/[^\s<>"{}|\\^`\[\]]+|www\.[^\s<>"{}|\\^`\[\]]+)/gi,
+    },
+    chineseChar: /[\u4e00-\u9fa5]/g,
+    chinesePunctuation: /[，；：？！]/g,
+    chinesePeriod: /。/g,
+    squareBrackets: /\[[^\]]*\]/g,
+    nonEnglishClean: /[^a-zA-Z0-9\s.]/g,
+    whitespace: /\s+/g,
+    listDetection: /^[\s]*(?:\d+[.)]\s*|[一二三四五六七八九十]+[、.]\s*|[①②③④⑤⑥⑦⑧⑨⑩]\s*|[-*•·]\s*)/m,
+    codeNaming: /[a-zA-Z_$][a-zA-Z0-9_$]*[A-Z][a-zA-Z0-9_$]*|[a-zA-Z_$][a-zA-Z0-9_$]*_[a-zA-Z0-9_$]+|[a-zA-Z_$][a-zA-Z0-9_$]*-[a-zA-Z0-9_$]+/,
+    wrappedContent: /["'"（）()【】《》<>「」『』]/g,
+    englishSentence: /[^.!?]+[.!?]?/g,
+    commaSplit: /,\s+/g,
+    chineseSentence: /[。！？；]/g,
+    chineseComma: /[，、]/g,
+    mixedLanguage: /[\u4e00-\u9fa5，。！？；：""''（）【】《》]+|[a-zA-Z0-9\s,.!?;:()"'<>\[\]{}]+/g,
+    camelCase: /[a-z][A-Z]/g,
+    uppercaseSequence: /^[A-Z]{2,}/,
+    uppercaseSplit: /^([A-Z]+)([A-Z][a-z].*)$/,
+    functionCall: /\w+\([^)]*\)/,
+    lines: /\r?\n/,
+    listPatterns: [
+        /^\d+[.)]\s*(.+)$/,
+        /^[一二三四五六七八九十]+[、.]\s*(.+)$/,
+        /^[①②③④⑤⑥⑦⑧⑨⑩]\s*(.+)$/,
+        /^[a-zA-Z][.)]\s*(.+)$/,
+        /^[-*•·]\s*(.+)$/,
+        /^[▪▫◦‣⁃]\s*(.+)$/
+    ],
+    punctuation: /[,.!?;:，。！？；：、]/g,
+    pathWithQuotes: /^"([a-zA-Z]:\\[^"<>|?*]*)"$/,
+    pathWithoutQuotes: /^([a-zA-Z]:\\[^"<>|?*]*)$/,
+    repoPattern: /^\/?([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)\/?$/,
+    embeddedRepo: /(?:https?:\/\/[^\/]+\/|^\/?)\s*([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)/,
+    pathRegex: /(?:[a-zA-Z]:[\\/]|[\\/])[^<>"*?|]+|~\/[^<>"*?|]+/g,
+    emailRegex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+    phoneRegex: /(?:\+86[-\s]?)?(?:1[3-9]\d{9}|0\d{2,3}[-\s]?\d{7,8})/g,
+    repoRegex: /(?:^|\s)([a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+)(?:\s|$)/g,
+    ipRegex: /(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/g,
+    dateRegex: /\d{4}[-\/]\d{1,2}[-\/]\d{1,2}|\d{1,2}[-\/]\d{1,2}[-\/]\d{4}|\d{4}年\d{1,2}月\d{1,2}日/g,
+    numberRegex: /\d+(?:\.\d+)?%?/g,
+    chineseTextRegex: /[\u4e00-\u9fa5]+(?:[\u4e00-\u9fa5\s，。！？；：""''（）【】《》]*[\u4e00-\u9fa5])?/g,
+    englishRegex: /[a-zA-Z]+(?:[a-zA-Z\s'-]*[a-zA-Z])?/g,
+    shortWordFilter: /^[的了是在有和与或但而且然后因为所以a-zA-Z]$/,
+    emptyFilter: /^\s*$/,
+};
+
+const WRAPPERS = [
+    { open: '"', close: '"' },
+    { open: "'", close: "'" },
+    { open: '（', close: '）' },
+    { open: '(', close: ')' },
+    { open: '【', close: '】' },
+    { open: '[', close: ']' },
+    { open: '《', close: '》' },
+    { open: '<', close: '>' },
+    { open: '「', close: '」' },
+    { open: '『', close: '』' }
+];
+
+/**
+ * 检查剪贴板API是否可用
+ * @returns {boolean}
+ */
+function isClipboardAPIAvailable() {
+    return !!(navigator.clipboard && navigator.clipboard.writeText && navigator.clipboard.readText);
+}
+
+/**
+ * 安全地创建正则表达式
+ * @param {string} pattern 正则表达式字符串
+ * @param {string} flags 标志
+ * @returns {RegExp|null}
+ */
+function safeCreateRegex(pattern, flags = 'g') {
+    try {
+        return new RegExp(pattern, flags);
+    } catch (e) {
+        console.error('正则表达式创建失败:', pattern, e);
+        return null;
+    }
+}
+
+/**
+ * 安全转义URL中的正则特殊字符
+ * @param {string} url URL字符串
+ * @returns {string}
+ */
+function escapeUrlForRegex(url) {
+    return url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ============================================================================
+// 公共API
+// ============================================================================
 
 /**
  * Checks if a string is a valid URL.
@@ -33,54 +195,45 @@ export function processTextExtraction(text) {
 
     if (!text || !text.trim()) return results;
 
-    // 1. Extract links first - Enhanced URL detection
-    const urlRegex = /https?:\/\/(?:[-\w.])+(?::[0-9]+)?(?:\/(?:[\w\/_.])*(?:\?(?:[\w&=%.])*)?(?:#(?:[\w.])*)?)?/gi;
-    let potentialLinks = text.match(urlRegex) || [];
+    const trimmedText = text.trim();
+    const urlRegex = REGEX_PATTERNS.url.extraction;
     
-    // Post-process to validate URLs more strictly
-    results.extractedLinks = [...new Set(potentialLinks.filter(url => {
+    let potentialLinks = trimmedText.match(urlRegex) || [];
+    
+    const seenUrls = new Set();
+    results.extractedLinks = potentialLinks.filter(url => {
+        if (seenUrls.has(url)) return false;
+        
         try {
-            // Validate URL format
             const testUrl = url.startsWith('http') ? url : `http://${url}`;
             new URL(testUrl);
+            seenUrls.add(url);
             return true;
         } catch (_) {
             return false;
         }
-    }))];
+    });
     
-    // 2. Clean the text for English-focused processing
-    let cleaned = text;
+    let cleaned = trimmedText;
     
-    // Remove links that were found to avoid processing them as text
     if (results.extractedLinks.length > 0) {
-        results.extractedLinks.forEach(url => {
-            // Escape special regex characters in the URL before replacing
-            const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            cleaned = cleaned.replace(new RegExp(escapedUrl, 'gi'), ' ');
-        });
+        const urlSet = new Set(results.extractedLinks);
+        cleaned = cleaned.replace(new RegExp(
+            [...urlSet].map(escapeUrlForRegex).join('|'), 
+            'gi'
+        ), ' ');
     }
     
-    // Remove Chinese characters (as per original requirement for Switch 1)
-    // U+4e00-U+9fa5 covers common CJK characters.
-    cleaned = cleaned.replace(/[\u4e00-\u9fa5]/g, '');
-    
-    // Remove specific Chinese punctuation (based on user example)
-    // Keep only 。 (U+3002) as specified. Other common ones: ， (U+FF0C), ； (U+FF1B), ： (U+FF1A), ？ (U+FF1F), ！ (U+FF01)
-    cleaned = cleaned.replace(/[，；：？！]/g, '');
-    
-    // Replace Chinese period with English period
-    cleaned = cleaned.replace(/。/g, '.');
-    
-    // Remove content within square brackets and the brackets themselves
-    cleaned = cleaned.replace(/\[[^\]]*\]/g, '');
-    
-    // Remove all non-English letters, non-digits, non-spaces, non-periods
-    // This aggressive cleaning is for the specific use case of this tool (Switch 1).
-    cleaned = cleaned.replace(/[^a-zA-Z0-9\s.]/g, ' ');
-    
-    // Trim whitespace and normalize internal spaces (replace multiple spaces with single space)
-    results.cleanedText = cleaned.trim().replace(/\s+/g, ' ');
+    cleaned = cleaned.replace(REGEX_PATTERNS.chineseChar, '');
+    cleaned = cleaned.replace(REGEX_PATTERNS.chinesePunctuation, '');
+    cleaned = cleaned.replace(REGEX_PATTERNS.chinesePeriod, '.');
+    cleaned = cleaned.replace(REGEX_PATTERNS.squareBrackets, '');
+    cleaned = cleaned.replace(REGEX_PATTERNS.nonEnglishClean, ' ');
+    cleaned = REGEX_PATTERNS.whitespace.test(cleaned) 
+        ? cleaned.trim().replace(REGEX_PATTERNS.whitespace, ' ')
+        : cleaned.trim();
+
+    results.cleanedText = cleaned;
 
     return results;
 }
@@ -94,11 +247,9 @@ export function processTextExtraction(text) {
 export function splitText(text, delimiter = 'en-sentence') {
     if (!text || !text.trim()) return [];
     
-    // 支持多规则同时应用
     const delimiters = Array.isArray(delimiter) ? delimiter : [delimiter];
     let results = [text.trim()];
     
-    // 按优先级依次应用分隔规则
     for (const rule of delimiters) {
         const newResults = [];
         for (const segment of results) {
@@ -107,7 +258,6 @@ export function splitText(text, delimiter = 'en-sentence') {
         results = newResults;
     }
     
-    // 后处理：去重、过滤、长度校准
     return postProcessSplitResults(results);
 }
 
@@ -158,24 +308,22 @@ function applySingleSplitRule(text, rule) {
  * @returns {string} 内容类型
  */
 function detectContentType(text) {
-    // 1. 检测列表类内容
-    if (/^[\s]*(?:\d+[.)]\s*|[一二三四五六七八九十]+[、.]\s*|[①②③④⑤⑥⑦⑧⑨⑩]\s*|[-*•·]\s*)/m.test(text)) {
+    if (REGEX_PATTERNS.listDetection.test(text)) {
         return 'list';
     }
     
-    // 2. 检测代码/函数名
-    if (/[a-zA-Z_$][a-zA-Z0-9_$]*[A-Z][a-zA-Z0-9_$]*|[a-zA-Z_$][a-zA-Z0-9_$]*_[a-zA-Z0-9_$]+|[a-zA-Z_$][a-zA-Z0-9_$]*-[a-zA-Z0-9_$]+/.test(text)) {
+    if (REGEX_PATTERNS.codeNaming.test(text)) {
         return 'code';
     }
     
-    // 3. 检测包裹类标点
-    if (/["""''（）()【】《》<>「」『』]/g.test(text)) {
+    if (REGEX_PATTERNS.wrappedContent.test(text)) {
         return 'wrapped';
     }
     
-    // 4. 检测中英文混合
-    const chineseCount = (text.match(/[\u4e00-\u9fa5]/g) || []).length;
-    const englishCount = (text.match(/[a-zA-Z]/g) || []).length;
+    const chineseChars = text.match(REGEX_PATTERNS.chineseChar) || [];
+    const englishChars = text.match(/[a-zA-Z]/g) || [];
+    const chineseCount = chineseChars.length;
+    const englishCount = englishChars.length;
     
     if (chineseCount > 0 && englishCount > 0) {
         return 'mixed';
@@ -219,17 +367,15 @@ function autoSplit(text, contentType) {
  * @returns {Array} 句子数组
  */
 function splitEnglishSentences(text) {
-    // 先按句号、感叹号、问号拆分
-    const sentences = text.match(/[^.!?]+[.!?]?/g) || [];
+    const sentences = text.match(REGEX_PATTERNS.englishSentence) || [];
     const results = [];
     
     for (let sentence of sentences) {
         sentence = sentence.trim();
         if (!sentence) continue;
         
-        // 如果句子过长，按逗号进一步拆分
         if (sentence.length > 100) {
-            const parts = sentence.split(/,\s+/).filter(Boolean);
+            const parts = sentence.split(REGEX_PATTERNS.commaSplit).filter(Boolean);
             results.push(...parts);
         } else {
             results.push(sentence);
@@ -250,63 +396,19 @@ function splitEnglishSentences(text) {
 export function chineseWordSegmentation(text, maxWordLength = 5, options = { useEnhancedDict: true }) {
     if (!text || !text.trim()) return [];
     
-    // 根据选项选择词典
-    let commonWords;
-    if (options.useEnhancedDict !== false) {
-        // 增强的常用词词典
-        commonWords = new Set([
-            // 基础词汇
-            '中文', '分词', '算法', '轻量级', '正向', '最大', '匹配', '文本', '处理', 
-            '浏览器', '扩展', '功能', '工具', '智能', '搜索', '体验', '用户', '开发',
-            '项目', '环境', '规则', '词典', '集成', '实现', '更新', '功能', '代码',
-            
-            // 技术词汇
-            '字符', '数组', '函数', '方法', '返回', '结果', '参数', '长度', '循环',
-            '判断', '处理', '过滤', '空格', '标点', '符号', '分割', '提取', '转换',
-            '类型', '检测', '识别', '内容', '句子', '词语', '语言', '混合', '智能',
-            '列表', '项目', '代码', '命名', '包裹', '路径', '链接', '仓库', '检测',
-            '分析', '分类', '规则', '说明', '可用', '选择', '适合', '场景', '基础',
-            
-            // 语义词汇
-            '语义', '单元', '序号', '标记', '引号', '括号', '书名号', '空格', '换行',
-            '单词', '多行', '片段', '功能', '接口', 'UI', '统一', '路径', '转换',
-            '链接', '提取', '仓库', '生成', '邮箱', '电话', 'IP', '地址', '转换',
-            
-            // 常用词汇
-            '的', '了', '是', '在', '有', '和', '与', '或', '但', '而', '且', '然后', '因为', '所以',
-            '可以', '可能', '应该', '需要', '必须', '如何', '什么', '为什么', '哪里', '时候',
-            '方法', '步骤', '流程', '过程', '结果', '效果', '影响', '意义', '价值', '作用',
-            '系统', '平台', '框架', '库', '工具', '应用', '程序', '软件', '硬件', '网络',
-            '数据', '信息', '知识', '内容', '资源', '服务', '产品', '解决方案', '技术', '方案',
-            
-            // 专业词汇
-            'JavaScript', 'TypeScript', 'HTML', 'CSS', 'React', 'Vue', 'Angular', 'Node.js',
-            'API', 'HTTP', 'HTTPS', 'URL', 'JSON', 'XML', 'DOM', 'BOM', 'AJAX', 'REST',
-            '算法', '数据结构', '数据库', '缓存', '性能', '优化', '安全', '加密', '解密',
-            '前端', '后端', '全栈', '开发', '测试', '部署', '维护', '版本', '控制', 'Git'
-        ]);
-    } else {
-        // 简化的常用词词典
-        commonWords = new Set([
-            '中文', '分词', '算法', '轻量级', '正向', '最大', '匹配', '文本', '处理', 
-            '浏览器', '扩展', '功能', '工具', '智能', '搜索', '体验', '用户', '开发',
-            '项目', '环境', '规则', '词典', '集成', '实现', '更新', '功能', '代码'
-        ]);
-    }
-    
+    const commonWords = options.useEnhancedDict !== false ? COMMON_WORDS : SIMPLE_COMMON_WORDS;
     const textToProcess = text.trim();
     const result = [];
     let index = 0;
+    const length = textToProcess.length;
     
-    while (index < textToProcess.length) {
+    while (index < length) {
         let matched = false;
-        let currentWordLength = Math.min(maxWordLength, textToProcess.length - index);
+        let currentWordLength = Math.min(maxWordLength, length - index);
         
-        // 正向最大匹配
         while (currentWordLength > 0) {
             const word = textToProcess.substring(index, index + currentWordLength);
             
-            // 检查是否为常用词或单字符
             if (commonWords.has(word) || currentWordLength === 1) {
                 result.push(word);
                 index += currentWordLength;
@@ -317,13 +419,11 @@ export function chineseWordSegmentation(text, maxWordLength = 5, options = { use
             currentWordLength--;
         }
         
-        // 防止死循环
         if (!matched) {
             index++;
         }
     }
     
-    // 后处理：过滤无意义的单字符和虚词
     return postProcessSegmentationResult(result);
 }
 
@@ -335,26 +435,19 @@ export function chineseWordSegmentation(text, maxWordLength = 5, options = { use
 function postProcessSegmentationResult(segmentationResult) {
     if (!segmentationResult || segmentationResult.length === 0) return [];
     
-    // 无意义单字符列表
-    const meaninglessChars = new Set(['的', '了', '是', '在', '有', '和', '与', '或', '但', '而', '且', '然后', '因为', '所以']);
-    
-    // 过滤无意义的单字符和虚词
     const filtered = segmentationResult.filter(word => {
-        // 保留长度大于1的词
         if (word.length > 1) return true;
-        // 过滤无意义的单字符
-        return !meaninglessChars.has(word);
+        return !MEANINGLESS_CHARS.has(word);
     });
     
-    // 合并相邻的单字符（如果它们组合起来有意义）
     const merged = [];
     let i = 0;
+    const len = filtered.length;
     
-    while (i < filtered.length) {
+    while (i < len) {
         const current = filtered[i];
         
-        // 如果当前是单字符，尝试与下一个单字符合并
-        if (current.length === 1 && i < filtered.length - 1 && filtered[i + 1].length === 1) {
+        if (current.length === 1 && i < len - 1 && filtered[i + 1].length === 1) {
             const combined = current + filtered[i + 1];
             merged.push(combined);
             i += 2;
@@ -377,16 +470,13 @@ export function intelligentSegmentation(text, options = {}) {
     if (!text || !text.trim()) return [];
     
     const trimmedText = text.trim();
+    const length = trimmedText.length;
     
-    // 根据文本长度选择分词策略
-    if (trimmedText.length < 10) {
-        // 短文本使用简单分词
+    if (length < 10) {
         return chineseWordSegmentation(trimmedText, 3, { useEnhancedDict: false });
-    } else if (trimmedText.length < 100) {
-        // 中等长度文本使用标准分词
+    } else if (length < 100) {
         return chineseWordSegmentation(trimmedText, 4);
     } else {
-        // 长文本使用增强分词
         return chineseWordSegmentation(trimmedText, 5);
     }
 }
@@ -397,20 +487,17 @@ export function intelligentSegmentation(text, options = {}) {
  * @returns {Array} 句子数组
  */
 function splitChineseSentences(text) {
-    // 按中文句号、感叹号、问号、分号拆分
-    const sentences = text.split(/[。！？；]/).filter(Boolean);
+    const sentences = text.split(REGEX_PATTERNS.chineseSentence).filter(Boolean);
     const results = [];
     
     for (let sentence of sentences) {
         sentence = sentence.trim();
         if (!sentence) continue;
         
-        // 如果句子过长，按逗号、顿号进一步拆分
         if (sentence.length > 50) {
-            const parts = sentence.split(/[，、]/).filter(part => {
+            const parts = sentence.split(REGEX_PATTERNS.chineseComma).filter(part => {
                 const trimmed = part.trim();
-                // 过滤掉过短的虚词
-                return trimmed.length > 1 && !/^[的了是在有和与或但而且然后因为所以]$/.test(trimmed);
+                return trimmed.length > 1 && !REGEX_PATTERNS.shortWordFilter.test(trimmed);
             });
             results.push(...parts);
         } else {
@@ -429,18 +516,16 @@ function splitChineseSentences(text) {
 function splitMixedLanguageSentences(text) {
     const results = [];
     
-    // 按语言边界拆分
-    const segments = text.match(/[\u4e00-\u9fa5，。！？；：""''（）【】《》]+|[a-zA-Z0-9\s,.!?;:()"'<>\[\]{}]+/g) || [];
+    const segments = text.match(REGEX_PATTERNS.mixedLanguage) || [];
     
     for (let segment of segments) {
         segment = segment.trim();
         if (!segment) continue;
         
-        // 判断是中文还是英文主导
-        const chineseCount = (segment.match(/[\u4e00-\u9fa5]/g) || []).length;
-        const englishCount = (segment.match(/[a-zA-Z]/g) || []).length;
+        const chineseChars = segment.match(REGEX_PATTERNS.chineseChar) || [];
+        const englishChars = segment.match(/[a-zA-Z]/g) || [];
         
-        if (chineseCount > englishCount) {
+        if (chineseChars.length > englishChars.length) {
             results.push(...splitChineseSentences(segment));
         } else {
             results.push(...splitEnglishSentences(segment));
@@ -458,21 +543,18 @@ function splitMixedLanguageSentences(text) {
 function splitCodeNaming(text) {
     const results = [];
     
-    // 按空格和换行先拆分
     const tokens = text.split(/\s+/).filter(Boolean);
     
     for (const token of tokens) {
-        // 检测驼峰命名法 (camelCase, PascalCase)
-        if (/[a-z][A-Z]/.test(token)) {
+        if (REGEX_PATTERNS.camelCase.test(token)) {
             const parts = token.split(/(?=[A-Z])/).filter(Boolean);
-            // 处理连续大写字母的情况 (如 HTTPRequest -> HTTP, Request)
             const processed = [];
             for (let part of parts) {
-                if (/^[A-Z]{2,}/.test(part) && part.length > 2) {
-                    const match = part.match(/^([A-Z]+)([A-Z][a-z].*)$/);
+                if (REGEX_PATTERNS.uppercaseSequence.test(part) && part.length > 2) {
+                    const match = part.match(REGEX_PATTERNS.uppercaseSplit);
                     if (match) {
-                        processed.push(match[1].slice(0, -1)); // 前面的大写字母
-                        processed.push(match[1].slice(-1) + match[2]); // 最后一个大写字母+后续
+                        processed.push(match[1].slice(0, -1));
+                        processed.push(match[1].slice(-1) + match[2]);
                     } else {
                         processed.push(part);
                     }
@@ -482,19 +564,16 @@ function splitCodeNaming(text) {
             }
             results.push(...processed);
         }
-        // 检测蛇形命名法 (snake_case)
         else if (token.includes('_')) {
             results.push(...token.split('_').filter(Boolean));
         }
-        // 检测串式命名法 (kebab-case)
         else if (token.includes('-')) {
             results.push(...token.split('-').filter(Boolean));
         }
-        // 处理带括号的函数名
-        else if (/\w+\([^)]*\)/.test(token)) {
+        else if (REGEX_PATTERNS.functionCall.test(token)) {
             const match = token.match(/(\w+)\(([^)]*)\)/);
             if (match) {
-                results.push(match[1]); // 函数名
+                results.push(match[1]);
                 if (match[2].trim()) {
                     results.push(...match[2].split(',').map(p => p.trim()).filter(Boolean));
                 }
@@ -516,25 +595,14 @@ function splitCodeNaming(text) {
 function splitListItems(text) {
     const results = [];
     
-    // 按行拆分
-    const lines = text.split(/\r?\n/).filter(Boolean);
+    const lines = text.split(REGEX_PATTERNS.lines).filter(Boolean);
     
     for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed) continue;
         
-        // 匹配各种列表标记
-        const patterns = [
-            /^\d+[.)]\s*(.+)$/,           // 1. 或 1) 
-            /^[一二三四五六七八九十]+[、.]\s*(.+)$/,  // 一、
-            /^[①②③④⑤⑥⑦⑧⑨⑩]\s*(.+)$/,        // ①
-            /^[a-zA-Z][.)]\s*(.+)$/,      // a. 或 a)
-            /^[-*•·]\s*(.+)$/,            // - * • ·
-            /^[▪▫◦‣⁃]\s*(.+)$/           // 其他符号
-        ];
-        
         let matched = false;
-        for (const pattern of patterns) {
+        for (const pattern of REGEX_PATTERNS.listPatterns) {
             const match = trimmed.match(pattern);
             if (match) {
                 results.push(match[1].trim());
@@ -543,7 +611,6 @@ function splitListItems(text) {
             }
         }
         
-        // 如果没有匹配到列表标记，直接添加
         if (!matched) {
             results.push(trimmed);
         }
@@ -559,41 +626,24 @@ function splitListItems(text) {
  */
 function splitWrappedContent(text) {
     const results = [];
-    
-    // 定义包裹符号对
-    const wrappers = [
-        { open: '"', close: '"' },
-        { open: "'", close: "'" },
-        { open: '（', close: '）' },
-        { open: '(', close: ')' },
-        { open: '【', close: '】' },
-        { open: '[', close: ']' },
-        { open: '《', close: '》' },
-        { open: '<', close: '>' },
-        { open: '「', close: '」' },
-        { open: '『', close: '』' }
-    ];
-    
     let remaining = text;
     
-    for (const wrapper of wrappers) {
-        const regex = new RegExp(`\\${wrapper.open}([^\\${wrapper.close}]*)\\${wrapper.close}`, 'g');
-        let match;
+    for (const wrapper of WRAPPERS) {
+        const regex = safeCreateRegex(`\\${wrapper.open}([^\\${wrapper.close}]*)\\${wrapper.close}`);
+        if (!regex) continue;
         
+        let match;
         while ((match = regex.exec(remaining)) !== null) {
             const content = match[1].trim();
             if (content) {
                 results.push(content);
             }
-            // 移除已处理的部分
             remaining = remaining.replace(match[0], ' ');
         }
     }
     
-    // 处理剩余的非包裹内容
     const leftover = remaining.trim();
     if (leftover) {
-        // 按标点符号拆分剩余内容
         results.push(...splitByPunctuation(leftover));
     }
     
@@ -606,8 +656,7 @@ function splitWrappedContent(text) {
  * @returns {Array} 拆分结果
  */
 function splitByPunctuation(text) {
-    // 中英文标点符号
-    return text.split(/[,.!?;:，。！？；：、]/)
+    return text.split(REGEX_PATTERNS.punctuation)
                .map(part => part.trim())
                .filter(Boolean);
 }
@@ -620,23 +669,20 @@ function splitByPunctuation(text) {
 function postProcessSplitResults(results) {
     if (!results || results.length === 0) return [];
     
-    // 1. 去重
     const uniqueResults = [...new Set(results.map(item => item.trim()))].filter(Boolean);
     
-    // 2. 长度校准 - 合并过短的片段
     const processed = [];
     let i = 0;
+    const len = uniqueResults.length;
     
-    while (i < uniqueResults.length) {
+    while (i < len) {
         let current = uniqueResults[i];
         
-        // 如果当前项过短（1-2个字符），尝试与相邻项合并
-        if (current.length <= 2 && i < uniqueResults.length - 1) {
+        if (current.length <= 2 && i < len - 1) {
             const next = uniqueResults[i + 1];
-            // 检查是否为无意义的虚词或单字符
-            if (/^[的了是在有和与或但而且然后因为所以a-zA-Z]$/.test(current)) {
+            if (REGEX_PATTERNS.shortWordFilter.test(current)) {
                 current = current + next;
-                i += 2; // 跳过下一项
+                i += 2;
             } else {
                 processed.push(current);
                 i++;
@@ -647,14 +693,7 @@ function postProcessSplitResults(results) {
         }
     }
     
-    // 3. 语义补全 - 保护固定搭配
-    const protectedPhrases = [
-        '北京大学', '清华大学', '中国科学院', 'HTTP', 'HTTPS', 'API', 'URL', 'JSON', 'XML',
-        'JavaScript', 'TypeScript', 'GitHub', 'Google', 'Microsoft', 'Apple'
-    ];
-    
     return processed.filter(item => {
-        // 保留长度合适的项目
         return item.length >= 1 && item.length <= 200;
     });
 }
@@ -669,14 +708,8 @@ export function processPath(path) {
     
     const input = path.trim();
     
-    // Strictly check for Windows path format, distinguishes between quoted and unquoted
-    // Matches paths like: D:\Users\Jliu Pureey\Downloads\gitmine\Edge-Homepage\README.md
-    // And quoted paths like: "C:\Program Files\Microsoft Office\Office16\WINWORD.EXE"
-    
-    // Check for path with quotes
-    const matchWithQuotes = input.match(/^"([a-zA-Z]:\\[^"<>|?*]*)"$/);
-    // Check for path without quotes 
-    const matchWithoutQuotes = input.match(/^([a-zA-Z]:\\[^"<>|?*]*)$/);
+    const matchWithQuotes = input.match(REGEX_PATTERNS.pathWithQuotes);
+    const matchWithoutQuotes = input.match(REGEX_PATTERNS.pathWithoutQuotes);
     
     let cleanPath = null;
     if (matchWithQuotes) {
@@ -684,20 +717,13 @@ export function processPath(path) {
     } else if (matchWithoutQuotes) {
         cleanPath = matchWithoutQuotes[1];
     } else {
-        return null; // Not a valid Windows path format
+        return null;
     }
 
-    // 1. Original clean path
     const originalPath = cleanPath;
-    
-    // 2. Unix-style file URL
     const unixPath = cleanPath.replace(/\\/g, '/');
     const fileUrlUnix = 'file:///' + unixPath;
-    
-    // 3. Double backslash escaped
     const escapedPath = cleanPath.replace(/\\/g, '\\\\'); 
-    
-    // 4. Alternative file URL format (encoded)
     const fileUrlAlt = 'file:///' + encodeURI(unixPath);
 
     return [
@@ -716,51 +742,36 @@ export function processPath(path) {
 export function processLinkGeneration(text) {
     if (!text || !text.trim()) return null;
     
-    const knownDomains = ['github.com', 'zread.ai', 'deepwiki.com', 'context7.com'];
-    const templates = {
-        github: 'https://github.com/{user_repo}',
-        zread: 'https://zread.ai/{user_repo}',
-        deepwiki: 'https://deepwiki.com/{user_repo}',
-        context7: 'https://context7.com/{user_repo}',
-    };
-
     let userRepo = '';
     let originalGithubLink = null;
-
-    // Check for various formats
     const trimmedText = text.trim();
     
-    // 1. Check for URL formats
     try {
         const url = new URL(trimmedText);
         const hostname = url.hostname.replace('www.', '');
-        if (knownDomains.includes(hostname)) {
+        if (KNOWN_DOMAINS.includes(hostname)) {
             const pathParts = url.pathname.split('/').filter(Boolean);
             if (pathParts.length >= 2) {
-                userRepo = `${pathParts[0]}/${pathParts[1]}`;
-                // Capture the original link only when the input was a GitHub URL
+                let repoName = pathParts[1];
+                if (repoName.endsWith('.git')) {
+                    repoName = repoName.slice(0, -4);
+                }
+                userRepo = `${pathParts[0]}/${repoName}`;
                 if (hostname === 'github.com') {
                     originalGithubLink = trimmedText;
                 }
             }
         }
     } catch (e) {
-        // Not a valid URL, check other formats
+        // Not a valid URL
     }
     
-    // 2. Check for user/repo formats
     if (!userRepo) {
-        // Match formats like:
-        // - SantaChains/search-enhance
-        // - SantaChains/search-enhance/
-        // - /SantaChains/search-enhance/
-        // - /SantaChains/search-enhance
-        const repoMatch = trimmedText.match(/^\/?([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)\/?$/);
+        const repoMatch = trimmedText.match(REGEX_PATTERNS.repoPattern);
         if (repoMatch) {
             userRepo = `${repoMatch[1]}/${repoMatch[2]}`;
         } else {
-            // 3. Check for repo pattern within text
-            const embeddedMatch = trimmedText.match(/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_.-]+)/);
+            const embeddedMatch = trimmedText.match(REGEX_PATTERNS.embeddedRepo);
             if (embeddedMatch) {
                 userRepo = `${embeddedMatch[1]}/${embeddedMatch[2]}`;
             }
@@ -768,7 +779,7 @@ export function processLinkGeneration(text) {
     }
 
     if (userRepo) {
-        const generatedLinks = Object.values(templates).map(template => 
+        const generatedLinks = Object.values(LINK_TEMPLATES).map(template => 
             template.replace('{user_repo}', userRepo)
         );
         return {
@@ -801,52 +812,33 @@ export function processMultiFormat(text) {
 
     if (!text || !text.trim()) return results;
 
-    // URL检测 (更全面的正则)
-    const urlRegex = /(https?:\/\/[^\s<>"{}|\\^`\[\]]+|www\.[^\s<>"{}|\\^`\[\]]+)/gi;
+    if (text.length > 5000) {
+        console.warn('文本长度超过5000字符，仅进行基本格式检测以避免性能问题');
+        return results;
+    }
+
+    const urlRegex = REGEX_PATTERNS.url.comprehensive;
     results.urls = [...new Set((text.match(urlRegex) || []).map(url => 
         url.startsWith('www.') ? 'http://' + url : url
     ))];
 
-    // 路径检测 (Windows和Unix路径)
-    const pathRegex = /(?:[a-zA-Z]:[\\/]|[\\/])[^<>"*?|]+|~\/[^<>"*?|]+/g;
-    results.paths = [...new Set(text.match(pathRegex) || [])];
+    results.paths = [...new Set(text.match(REGEX_PATTERNS.pathRegex) || [])];
+    results.emails = [...new Set(text.match(REGEX_PATTERNS.emailRegex) || [])];
+    results.phones = [...new Set(text.match(REGEX_PATTERNS.phoneRegex) || [])];
 
-    // 邮箱检测
-    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-    results.emails = [...new Set(text.match(emailRegex) || [])];
-
-    // 电话号码检测 (中国手机号和固话)
-    const phoneRegex = /(?:\+86[-\s]?)?(?:1[3-9]\d{9}|0\d{2,3}[-\s]?\d{7,8})/g;
-    results.phones = [...new Set(text.match(phoneRegex) || [])];
-
-    // 代码仓库检测 (user/repo格式)
-    const repoRegex = /(?:^|\s)([a-zA-Z0-9_-]+\/[a-zA-Z0-9_.-]+)(?:\s|$)/g;
-    const repoMatches = text.match(repoRegex);
+    const repoMatches = text.match(REGEX_PATTERNS.repoRegex);
     if (repoMatches) {
         results.repos = [...new Set(repoMatches.map(match => match.trim()))];
     }
 
-    // IP地址检测
-    const ipRegex = /(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/g;
-    results.ips = [...new Set(text.match(ipRegex) || [])];
-
-    // 日期检测 (多种格式)
-    const dateRegex = /\d{4}[-\/]\d{1,2}[-\/]\d{1,2}|\d{1,2}[-\/]\d{1,2}[-\/]\d{4}|\d{4}年\d{1,2}月\d{1,2}日/g;
-    results.dates = [...new Set(text.match(dateRegex) || [])];
-
-    // 数字检测 (整数、小数、百分比等)
-    const numberRegex = /\d+(?:\.\d+)?%?/g;
-    results.numbers = [...new Set(text.match(numberRegex) || [])].filter(num => 
+    results.ips = [...new Set(text.match(REGEX_PATTERNS.ipRegex) || [])];
+    results.dates = [...new Set(text.match(REGEX_PATTERNS.dateRegex) || [])];
+    results.numbers = [...new Set(text.match(REGEX_PATTERNS.numberRegex) || [])].filter(num => 
         num.length > 2 || num.includes('.') || num.includes('%')
     );
 
-    // 中文文本片段检测
-    const chineseRegex = /[\u4e00-\u9fa5]+(?:[\u4e00-\u9fa5\s，。！？；：""''（）【】《》]*[\u4e00-\u9fa5])?/g;
-    results.chineseText = [...new Set(text.match(chineseRegex) || [])].filter(t => t.length > 1);
-
-    // 英文单词检测
-    const englishRegex = /[a-zA-Z]+(?:[a-zA-Z\s'-]*[a-zA-Z])?/g;
-    results.englishText = [...new Set(text.match(englishRegex) || [])].filter(t => 
+    results.chineseText = [...new Set(text.match(REGEX_PATTERNS.chineseTextRegex) || [])].filter(t => t.length > 1);
+    results.englishText = [...new Set(text.match(REGEX_PATTERNS.englishRegex) || [])].filter(t => 
         t.length > 2 && !results.urls.some(url => url.includes(t))
     );
 
@@ -866,7 +858,6 @@ export function classifyText(text) {
         suggestions: []
     };
 
-    // 判断文本类型
     if (multiFormat.urls.length > 0) {
         classification.type = 'url_collection';
         classification.confidence = 0.9;
@@ -902,11 +893,15 @@ export function classifyText(text) {
  * @returns {Promise<boolean>} - 复制成功返回true，失败返回false
  */
 export async function copyToClipboardModern(text) {
+    if (!isClipboardAPIAvailable()) {
+        return false;
+    }
+    
     try {
         await navigator.clipboard.writeText(text);
         return true;
     } catch (err) {
-        console.error('复制失败:', err);
+        console.error('剪贴板复制失败:', err);
         return false;
     }
 }
@@ -916,6 +911,10 @@ export async function copyToClipboardModern(text) {
  * @returns {Promise<string|null>} - 剪贴板内容，失败返回null
  */
 export async function readFromClipboardModern() {
+    if (!isClipboardAPIAvailable()) {
+        return null;
+    }
+    
     try {
         const text = await navigator.clipboard.readText();
         return text;
@@ -931,29 +930,22 @@ export async function readFromClipboardModern() {
  * @returns {boolean} - 复制成功返回true，失败返回false
  */
 export function copyToClipboardLegacy(text) {
-    // 创建临时textarea元素
     const textarea = document.createElement('textarea');
     textarea.value = text;
-    
-    // 设置样式，避免影响页面布局
     textarea.style.position = 'fixed';
     textarea.style.opacity = '0';
-    
-    // 添加到DOM并选中内容
     document.body.appendChild(textarea);
     textarea.select();
     
+    let success = false;
     try {
-        // 执行复制命令
-        const success = document.execCommand('copy');
-        return success;
+        success = document.execCommand('copy');
     } catch (err) {
         console.error('复制失败:', err);
-        return false;
     } finally {
-        // 清理临时元素
         document.body.removeChild(textarea);
     }
+    return success;
 }
 
 /**
@@ -962,7 +954,7 @@ export function copyToClipboardLegacy(text) {
  * @returns {Promise<boolean>} - 复制成功返回true，失败返回false
  */
 export async function copyToClipboard(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
+    if (isClipboardAPIAvailable()) {
         return await copyToClipboardModern(text);
     } else {
         return copyToClipboardLegacy(text);
@@ -977,8 +969,7 @@ export async function copyToClipboard(text) {
 export function extractEmails(text) {
     if (!text || !text.trim()) return [];
     
-    const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g;
-    return [...new Set(text.match(emailRegex) || [])];
+    return [...new Set(text.match(REGEX_PATTERNS.emailRegex) || [])];
 }
 
 /**
@@ -989,8 +980,7 @@ export function extractEmails(text) {
 export function extractPhoneNumbers(text) {
     if (!text || !text.trim()) return [];
     
-    const phoneRegex = /(?:\+86[\s-]?)?(?:1[3-9]\d{9}|0\d{2,3}[\s-]?\d{7,8})/g;
-    return [...new Set(text.match(phoneRegex) || [])];
+    return [...new Set(text.match(REGEX_PATTERNS.phoneRegex) || [])];
 }
 
 /**
@@ -1003,7 +993,11 @@ export function analyzeTextForMultipleFormats(text) {
     
     if (!text || !text.trim()) return results;
 
-    // 路径检测和转换
+    if (text.length > 10000) {
+        console.warn('文本长度超过10000字符，仅进行基本分析以避免性能问题');
+        return results;
+    }
+
     const pathResults = processPath(text);
     if (pathResults) {
         results.push({
@@ -1012,7 +1006,6 @@ export function analyzeTextForMultipleFormats(text) {
         });
     }
 
-    // URL提取
     const { extractedLinks } = processTextExtraction(text);
     if (extractedLinks.length > 0) {
         results.push({
@@ -1021,14 +1014,12 @@ export function analyzeTextForMultipleFormats(text) {
         });
     }
 
-    // 仓库链接生成
     const repoResult = processLinkGeneration(text);
     if (repoResult) {
         results.push({
             type: '仓库链接',
             data: repoResult.generatedLinks.map(url => ({ url }))
         });
-        // Also push the original GitHub link if it exists
         if (repoResult.originalGithubLink) {
             results.push({
                 type: 'GitHub链接',
@@ -1037,31 +1028,29 @@ export function analyzeTextForMultipleFormats(text) {
         }
     }
 
-    // 多格式检测
-    const multiFormat = processMultiFormat(text);
-    
-    // 邮箱检测
-    if (multiFormat.emails.length > 0) {
-        results.push({
-            type: '邮箱地址',
-            data: multiFormat.emails.map(email => ({ url: `mailto:${email}` }))
-        });
-    }
+    if (text.length < 5000) {
+        const multiFormat = processMultiFormat(text);
+        
+        if (multiFormat.emails.length > 0) {
+            results.push({
+                type: '邮箱地址',
+                data: multiFormat.emails.map(email => ({ url: `mailto:${email}` }))
+            });
+        }
 
-    // 电话号码检测
-    if (multiFormat.phones.length > 0) {
-        results.push({
-            type: '电话号码',
-            data: multiFormat.phones.map(phone => ({ url: `tel:${phone}` }))
-        });
-    }
+        if (multiFormat.phones.length > 0) {
+            results.push({
+                type: '电话号码',
+                data: multiFormat.phones.map(phone => ({ url: `tel:${phone}` }))
+            });
+        }
 
-    // IP地址检测
-    if (multiFormat.ips.length > 0) {
-        results.push({
-            type: 'IP地址',
-            data: multiFormat.ips.map(ip => ({ url: `http://${ip}` }))
-        });
+        if (multiFormat.ips.length > 0) {
+            results.push({
+                type: 'IP地址',
+                data: multiFormat.ips.map(ip => ({ url: `http://${ip}` }))
+            });
+        }
     }
 
     return results;

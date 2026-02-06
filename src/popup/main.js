@@ -34,7 +34,7 @@ let appState = {
     splitItemsState: [],
     clipboardMonitoring: false,
     lastClipboardContent: '',
-    clipboardInterval: null,
+    clipboardInterval: null, // 保留但不再使用，由background管理定时器
     linkHistory: [],
     // 多格式分析状态
     multiFormatState: {
@@ -47,7 +47,10 @@ let appState = {
     clipboardHistoryVisible: false,
     clipboardBatchMode: false,
     maxClipboardHistory: 100,
-    selectedItems: new Set() // 批量选择的项目ID集合
+    selectedItems: new Set(), // 批量选择的项目ID集合
+    // Port连接
+    backgroundPort: null,
+    reconnectTimer: null
 };
 
 // DOM 元素映射
@@ -154,121 +157,293 @@ function showNotification(message, isSuccess = true) {
     }, 3000);
 }
 
-// 剪贴板监控功能
-async function toggleClipboardMonitoring() {
-    // 切换本地监控状态
-    appState.clipboardMonitoring = !appState.clipboardMonitoring;
-    
-    if (appState.clipboardMonitoring) {
-        try {
-            await startClipboardMonitoring();
-            showNotification('剪贴板监控已启动');
-        } catch (error) {
-            logger.warn('剪贴板监控启动失败:', error);
-            appState.clipboardMonitoring = false;
-            showNotification('无法启动剪贴板监控', false);
-        }
-    } else {
-        stopClipboardMonitoring();
-        showNotification('剪贴板监控已停止');
-    }
-    
-    // 通知background script状态变化
-    chrome.runtime.sendMessage({
-        action: 'clipboardMonitoringToggled',
-        isActive: appState.clipboardMonitoring
-    }).catch(error => {
-        logger.warn('通知background script状态变化失败:', error);
-    });
-    
-    updateClipboardButtonState(appState.clipboardMonitoring);
+// ============================================================================
+// 剪贴板监控功能（修复版：popup负责轮询，background负责同步）
+// ============================================================================
+
+// 剪贴板监控配置
+const CLIPBOARD_POLL_CONFIG = {
+    INTERVAL: 1000,        // 轮询间隔1秒
+    POLLING_KEY: 'clipboardPollingVersion',
+    CONTENT_KEY: 'lastClipboardContent'
+};
+
+// 生成唯一版本号
+function generateVersion() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 }
 
-async function startClipboardMonitoring() {
-    if (appState.clipboardInterval) {
-        clearInterval(appState.clipboardInterval);
-    }
-    
-    appState.clipboardInterval = setInterval(async () => {
-        if (!appState.clipboardMonitoring) return;
-        
-        try {
-            const text = await navigator.clipboard.readText();
-            if (text && text !== appState.lastClipboardContent && text.trim().length > 0) {
-                appState.lastClipboardContent = text;
-                
-                // 更新搜索框内容
-                if (elements.search_input) {
-                    elements.search_input.value = text;
-                    
-                    // 重置手动调整标记，允许自适应调整
-                    elements.search_input.isManuallyResized = false;
-                    
-                    // 触发输入处理和高度调整
-                    handleTextareaInput();
-                    
-                    // 更新搜索控件位置
-                    updateSearchControlsPosition();
-                }
-                
-                // 添加到剪贴板历史
-                await addToClipboardHistory(text);
-                
-                // 通知background script，以便它可以通知其他打开的侧边栏
-                chrome.runtime.sendMessage({
-                    action: 'clipboardChanged',
-                    content: text
-                }).catch(error => {
-                    logger.warn('通知background script剪贴板变化失败:', error);
-                });
-                
-                showNotification('检测到剪贴板内容变化');
-            }
-        } catch (err) {
-            // 静默处理剪贴板读取错误
-        }
-    }, 1000);
-}
-
-function stopClipboardMonitoring() {
-    if (appState.clipboardInterval) {
-        clearInterval(appState.clipboardInterval);
-        appState.clipboardInterval = null;
-    }
-}
-
-// 从background script获取当前剪贴板监控状态
-async function getClipboardMonitoringState() {
+// 检查剪贴板API是否可用
+async function isClipboardAPIAvailable() {
     try {
-        const response = await chrome.runtime.sendMessage({ 
-            action: 'getClipboardMonitoringState' 
-        });
-        return response?.isActive || false;
-    } catch (error) {
-        logger.warn('获取剪贴板监控状态失败:', error);
+        await navigator.clipboard.readText();
+        return true;
+    } catch (e) {
         return false;
     }
 }
 
-// 初始化剪贴板监控状态
-async function initClipboardMonitoringState() {
-    // 从background script获取当前监控状态
-    const isMonitoring = await getClipboardMonitoringState();
-    appState.clipboardMonitoring = isMonitoring;
+/**
+ * 轮询剪贴板内容
+ * 每次轮询都检查 storage 中的版本号，避免重复处理
+ */
+async function pollClipboard() {
+    if (!appState.clipboardMonitoring) return;
     
-    // 如果监控状态为开启，启动监控
-    if (appState.clipboardMonitoring) {
-        await startClipboardMonitoring();
-    }
-    
-    updateClipboardButtonState(appState.clipboardMonitoring);
-    
-    // 更新开关状态
-    if (elements.clipboard_monitor_switch) {
-        elements.clipboard_monitor_switch.checked = appState.clipboardMonitoring;
+    try {
+        // 获取当前剪贴板内容
+        const text = await navigator.clipboard.readText();
+        if (!text || text.trim().length === 0) return;
+        
+        // 获取 storage 中的最新版本和内容
+        const storageData = await chrome.storage.local.get([
+            CLIPBOARD_POLL_CONFIG.CONTENT_KEY,
+            CLIPBOARD_POLL_CONFIG.POLLING_KEY
+        ]);
+        
+        const storedContent = storageData[CLIPBOARD_POLL_CONFIG.CONTENT_KEY] || '';
+        const storedVersion = storageData[CLIPBOARD_POLL_CONFIG.POLLING_KEY] || '';
+        
+        // 比较内容
+        if (text !== storedContent && text !== appState.lastClipboardContent) {
+            // 内容发生变化
+            const version = generateVersion();
+            
+            // 更新本地状态
+            appState.lastClipboardContent = text;
+            
+            // 更新UI
+            if (elements.search_input) {
+                elements.search_input.value = text;
+                elements.search_input.isManuallyResized = false;
+                handleTextareaInput();
+                updateSearchControlsPosition();
+            }
+            
+            // 添加到历史
+            await addToClipboardHistory(text);
+            
+            // 通知 background
+            try {
+                await chrome.runtime.sendMessage({
+                    action: 'clipboardChanged',
+                    content: text,
+                    version: version
+                });
+            } catch (e) {
+                logger.warn('通知background失败:', e.message);
+            }
+            
+            // 显示通知
+            showNotification('检测到剪贴板内容变化');
+            
+            logger.info('剪贴板内容已更新:', text.substring(0, 50) + '...');
+        }
+    } catch (err) {
+        // 剪贴板读取失败，可能是权限问题
+        if (err.name === 'ClipboardReadPermissionDenied') {
+            logger.warn('剪贴板读取权限被拒绝');
+        }
+        // 其他错误静默处理
     }
 }
 
+/**
+ * 启动剪贴板轮询
+ */
+async function startClipboardPolling() {
+    if (appState.clipboardInterval) {
+        clearInterval(appState.clipboardInterval);
+    }
+    
+    // 检查剪贴板API是否可用
+    const available = await isClipboardAPIAvailable();
+    if (!available) {
+        logger.warn('剪贴板API不可用');
+        showNotification('剪贴板权限被拒绝，请授予权限', false);
+        return false;
+    }
+    
+    // 获取初始状态
+    try {
+        const storageData = await chrome.storage.local.get(CLIPBOARD_POLL_CONFIG.CONTENT_KEY);
+        appState.lastClipboardContent = storageData[CLIPBOARD_POLL_CONFIG.CONTENT_KEY] || '';
+    } catch (e) {
+        logger.warn('获取初始状态失败:', e.message);
+    }
+    
+    // 开始轮询
+    appState.clipboardInterval = setInterval(pollClipboard, CLIPBOARD_POLL_CONFIG.INTERVAL);
+    
+    logger.info('剪贴板轮询已启动');
+    return true;
+}
+
+/**
+ * 停止剪贴板轮询
+ */
+function stopClipboardPolling() {
+    if (appState.clipboardInterval) {
+        clearInterval(appState.clipboardInterval);
+        appState.clipboardInterval = null;
+    }
+    logger.info('剪贴板轮询已停止');
+}
+
+/**
+ * 建立与background script的Port连接
+ */
+function connectToBackground() {
+    if (appState.backgroundPort) {
+        try {
+            appState.backgroundPort.disconnect();
+        } catch (e) {}
+        appState.backgroundPort = null;
+    }
+    
+    appState.backgroundPort = chrome.runtime.connect({
+        name: `popup-${Date.now().toString(36)}`
+    });
+    
+    appState.backgroundPort.onMessage.addListener((message) => {
+        handlePortMessage(message);
+    });
+    
+    appState.backgroundPort.onDisconnect.addListener(() => {
+        logger.info('与background的连接已断开');
+        appState.backgroundPort = null;
+    });
+    
+    logger.info('已建立与background的Port连接');
+}
+
+/**
+ * 处理来自Port的消息
+ */
+function handlePortMessage(message) {
+    switch (message.action) {
+        case 'clipboardChanged':
+            // 处理来自background的剪贴板变化通知
+            if (message.content && message.content.trim().length > 0 && 
+                message.content !== appState.lastClipboardContent) {
+                
+                appState.lastClipboardContent = message.content;
+                
+                if (elements.search_input) {
+                    elements.search_input.value = message.content;
+                    elements.search_input.isManuallyResized = false;
+                    handleTextareaInput();
+                    updateSearchControlsPosition();
+                }
+                
+                addToClipboardHistory(message.content).catch(error => {
+                    logger.error('添加到剪贴板历史失败:', error);
+                });
+                
+                showNotification('检测到剪贴板内容变化');
+            }
+            break;
+            
+        case 'clipboardMonitoringToggled':
+            appState.clipboardMonitoring = message.isActive;
+            
+            if (appState.clipboardMonitoring) {
+                startClipboardPolling();
+            } else {
+                stopClipboardPolling();
+            }
+            
+            updateClipboardButtonState(appState.clipboardMonitoring);
+            
+            if (elements.clipboard_monitor_switch) {
+                elements.clipboard_monitor_switch.checked = appState.clipboardMonitoring;
+            }
+            break;
+            
+        case 'stateResponse':
+            appState.clipboardMonitoring = message.isActive;
+            appState.lastClipboardContent = message.lastContent || '';
+            
+            if (appState.clipboardMonitoring) {
+                startClipboardPolling();
+            }
+            
+            updateClipboardButtonState(appState.clipboardMonitoring);
+            
+            if (elements.clipboard_monitor_switch) {
+                elements.clipboard_monitor_switch.checked = appState.clipboardMonitoring;
+            }
+            break;
+    }
+}
+
+/**
+ * 切换剪贴板监控状态
+ */
+async function toggleClipboardMonitoring() {
+    appState.clipboardMonitoring = !appState.clipboardMonitoring;
+    
+    // 保存状态到 storage
+    await chrome.storage.local.set({ clipboardMonitoring: appState.clipboardMonitoring });
+    
+    // 通知 background
+    try {
+        await chrome.runtime.sendMessage({
+            action: 'toggleClipboardMonitoring'
+        });
+    } catch (error) {
+        logger.warn('通知background失败:', error);
+    }
+    
+    // 更新UI和轮询状态
+    if (appState.clipboardMonitoring) {
+        const started = await startClipboardPolling();
+        if (!started) {
+            // 启动失败，恢复状态
+            appState.clipboardMonitoring = false;
+            await chrome.storage.local.set({ clipboardMonitoring: false });
+        }
+        showNotification('剪贴板监控已启动');
+    } else {
+        stopClipboardPolling();
+        showNotification('剪贴板监控已停止');
+    }
+    
+    updateClipboardButtonState(appState.clipboardMonitoring);
+}
+
+/**
+ * 初始化剪贴板监控状态
+ */
+async function initClipboardMonitoringState() {
+    try {
+        // 获取状态
+        const response = await chrome.runtime.sendMessage({ 
+            action: 'getClipboardMonitoringState' 
+        });
+        appState.clipboardMonitoring = response?.isActive || false;
+        
+        // 建立 Port 连接
+        connectToBackground();
+        
+        // 如果监控已开启，启动轮询
+        if (appState.clipboardMonitoring) {
+            await startClipboardPolling();
+        }
+        
+        updateClipboardButtonState(appState.clipboardMonitoring);
+        
+        if (elements.clipboard_monitor_switch) {
+            elements.clipboard_monitor_switch.checked = appState.clipboardMonitoring;
+        }
+    } catch (error) {
+        logger.warn('初始化剪贴板监控失败:', error);
+    }
+}
+
+/**
+ * 更新剪贴板按钮状态
+ */
 function updateClipboardButtonState(isActive) {
     if (!elements.clipboard_btn) return;
     
@@ -278,32 +453,27 @@ function updateClipboardButtonState(isActive) {
     }
 }
 
-// 添加消息监听器，处理来自background script的剪贴板变化通知
+// ============================================================================
+// 消息监听器
+// ============================================================================
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     logger.info('收到来自background的消息:', request);
     
     switch (request.action) {
         case 'clipboardChanged':
-            // 处理剪贴板内容变化
-            if (request.content && request.content.trim().length > 0 && request.content !== appState.lastClipboardContent) {
-                // 更新本地最后剪贴板内容
+            // 处理剪贴板变化
+            if (request.content && request.content.trim().length > 0 && 
+                request.content !== appState.lastClipboardContent) {
+                
                 appState.lastClipboardContent = request.content;
                 
-                // 更新搜索框内容
                 if (elements.search_input) {
                     elements.search_input.value = request.content;
-                    
-                    // 重置手动调整标记，允许自适应调整
                     elements.search_input.isManuallyResized = false;
-                    
-                    // 触发输入处理和高度调整
                     handleTextareaInput();
-                    
-                    // 更新搜索控件位置
                     updateSearchControlsPosition();
                 }
                 
-                // 添加到剪贴板历史
                 addToClipboardHistory(request.content).catch(error => {
                     logger.error('添加到剪贴板历史失败:', error);
                 });
@@ -313,20 +483,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             break;
             
         case 'clipboardMonitoringToggled':
-            // 处理剪贴板监控状态变化
             appState.clipboardMonitoring = request.isActive;
-            updateClipboardButtonState(appState.clipboardMonitoring);
             
-            // 根据状态更新本地监控逻辑
             if (appState.clipboardMonitoring) {
-                startClipboardMonitoring().catch(error => {
-                    logger.warn('启动剪贴板监控失败:', error);
-                });
+                startClipboardPolling();
             } else {
-                stopClipboardMonitoring();
+                stopClipboardPolling();
             }
             
-            // 更新开关状态
+            updateClipboardButtonState(appState.clipboardMonitoring);
+            
             if (elements.clipboard_monitor_switch) {
                 elements.clipboard_monitor_switch.checked = appState.clipboardMonitoring;
             }
@@ -339,7 +505,41 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return true;
 });
 
+// ============================================================================
+// 页面生命周期管理
+// ============================================================================
+
+// 页面卸载时清理资源
+window.addEventListener('beforeunload', () => {
+    logger.info('Popup正在关闭，清理资源...');
+    
+    // 停止轮询
+    stopClipboardPolling();
+    
+    // 断开Port连接
+    if (appState.backgroundPort) {
+        try {
+            appState.backgroundPort.disconnect();
+        } catch (e) {}
+        appState.backgroundPort = null;
+    }
+    
+    // 取消重连定时器
+    if (appState.reconnectTimer) {
+        clearTimeout(appState.reconnectTimer);
+        appState.reconnectTimer = null;
+    }
+    
+    // 清除剪贴板定时器（如果有）
+    if (appState.clipboardInterval) {
+        clearInterval(appState.clipboardInterval);
+        appState.clipboardInterval = null;
+    }
+});
+
+// ============================================================================
 // 剪贴板历史功能
+// ============================================================================
 // 加载剪贴板历史
 async function loadClipboardHistory() {
     try {
