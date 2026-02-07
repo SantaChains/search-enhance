@@ -5,7 +5,7 @@
 
 class LinkHistoryManager {
   constructor() {
-    this.storageKey = 'linkHistory';
+    this.storageKey = "linkHistory";
     this.maxHistoryItems = 1000;
     this.githubPattern = /^https?:\/\/(www\.)?github\.com\//i;
   }
@@ -16,7 +16,7 @@ class LinkHistoryManager {
    * @param {string} title - 链接标题（可选）
    * @param {string} source - 来源（如：'text_processing', 'clipboard'）
    */
-  async addLink(url, title = '', source = 'unknown') {
+  async addLink(url, title = "", source = "unknown") {
     try {
       if (!this.isValidUrl(url)) {
         return false;
@@ -25,10 +25,12 @@ class LinkHistoryManager {
       const history = await this.getHistory();
       const linkType = this.detectLinkType(url);
       const unescapedUrl = this.unescapeUrl(url);
-      
+
       // 检查是否已存在相同链接（使用未转义的URL进行比较）
-      const existingIndex = history.findIndex(item => item.unescapedUrl === unescapedUrl);
-      
+      const existingIndex = history.findIndex(
+        (item) => item.unescapedUrl === unescapedUrl,
+      );
+
       const historyItem = {
         id: this.generateId(),
         url: url,
@@ -40,7 +42,7 @@ class LinkHistoryManager {
         accessCount: 1,
         lastAccessed: Date.now(),
         tags: this.generateTags(url, linkType),
-        metadata: this.extractMetadata(url)
+        metadata: this.extractMetadata(url),
       };
 
       if (existingIndex !== -1) {
@@ -49,12 +51,12 @@ class LinkHistoryManager {
           ...history[existingIndex],
           accessCount: history[existingIndex].accessCount + 1,
           lastAccessed: Date.now(),
-          title: title || history[existingIndex].title
+          title: title || history[existingIndex].title,
         };
       } else {
         // 添加新记录
         history.unshift(historyItem);
-        
+
         // 限制历史记录数量
         if (history.length > this.maxHistoryItems) {
           history.splice(this.maxHistoryItems);
@@ -64,7 +66,7 @@ class LinkHistoryManager {
       await this.saveHistory(history);
       return true;
     } catch (error) {
-      console.error('添加链接历史失败:', error);
+      console.error("添加链接历史失败:", error);
       return false;
     }
   }
@@ -81,39 +83,40 @@ class LinkHistoryManager {
 
       // 应用过滤器
       if (options.type) {
-        history = history.filter(item => item.type === options.type);
+        history = history.filter((item) => item.type === options.type);
       }
 
       if (options.search) {
         const searchTerm = options.search.toLowerCase();
-        history = history.filter(item => 
-          item.title.toLowerCase().includes(searchTerm) ||
-          item.url.toLowerCase().includes(searchTerm) ||
-          item.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+        history = history.filter(
+          (item) =>
+            item.title.toLowerCase().includes(searchTerm) ||
+            item.url.toLowerCase().includes(searchTerm) ||
+            item.tags.some((tag) => tag.toLowerCase().includes(searchTerm)),
         );
       }
 
       if (options.dateRange) {
         const { start, end } = options.dateRange;
-        history = history.filter(item => 
-          item.timestamp >= start && item.timestamp <= end
+        history = history.filter(
+          (item) => item.timestamp >= start && item.timestamp <= end,
         );
       }
 
       // 应用排序
-      const sortBy = options.sortBy || 'timestamp';
-      const sortOrder = options.sortOrder || 'desc';
-      
+      const sortBy = options.sortBy || "timestamp";
+      const sortOrder = options.sortOrder || "desc";
+
       history.sort((a, b) => {
         let aValue = a[sortBy];
         let bValue = b[sortBy];
-        
-        if (sortBy === 'timestamp' || sortBy === 'lastAccessed') {
+
+        if (sortBy === "timestamp" || sortBy === "lastAccessed") {
           aValue = new Date(aValue);
           bValue = new Date(bValue);
         }
-        
-        if (sortOrder === 'desc') {
+
+        if (sortOrder === "desc") {
           return bValue > aValue ? 1 : -1;
         } else {
           return aValue > bValue ? 1 : -1;
@@ -128,7 +131,7 @@ class LinkHistoryManager {
 
       return history;
     } catch (error) {
-      console.error('获取历史记录失败:', error);
+      console.error("获取历史记录失败:", error);
       return [];
     }
   }
@@ -140,11 +143,11 @@ class LinkHistoryManager {
   async removeItem(id) {
     try {
       const history = await this.getHistory();
-      const filteredHistory = history.filter(item => item.id !== id);
+      const filteredHistory = history.filter((item) => item.id !== id);
       await this.saveHistory(filteredHistory);
       return true;
     } catch (error) {
-      console.error('删除历史记录失败:', error);
+      console.error("删除历史记录失败:", error);
       return false;
     }
   }
@@ -157,14 +160,14 @@ class LinkHistoryManager {
     try {
       if (type) {
         const history = await this.getHistory();
-        const filteredHistory = history.filter(item => item.type !== type);
+        const filteredHistory = history.filter((item) => item.type !== type);
         await this.saveHistory(filteredHistory);
       } else {
         await chrome.storage.local.remove(this.storageKey);
       }
       return true;
     } catch (error) {
-      console.error('清空历史记录失败:', error);
+      console.error("清空历史记录失败:", error);
       return false;
     }
   }
@@ -174,43 +177,43 @@ class LinkHistoryManager {
    * @param {string} format - 导出格式 ('json', 'csv', 'txt')
    * @param {Object} options - 导出选项
    */
-  async exportHistory(format = 'json', options = {}) {
+  async exportHistory(format = "json", options = {}) {
     try {
       const history = await this.getHistory(options);
-      
-      let content = '';
-      let filename = '';
-      let mimeType = '';
+
+      let content = "";
+      let filename = "";
+      let mimeType = "";
 
       switch (format.toLowerCase()) {
-        case 'json':
+        case "json":
           content = JSON.stringify(history, null, 2);
           filename = `search-buddy-history-${this.formatDate(new Date())}.json`;
-          mimeType = 'application/json';
+          mimeType = "application/json";
           break;
 
-        case 'csv':
+        case "csv":
           content = this.convertToCSV(history);
           filename = `search-buddy-history-${this.formatDate(new Date())}.csv`;
-          mimeType = 'text/csv';
+          mimeType = "text/csv";
           break;
 
-        case 'txt':
+        case "txt":
           content = this.convertToText(history);
           filename = `search-buddy-history-${this.formatDate(new Date())}.txt`;
-          mimeType = 'text/plain';
+          mimeType = "text/plain";
           break;
 
         default:
-          throw new Error('不支持的导出格式');
+          throw new Error("不支持的导出格式");
       }
 
       // 创建下载链接
       const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
-      
+
       // 触发下载
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
@@ -220,7 +223,7 @@ class LinkHistoryManager {
 
       return true;
     } catch (error) {
-      console.error('导出历史记录失败:', error);
+      console.error("导出历史记录失败:", error);
       return false;
     }
   }
@@ -231,22 +234,26 @@ class LinkHistoryManager {
   async getStatistics() {
     try {
       const history = await this.getHistory();
-      
+
       const stats = {
         totalLinks: history.length,
-        githubLinks: history.filter(item => item.type === 'github').length,
-        otherLinks: history.filter(item => item.type === 'other').length,
-        todayLinks: history.filter(item => this.isToday(item.timestamp)).length,
-        thisWeekLinks: history.filter(item => this.isThisWeek(item.timestamp)).length,
-        thisMonthLinks: history.filter(item => this.isThisMonth(item.timestamp)).length,
+        githubLinks: history.filter((item) => item.type === "github").length,
+        otherLinks: history.filter((item) => item.type === "other").length,
+        todayLinks: history.filter((item) => this.isToday(item.timestamp))
+          .length,
+        thisWeekLinks: history.filter((item) => this.isThisWeek(item.timestamp))
+          .length,
+        thisMonthLinks: history.filter((item) =>
+          this.isThisMonth(item.timestamp),
+        ).length,
         topDomains: this.getTopDomains(history),
         linksBySource: this.getLinksBySource(history),
-        accessFrequency: this.getAccessFrequency(history)
+        accessFrequency: this.getAccessFrequency(history),
       };
 
       return stats;
     } catch (error) {
-      console.error('获取统计信息失败:', error);
+      console.error("获取统计信息失败:", error);
       return null;
     }
   }
@@ -258,9 +265,9 @@ class LinkHistoryManager {
    */
   detectLinkType(url) {
     if (this.githubPattern.test(url)) {
-      return 'github';
+      return "github";
     }
-    return 'other';
+    return "other";
   }
 
   /**
@@ -295,14 +302,14 @@ class LinkHistoryManager {
   extractTitleFromUrl(url) {
     try {
       const urlObj = new URL(url);
-      
+
       if (this.githubPattern.test(url)) {
-        const pathParts = urlObj.pathname.split('/').filter(part => part);
+        const pathParts = urlObj.pathname.split("/").filter((part) => part);
         if (pathParts.length >= 2) {
           return `${pathParts[0]}/${pathParts[1]}`;
         }
       }
-      
+
       return urlObj.hostname;
     } catch {
       return url;
@@ -314,30 +321,30 @@ class LinkHistoryManager {
    */
   generateTags(url, type) {
     const tags = [type];
-    
+
     try {
       const urlObj = new URL(url);
       tags.push(urlObj.hostname);
-      
-      if (type === 'github') {
-        const pathParts = urlObj.pathname.split('/').filter(part => part);
+
+      if (type === "github") {
+        const pathParts = urlObj.pathname.split("/").filter((part) => part);
         if (pathParts.length >= 1) {
           tags.push(`user:${pathParts[0]}`);
         }
         if (pathParts.length >= 2) {
           tags.push(`repo:${pathParts[1]}`);
         }
-        if (pathParts.includes('issues')) {
-          tags.push('issues');
+        if (pathParts.includes("issues")) {
+          tags.push("issues");
         }
-        if (pathParts.includes('pull')) {
-          tags.push('pull-request');
+        if (pathParts.includes("pull")) {
+          tags.push("pull-request");
         }
       }
     } catch {
       // 忽略错误
     }
-    
+
     return tags;
   }
 
@@ -346,15 +353,15 @@ class LinkHistoryManager {
    */
   extractMetadata(url) {
     const metadata = {};
-    
+
     try {
       const urlObj = new URL(url);
       metadata.domain = urlObj.hostname;
       metadata.protocol = urlObj.protocol;
       metadata.pathname = urlObj.pathname;
-      
+
       if (this.githubPattern.test(url)) {
-        const pathParts = urlObj.pathname.split('/').filter(part => part);
+        const pathParts = urlObj.pathname.split("/").filter((part) => part);
         if (pathParts.length >= 2) {
           metadata.githubUser = pathParts[0];
           metadata.githubRepo = pathParts[1];
@@ -363,7 +370,7 @@ class LinkHistoryManager {
     } catch {
       // 忽略错误
     }
-    
+
     return metadata;
   }
 
@@ -385,34 +392,44 @@ class LinkHistoryManager {
    * 转换为CSV格式
    */
   convertToCSV(history) {
-    const headers = ['标题', 'URL', '类型', '来源', '访问次数', '添加时间', '最后访问'];
-    const rows = history.map(item => [
+    const headers = [
+      "标题",
+      "URL",
+      "类型",
+      "来源",
+      "访问次数",
+      "添加时间",
+      "最后访问",
+    ];
+    const rows = history.map((item) => [
       `"${item.title.replace(/"/g, '""')}"`,
       `"${item.url}"`,
       item.type,
       item.source,
       item.accessCount,
-      new Date(item.timestamp).toLocaleString('zh-CN'),
-      new Date(item.lastAccessed).toLocaleString('zh-CN')
+      new Date(item.timestamp).toLocaleString("zh-CN"),
+      new Date(item.lastAccessed).toLocaleString("zh-CN"),
     ]);
-    
-    return [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+
+    return [headers.join(","), ...rows.map((row) => row.join(","))].join("\n");
   }
 
   /**
    * 转换为文本格式
    */
   convertToText(history) {
-    return history.map(item => {
-      return `标题: ${item.title}\nURL: ${item.url}\n类型: ${item.type}\n来源: ${item.source}\n访问次数: ${item.accessCount}\n添加时间: ${new Date(item.timestamp).toLocaleString('zh-CN')}\n最后访问: ${new Date(item.lastAccessed).toLocaleString('zh-CN')}\n${'='.repeat(50)}\n`;
-    }).join('\n');
+    return history
+      .map((item) => {
+        return `标题: ${item.title}\nURL: ${item.url}\n类型: ${item.type}\n来源: ${item.source}\n访问次数: ${item.accessCount}\n添加时间: ${new Date(item.timestamp).toLocaleString("zh-CN")}\n最后访问: ${new Date(item.lastAccessed).toLocaleString("zh-CN")}\n${"=".repeat(50)}\n`;
+      })
+      .join("\n");
   }
 
   /**
    * 格式化日期
    */
   formatDate(date) {
-    return date.toISOString().split('T')[0];
+    return date.toISOString().split("T")[0];
   }
 
   /**
@@ -447,13 +464,13 @@ class LinkHistoryManager {
    */
   getTopDomains(history) {
     const domainCount = {};
-    history.forEach(item => {
-      const domain = item.metadata.domain || 'unknown';
+    history.forEach((item) => {
+      const domain = item.metadata.domain || "unknown";
       domainCount[domain] = (domainCount[domain] || 0) + 1;
     });
-    
+
     return Object.entries(domainCount)
-      .sort(([,a], [,b]) => b - a)
+      .sort(([, a], [, b]) => b - a)
       .slice(0, 10)
       .map(([domain, count]) => ({ domain, count }));
   }
@@ -463,7 +480,7 @@ class LinkHistoryManager {
    */
   getLinksBySource(history) {
     const sourceCount = {};
-    history.forEach(item => {
+    history.forEach((item) => {
       sourceCount[item.source] = (sourceCount[item.source] || 0) + 1;
     });
     return sourceCount;
@@ -473,13 +490,18 @@ class LinkHistoryManager {
    * 获取访问频率
    */
   getAccessFrequency(history) {
-    const totalAccess = history.reduce((sum, item) => sum + item.accessCount, 0);
+    const totalAccess = history.reduce(
+      (sum, item) => sum + item.accessCount,
+      0,
+    );
     const avgAccess = totalAccess / history.length || 0;
-    
+
     return {
       totalAccess,
       averageAccess: Math.round(avgAccess * 100) / 100,
-      mostAccessed: history.sort((a, b) => b.accessCount - a.accessCount).slice(0, 5)
+      mostAccessed: history
+        .sort((a, b) => b.accessCount - a.accessCount)
+        .slice(0, 5),
     };
   }
 }

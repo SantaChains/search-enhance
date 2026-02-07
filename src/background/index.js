@@ -1,195 +1,196 @@
 // src/background/index.js
 
 /**
- * Enhanced Search Buddy Background Script
- * Handles side panel management, context menus, and clipboard monitoring
+ * Search Buddy Background Script
+ * Manages global clipboard monitoring and state synchronization
  * 
- * 修复版：不再直接轮询剪贴板，而是通过 storage 同步状态
- * 实际的剪贴板轮询由 popup/content script 负责
+ * 功能：
+ * - 全局剪贴板监控协调
+ * - 状态持久化
+ * - 多tab同步
+ * - 快捷键处理
  */
 
-// Constants
-const CONTEXT_MENU_ID = "open-search-buddy-selection";
-const STORAGE_KEY_SELECTED_TEXT = "selectedText";
-const STORAGE_KEY_CLIPBOARD_MONITORING = "clipboardMonitoring";
-const STORAGE_KEY_LAST_CLIPBOARD_CONTENT = "lastClipboardContent";
-const STORAGE_KEY_CLIPBOARD_POLLING_VERSION = "clipboardPollingVersion";
+// ============================================================================
+// 配置
+// ============================================================================
 
-// Global state
-let isClipboardMonitoring = false;
-let lastKnownContent = '';
-let activePorts = new Map(); // portName -> Port
-
-// Utility functions
-const logger = {
-    info: (message, ...args) => console.log(`[SearchBuddy-BG] ${message}`, ...args),
-    error: (message, ...args) => console.error(`[SearchBuddy-BG] ${message}`, ...args),
-    warn: (message, ...args) => console.warn(`[SearchBuddy-BG] ${message}`, ...args)
+const CONFIG = {
+    STORAGE_KEYS: {
+        GLOBAL_MONITORING: 'globalMonitoringEnabled',
+        CLIPBOARD_CONTENT: 'globalClipboardContent',
+        CLIPBOARD_VERSION: 'globalClipboardVersion',
+        LAST_CLIPBOARD_CONTENT: 'lastClipboardContent'
+    },
+    DEFAULT_MONITORING: true
 };
 
-/**
- * 广播消息给所有连接的端口
- */
-function broadcastToAllPorts(message) {
-    const ports = Array.from(activePorts.values());
-    
-    ports.forEach(port => {
-        try {
-            port.postMessage(message);
-        } catch (err) {
-            logger.warn('发送消息失败:', err.message);
-            activePorts.delete(port.name);
-        }
-    });
+// ============================================================================
+// 状态
+// ============================================================================
+
+let appState = {
+    isMonitoring: CONFIG.DEFAULT_MONITORING,
+    lastContent: '',
+    activeTabs: new Map(), // tabId -> { port, monitoring }
+    lastBroadcastVersion: ''
+};
+
+// ============================================================================
+// 日志
+// ============================================================================
+
+const logger = {
+    info: (msg, ...args) => console.log(`[SearchBuddy-BG] ${msg}`, ...args),
+    error: (msg, ...args) => console.error(`[SearchBuddy-BG] ${msg}`, ...args),
+    warn: (msg, ...args) => console.warn(`[SearchBuddy-BG] ${msg}`, ...args)
+};
+
+// ============================================================================
+// 存储管理
+// ============================================================================
+
+async function loadState() {
+    try {
+        const result = await chrome.storage.local.get([
+            CONFIG.STORAGE_KEYS.GLOBAL_MONITORING,
+            CONFIG.STORAGE_KEYS.CLIPBOARD_CONTENT,
+            CONFIG.STORAGE_KEYS.CLIPBOARD_VERSION
+        ]);
+        
+        appState.isMonitoring = result[CONFIG.STORAGE_KEYS.GLOBAL_MONITORING] ?? CONFIG.DEFAULT_MONITORING;
+        appState.lastContent = result[CONFIG.STORAGE_KEYS.CLIPBOARD_CONTENT] || '';
+        
+        logger.info(`加载状态: 监控=${appState.isMonitoring}, 内容长度=${appState.lastContent.length}`);
+    } catch (error) {
+        logger.error('加载状态失败:', error);
+    }
 }
 
-/**
- * 切换剪贴板监控状态
- */
-async function toggleClipboardMonitoring() {
-    isClipboardMonitoring = !isClipboardMonitoring;
-    
-    // 保存状态
-    await chrome.storage.local.set({ [STORAGE_KEY_CLIPBOARD_MONITORING]: isClipboardMonitoring });
-    
-    // 广播状态变化
-    broadcastToAllPorts({
-        action: 'clipboardMonitoringToggled',
-        isActive: isClipboardMonitoring
-    });
-    
-    logger.info(`剪贴板监控状态切换: ${isClipboardMonitoring ? '开启' : '关闭'}`);
-    
-    return isClipboardMonitoring;
+async function saveState() {
+    try {
+        await chrome.storage.local.set({
+            [CONFIG.STORAGE_KEYS.GLOBAL_MONITORING]: appState.isMonitoring,
+            [CONFIG.STORAGE_KEYS.CLIPBOARD_CONTENT]: appState.lastContent
+        });
+    } catch (error) {
+        logger.error('保存状态失败:', error);
+    }
 }
 
-/**
- * 处理剪贴板内容变化通知
- * 由 popup/content script 调用
- */
-async function handleClipboardChange(content, version) {
-    if (content === lastKnownContent) {
+// ============================================================================
+// 剪贴板变化处理
+// ============================================================================
+
+async function handleClipboardChange(content, version, source = 'background') {
+    if (content === appState.lastContent && version === appState.lastBroadcastVersion) {
         return { success: true, duplicate: true };
     }
     
-    lastKnownContent = content;
+    appState.lastContent = content;
+    appState.lastBroadcastVersion = version;
     
-    // 保存到存储
+    // 保存到storage
     await chrome.storage.local.set({
-        [STORAGE_KEY_LAST_CLIPBOARD_CONTENT]: content,
-        [STORAGE_KEY_CLIPBOARD_POLLING_VERSION]: version
+        [CONFIG.STORAGE_KEYS.CLIPBOARD_CONTENT]: content,
+        [CONFIG.STORAGE_KEYS.CLIPBOARD_VERSION]: version
     });
     
-    // 广播给所有端口
-    broadcastToAllPorts({
+    // 广播到所有active tabs和popup
+    await broadcastToAllTabs({
         action: 'clipboardChanged',
         content: content,
-        version: version
+        version: version,
+        source: source
     });
     
-    logger.info('剪贴板内容变化已广播');
+    logger.info(`剪贴板变化已广播 (来源: ${source}): ${content.substring(0, 50)}...`);
     return { success: true };
 }
 
 /**
- * 获取当前监控状态
+ * 广播消息到所有active tabs和扩展组件
  */
-function getMonitoringState() {
-    return {
-        isActive: isClipboardMonitoring,
-        lastContent: lastKnownContent
-    };
+async function broadcastToAllTabs(message) {
+    // 通过Port发送给已连接的content scripts
+    const ports = Array.from(appState.activeTabs.values());
+
+    ports.forEach(({ port }) => {
+        try {
+            port.postMessage(message);
+        } catch (e) {
+            logger.warn('发送消息失败:', e.message);
+            appState.activeTabs.delete(port.name?.replace('global-clipboard-', ''));
+        }
+    });
+
+    // 同时通过sendMessage广播给所有监听器（包括popup）
+    try {
+        await chrome.runtime.sendMessage(message);
+    } catch (e) {
+        // 可能没有接收者，忽略错误
+    }
+}
+
+/**
+ * 切换全局监控状态
+ */
+async function toggleMonitoring() {
+    appState.isMonitoring = !appState.isMonitoring;
+    
+    await saveState();
+    
+    // 广播状态变化
+    broadcastToAllTabs({
+        action: 'clipboardMonitoringToggled',
+        isActive: appState.isMonitoring
+    });
+    
+    logger.info(`全局监控切换: ${appState.isMonitoring ? '开启' : '关闭'}`);
+    
+    return appState.isMonitoring;
 }
 
 // ============================================================================
-// Service Worker 生命周期管理
-// ============================================================================
-
-// 安装时初始化
-chrome.runtime.onInstalled.addListener(async (details) => {
-    try {
-        // 设置侧边栏行为
-        await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-        
-        // 创建上下文菜单
-        chrome.contextMenus.create({
-            id: CONTEXT_MENU_ID,
-            title: "Search with Buddy for \"%s\"",
-            contexts: ["selection"]
-        });
-        
-        logger.info('扩展安装/更新，初始化完成');
-        
-        // 加载状态
-        const result = await chrome.storage.local.get([
-            STORAGE_KEY_CLIPBOARD_MONITORING,
-            STORAGE_KEY_LAST_CLIPBOARD_CONTENT
-        ]);
-        
-        isClipboardMonitoring = result[STORAGE_KEY_CLIPBOARD_MONITORING] ?? true;
-        lastKnownContent = result[STORAGE_KEY_LAST_CLIPBOARD_CONTENT] || '';
-        
-    } catch (error) {
-        logger.error('初始化失败:', error);
-    }
-});
-
-// 启动时初始化
-chrome.runtime.onStartup.addListener(async () => {
-    logger.info('Service Worker 启动');
-    
-    try {
-        const result = await chrome.storage.local.get([
-            STORAGE_KEY_CLIPBOARD_MONITORING,
-            STORAGE_KEY_LAST_CLIPBOARD_CONTENT
-        ]);
-        
-        isClipboardMonitoring = result[STORAGE_KEY_CLIPBOARD_MONITORING] ?? true;
-        lastKnownContent = result[STORAGE_KEY_LAST_CLIPBOARD_CONTENT] || '';
-        
-    } catch (error) {
-        logger.error('加载状态失败:', error);
-    }
-});
-
-// ============================================================================
-// Port 连接管理
+// Port连接管理
 // ============================================================================
 
 chrome.runtime.onConnect.addListener((port) => {
-    if (port.name.startsWith('clipboard-') || port.name.startsWith('popup-') || port.name.startsWith('sidebar-')) {
-        activePorts.set(port.name, port);
+    if (port.name.startsWith('global-clipboard-') || port.name.startsWith('popup-')) {
+        const tabId = port.name.replace(/^(global-clipboard-|popup-)/, '');
         
-        logger.info(`Port连接: ${port.name}, 当前连接数: ${activePorts.size}`);
+        appState.activeTabs.set(tabId, { port, monitoring: appState.isMonitoring });
         
-        port.onDisconnect.addListener(() => {
-            activePorts.delete(port.name);
-            logger.info(`Port断开: ${port.name}, 当前连接数: ${activePorts.size}`);
-        });
+        logger.info(`Port连接: ${port.name}, 当前连接数: ${appState.activeTabs.size}`);
         
         port.onMessage.addListener((message) => {
-            handlePortMessage(message, port);
+            handlePortMessage(message, port, tabId);
+        });
+        
+        port.onDisconnect.addListener(() => {
+            appState.activeTabs.delete(tabId);
+            logger.info(`Port断开: ${port.name}, 当前连接数: ${appState.activeTabs.size}`);
         });
     }
 });
 
-function handlePortMessage(message, port) {
+function handlePortMessage(message, port, tabId) {
     switch (message.action) {
         case 'clipboardChanged':
-            // 接收来自 popup/content 的剪贴板变化
-            handleClipboardChange(message.content, message.version);
+            handleClipboardChange(message.content, message.version, 'content-script');
             break;
             
         case 'getState':
-            // 返回当前状态
             port.postMessage({
                 action: 'stateResponse',
-                ...getMonitoringState()
+                isActive: appState.isMonitoring,
+                lastContent: appState.lastContent,
+                lastVersion: appState.lastBroadcastVersion
             });
             break;
             
-        case 'toggleMonitoring':
-            toggleClipboardMonitoring();
+        case 'pong':
+            // 心跳响应
             break;
     }
 }
@@ -201,24 +202,55 @@ function handlePortMessage(message, port) {
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     (async () => {
         switch (request.action) {
-            case 'toggleClipboardMonitoring':
-                const newState = await toggleClipboardMonitoring();
+            case 'toggleGlobalMonitoring':
+                const newState = await toggleMonitoring();
                 sendResponse({ success: true, isActive: newState });
                 break;
                 
-            case 'getClipboardMonitoringState':
-                sendResponse({ isActive: isClipboardMonitoring });
+            case 'getGlobalMonitoringState':
+                sendResponse({ 
+                    isActive: appState.isMonitoring,
+                    lastContent: appState.lastContent
+                });
                 break;
                 
             case 'clipboardChanged':
-                const result = await handleClipboardChange(request.content, request.version);
+                const result = await handleClipboardChange(request.content, request.version, 'message');
                 sendResponse(result);
                 break;
                 
-            case 'clipboardMonitoringToggled':
-                isClipboardMonitoring = request.isActive;
-                await chrome.storage.local.set({ [STORAGE_KEY_CLIPBOARD_MONITORING]: isClipboardMonitoring });
-                broadcastToAllPorts(request);
+            case 'contentScriptReady':
+                // Content script准备就绪，发送当前状态
+                sendResponse({
+                    success: true,
+                    isMonitoring: appState.isMonitoring,
+                    lastContent: appState.lastContent
+                });
+                break;
+                
+            case 'openSidePanel':
+                if (sender.tab?.windowId) {
+                    await chrome.sidePanel.open({ windowId: sender.tab.windowId });
+                }
+                sendResponse({ success: true });
+                break;
+                
+            case 'showNotification':
+                // 转发到content script显示通知
+                if (sender.tab?.id) {
+                    try {
+                        await chrome.tabs.sendMessage(sender.tab.id, {
+                            action: 'showNotification',
+                            message: request.message,
+                            type: request.type
+                        });
+                        logger.info('通知已转发到content script');
+                    } catch (e) {
+                        logger.warn('转发通知失败:', e.message);
+                    }
+                } else {
+                    logger.warn('无法转发通知：sender.tab.id 不存在');
+                }
                 sendResponse({ success: true });
                 break;
                 
@@ -227,7 +259,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
     })();
     
-    return true; // 保持异步响应通道开放
+    return true;
 });
 
 // ============================================================================
@@ -236,27 +268,44 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 chrome.commands.onCommand.addListener(async (command, tab) => {
     logger.info(`收到命令: ${command}`);
-    
+
     switch (command) {
+        case 'toggle_clipboard_monitoring':
+            const newState = await toggleMonitoring();
+
+            // 在当前tab显示通知并触发剪贴板检测
+            if (tab?.id) {
+                try {
+                    // 发送通知
+                    await chrome.tabs.sendMessage(tab.id, {
+                        action: 'showNotification',
+                        message: `全局剪贴板监控已${newState ? '开启' : '关闭'}`,
+                        type: newState ? 'success' : 'info'
+                    });
+
+                    // 如果开启监控，通知content script立即检测剪贴板
+                    if (newState) {
+                        setTimeout(async () => {
+                            try {
+                                await chrome.tabs.sendMessage(tab.id, {
+                                    action: 'forceClipboardCheck'
+                                });
+                            } catch (e) {
+                                // 可能没有content script
+                            }
+                        }, 200);
+                    }
+                } catch (e) {
+                    // 可能没有content script
+                }
+            }
+
+            logger.info(`快捷键切换监控: ${newState ? '开启' : '关闭'}`);
+            break;
+            
         case '_execute_action':
             if (tab?.windowId) {
                 await chrome.sidePanel.open({ windowId: tab.windowId });
-            }
-            break;
-            
-        case 'toggle_clipboard_monitoring':
-            const newState = await toggleClipboardMonitoring();
-            logger.info(`Alt+K切换监控: ${newState ? '开启' : '关闭'}`);
-            
-            if (tab?.id) {
-                try {
-                    await chrome.tabs.sendMessage(tab.id, {
-                        action: 'clipboardMonitoringToggled',
-                        isActive: newState
-                    });
-                } catch (e) {
-                    // 内容脚本可能未加载
-                }
             }
             break;
             
@@ -268,11 +317,11 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
                 });
                 
                 if (result?.result) {
-                    await chrome.storage.local.set({ [STORAGE_KEY_SELECTED_TEXT]: result.result });
+                    await chrome.storage.local.set({ selectedText: result.result });
                     await chrome.sidePanel.open({ windowId: tab.windowId });
                 }
             } catch (error) {
-                logger.warn('获取选中文字失败:', error);
+                logger.warn('快速搜索失败:', error);
             }
             break;
     }
@@ -282,16 +331,44 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
 // 上下文菜单
 // ============================================================================
 
-chrome.contextMenus.onClicked.addListener(async (info, tab) => {
-    if (info.menuItemId === CONTEXT_MENU_ID && tab?.windowId && info.selectionText) {
-        await chrome.storage.local.set({ [STORAGE_KEY_SELECTED_TEXT]: info.selectionText });
-        await chrome.sidePanel.open({ windowId: tab.windowId });
+const CONTEXT_MENU_ID = 'open-search-buddy-selection';
+
+chrome.runtime.onInstalled.addListener(async (details) => {
+    try {
+        // 设置侧边栏行为
+        await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+        
+        // 创建上下文菜单
+        chrome.contextMenus.create({
+            id: CONTEXT_MENU_ID,
+            title: 'Search with Buddy for "%s"',
+            contexts: ['selection']
+        });
+        
+        logger.info('上下文菜单已创建');
+        
+        // 加载状态
+        await loadState();
+        
+        if (details.reason === 'install') {
+            logger.info('首次安装，默认开启全局监控');
+        }
+    } catch (error) {
+        logger.error('初始化失败:', error);
     }
 });
 
-// ============================================================================
-// 扩展图标点击
-// ============================================================================
+chrome.runtime.onStartup.addListener(async () => {
+    logger.info('Service Worker启动');
+    await loadState();
+});
+
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+    if (info.menuItemId === CONTEXT_MENU_ID && tab?.windowId && info.selectionText) {
+        await chrome.storage.local.set({ selectedText: info.selectionText });
+        await chrome.sidePanel.open({ windowId: tab.windowId });
+    }
+});
 
 chrome.action.onClicked.addListener(async (tab) => {
     if (tab?.windowId) {
@@ -300,23 +377,22 @@ chrome.action.onClicked.addListener(async (tab) => {
 });
 
 // ============================================================================
-// 定期清理孤立的端口
+// 清理孤立连接
 // ============================================================================
 
 setInterval(() => {
-    if (activePorts.size > 0) {
-        const validPorts = new Map();
-        activePorts.forEach((port, name) => {
+    if (appState.activeTabs.size > 0) {
+        const validTabs = new Map();
+        appState.activeTabs.forEach((value, key) => {
             try {
-                // 测试端口是否仍然有效
-                port.sender?.tab?.id;
-                validPorts.set(name, port);
+                value.port.sender?.tab?.id;
+                validTabs.set(key, value);
             } catch (e) {
-                // 端口无效，移除
+                // 连接无效
             }
         });
-        activePorts = validPorts;
+        appState.activeTabs = validTabs;
     }
 }, 30000);
 
-logger.info('Background script 加载完成');
+logger.info('Background script加载完成');

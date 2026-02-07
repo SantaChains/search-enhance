@@ -1,5 +1,5 @@
 {
-  "name": "Decide-Search",
+  "name": "Decide_Search",
   "version": "2.0.0",
   "description": "A powerful browser extension to enhance search experience with intelligent text processing",
   "main": "manifest.json",

@@ -1,135 +1,472 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>分词功能测试</title>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Search decide Debug Test</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            line-height: 1.6;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        textarea {
-            width: 100%;
-            height: 200px;
-            padding: 10px;
-            font-size: 14px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            resize: vertical;
-        }
-        button {
-            margin: 10px 5px 10px 0;
-            padding: 8px 16px;
-            font-size: 14px;
-            border: none;
-            border-radius: 4px;
-            background-color: #4CAF50;
-            color: white;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        .result {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: #f9f9f9;
-        }
-        .result h3 {
-            margin-top: 0;
-            color: #333;
-        }
-        .segmentation-result {
-            font-family: monospace;
-            white-space: pre-wrap;
-            background-color: #f0f0f0;
-            padding: 10px;
-            border-radius: 4px;
-            margin-top: 10px;
-        }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: white;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .test-section {
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        padding: 20px;
+        margin: 15px 0;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+      .test-section h2 {
+        margin-top: 0;
+        font-size: 18px;
+      }
+      .result {
+        padding: 12px 16px;
+        margin: 8px 0;
+        border-radius: 8px;
+        font-family: monospace;
+      }
+      .pass {
+        background: rgba(40, 167, 69, 0.3);
+        border-left: 4px solid #28a745;
+      }
+      .fail {
+        background: rgba(220, 53, 69, 0.3);
+        border-left: 4px solid #dc3545;
+      }
+      .info {
+        background: rgba(0, 123, 255, 0.3);
+        border-left: 4px solid #007bff;
+      }
+      button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 5px;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+      }
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+      .summary {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.8);
+        padding: 15px 25px;
+        border-radius: 12px;
+        backdrop-filter: blur(10px);
+      }
+      .log-container {
+        background: rgba(0, 0, 0, 0.5);
+        padding: 15px;
+        border-radius: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 12px;
+        margin-top: 10px;
+      }
+      .log-entry {
+        margin: 4px 0;
+      }
+      .log-time {
+        color: #888;
+        margin-right: 8px;
+      }
+      .log-info {
+        color: #28a745;
+      }
+      .log-error {
+        color: #dc3545;
+      }
+      .log-warn {
+        color: #ffc107;
+      }
     </style>
-</head>
-<body>
-    <div class="container">
-        <h1>分词功能测试</h1>
-        <p>测试改进后的中文分词功能</p>
-        
-        <div>
-            <textarea id="test-text" placeholder="请输入要分词的中文文本...">
-中文分词是中文文本处理的基础步骤，在浏览器扩展中实现智能搜索功能需要高效的分词算法。本项目使用增强的正向最大匹配算法，支持智能分词策略和结果优化。
+  </head>
+  <body>
+    <h1>🔍 Search decide 功能测试</h1>
 
-JavaScript是一种广泛使用的编程语言，主要用于Web开发。它可以在浏览器端运行，也可以在服务器端通过Node.js运行。
-
-智能分词功能可以根据文本长度和复杂度自动选择合适的分词策略，提高分词的准确性和效率。</textarea>
-        </div>
-        
-        <div>
-            <button onclick="testSegmentation()">测试分词</button>
-            <button onclick="clearResult()">清空结果</button>
-        </div>
-        
-        <div class="result" id="result-container">
-            <h3>分词结果</h3>
-            <div id="segmentation-result" class="segmentation-result">
-                请点击上方按钮进行测试
-            </div>
-        </div>
+    <div class="summary">
+      <div>通过: <span id="passCount">0</span></div>
+      <div>失败: <span id="failCount">0</span></div>
     </div>
-    
-    <script type="module">
-        // 导入分词函数
-        import { chineseWordSegmentation, intelligentSegmentation, splitText } from './src/utils/textProcessor.js';
-        
-        function testSegmentation() {
-            const text = document.getElementById('test-text').value;
-            const resultContainer = document.getElementById('segmentation-result');
-            
-            if (!text.trim()) {
-                resultContainer.textContent = '请输入要分词的文本';
-                return;
-            }
-            
-            try {
-                // 测试增强版分词
-                const enhancedResult = chineseWordSegmentation(text);
-                
-                // 测试智能分词
-                const intelligentResult = intelligentSegmentation(text);
-                
-                // 测试通过splitText函数的分词
-                const splitTextResult = splitText(text, 'zh-word');
-                
-                let resultText = '增强版分词结果:\n';
-                resultText += enhancedResult.join(' / ') + '\n\n';
-                
-                resultText += '智能分词结果:\n';
-                resultText += intelligentResult.join(' / ') + '\n\n';
-                
-                resultText += 'splitText分词结果:\n';
-                resultText += splitTextResult.join(' / ');
-                
-                resultContainer.textContent = resultText;
-            } catch (error) {
-                resultContainer.textContent = '测试出错: ' + error.message;
-            }
+
+    <div id="results"></div>
+
+    <div class="test-section">
+      <h2>🎮 手动测试</h2>
+      <button id="testNotification">测试通知</button>
+      <button id="testClipboardRead">测试读取剪贴板</button>
+      <button id="testToggleMonitoring">测试切换监控</button>
+      <button id="testOpenSidePanel">测试打开侧边栏</button>
+    </div>
+
+    <div class="test-section">
+      <h2>📋 测试说明</h2>
+      <div class="result info">
+        <strong>Alt+K</strong> - 切换剪贴板监控<br />
+        <strong>Alt+L</strong> - 打开侧边栏<br />
+        <strong>复制文本</strong> - 应该看到通知
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>📝 运行日志</h2>
+      <div class="log-container" id="logContainer"></div>
+    </div>
+
+    <script>
+      const results = [];
+      let passCount = 0;
+      let failCount = 0;
+
+      function log(message, type = "info") {
+        const container = document.getElementById("logContainer");
+        const entry = document.createElement("div");
+        entry.className = "log-entry";
+        const time = new Date().toLocaleTimeString();
+        entry.innerHTML = `<span class="log-time">${time}</span><span class="log-${type}">${message}</span>`;
+        container.appendChild(entry);
+        container.scrollTop = container.scrollHeight;
+      }
+
+      function addResult(name, passed, message = "") {
+        results.push({ name, passed, message });
+        const div = document.createElement("div");
+        div.className = `result ${passed ? "pass" : "fail"}`;
+        div.innerHTML = `${passed ? "✅" : "❌"} <strong>${name}</strong>${message ? "<br><small>" + message + "</small>" : ""}`;
+        document.getElementById("results").appendChild(div);
+
+        if (passed) {
+          passCount++;
+          document.getElementById("passCount").textContent = passCount;
+        } else {
+          failCount++;
+          document.getElementById("failCount").textContent = failCount;
         }
-        
-        function clearResult() {
-            document.getElementById('segmentation-result').textContent = '请点击上方按钮进行测试';
+      }
+
+      // 测试1: 检查Chrome API可用性
+      async function testChromeAPI() {
+        log("检查Chrome API可用性...", "info");
+
+        const checks = [];
+
+        // 检查chrome对象
+        checks.push({
+          name: "chrome对象",
+          passed: typeof chrome !== "undefined",
+        });
+
+        // 检查runtime API
+        if (typeof chrome !== "undefined" && chrome.runtime) {
+          checks.push({ name: "chrome.runtime", passed: true });
+
+          // 检查sendMessage
+          checks.push({
+            name: "chrome.runtime.sendMessage",
+            passed: typeof chrome.runtime.sendMessage === "function",
+          });
+
+          // 检查onMessage
+          checks.push({
+            name: "chrome.runtime.onMessage",
+            passed: !!chrome.runtime.onMessage,
+          });
+
+          // 检查storage API
+          if (chrome.storage) {
+            checks.push({
+              name: "chrome.storage.local",
+              passed: !!chrome.storage.local,
+            });
+          } else {
+            checks.push({
+              name: "chrome.storage",
+              passed: false,
+              message: "storage API不可用",
+            });
+          }
+        } else {
+          checks.push({
+            name: "chrome.runtime",
+            passed: false,
+            message: "runtime API不可用",
+          });
         }
-        
-        // 页面加载完成后自动测试
-        window.onload = function() {
-            testSegmentation();
-        };
+
+        const allPassed = checks.every((c) => c.passed);
+        addResult(
+          "Chrome API检查",
+          allPassed,
+          checks
+            .filter((c) => !c.passed)
+            .map((c) => c.name + ": " + c.message)
+            .join(", "),
+        );
+
+        checks.forEach((c) =>
+          log(`${c.passed ? "✓" : "✗"} ${c.name}`, c.passed ? "info" : "error"),
+        );
+
+        return allPassed;
+      }
+
+      // 测试2: 检查剪贴板API
+      async function testClipboardAPI() {
+        log("检查剪贴板API...", "info");
+
+        const checks = [];
+
+        // 检查navigator.clipboard
+        if (navigator.clipboard) {
+          checks.push({ name: "navigator.clipboard", passed: true });
+
+          // 检查readText
+          try {
+            await navigator.clipboard.readText();
+            checks.push({ name: "clipboard.readText", passed: true });
+          } catch (e) {
+            checks.push({
+              name: "clipboard.readText",
+              passed: false,
+              message: e.name + ": " + e.message,
+            });
+          }
+
+          // 检查writeText
+          try {
+            await navigator.clipboard.writeText("test");
+            checks.push({ name: "clipboard.writeText", passed: true });
+          } catch (e) {
+            checks.push({
+              name: "clipboard.writeText",
+              passed: false,
+              message: e.name + ": " + e.message,
+            });
+          }
+        } else {
+          checks.push({
+            name: "navigator.clipboard",
+            passed: false,
+            message: "clipboard API不可用",
+          });
+        }
+
+        const allPassed = checks.every((c) => c.passed);
+        addResult(
+          "剪贴板API检查",
+          allPassed,
+          checks
+            .filter((c) => !c.passed)
+            .map((c) => c.name + ": " + c.message)
+            .join(", "),
+        );
+
+        checks.forEach((c) =>
+          log(`${c.passed ? "✓" : "✗"} ${c.name}`, c.passed ? "info" : "error"),
+        );
+
+        return allPassed;
+      }
+
+      // 测试3: 检查Storage数据
+      async function testStorage() {
+        log("检查Storage数据...", "info");
+
+        try {
+          const result = await chrome.storage.local.get([
+            "globalMonitoringEnabled",
+            "globalClipboardContent",
+          ]);
+          log(
+            `globalMonitoringEnabled: ${result.globalMonitoringEnabled}`,
+            "info",
+          );
+          log(
+            `globalClipboardContent长度: ${result.globalClipboardContent?.length || 0}`,
+            "info",
+          );
+          addResult(
+            "Storage读取",
+            true,
+            `监控状态: ${result.globalMonitoringEnabled}, 内容长度: ${result.globalClipboardContent?.length || 0}`,
+          );
+          return true;
+        } catch (e) {
+          log(`✗ Storage读取失败: ${e.message}`, "error");
+          addResult("Storage读取", false, e.message);
+          return false;
+        }
+      }
+
+      // 测试4: 发送消息到Background
+      async function testMessaging() {
+        log("测试消息传递...", "info");
+
+        try {
+          const response = await chrome.runtime.sendMessage({
+            action: "getGlobalMonitoringState",
+          });
+          log(`响应: ${JSON.stringify(response)}`, "info");
+          addResult("消息通信", true, `监控状态: ${response?.isActive}`);
+          return true;
+        } catch (e) {
+          log(`✗ 消息通信失败: ${e.message}`, "error");
+          addResult("消息通信", false, e.message);
+          return false;
+        }
+      }
+
+      // 测试5: 检查Content Script状态
+      function testContentScript() {
+        log("检查Content Script状态...", "info");
+
+        const checks = [];
+
+        // 检查全局对象
+        if (window.__searchdecideGlobal) {
+          checks.push({ name: "__searchdecideGlobal", passed: true });
+          const state = window.__searchdecideGlobal.getState();
+          log(`监控状态: ${state.isMonitoring}`, "info");
+          log(`最后内容长度: ${state.lastContent?.length || 0}`, "info");
+          addResult(
+            "Content Script状态",
+            true,
+            `监控: ${state.isMonitoring}, 内容: ${state.lastContent?.length || 0}字符`,
+          );
+        } else {
+          checks.push({
+            name: "__searchdecideGlobal",
+            passed: false,
+            message: "全局对象不存在",
+          });
+          addResult("Content Script状态", false, "__searchdecideGlobal未定义");
+        }
+
+        return checks.every((c) => c.passed);
+      }
+
+      // 按钮事件处理
+      document
+        .getElementById("testNotification")
+        .addEventListener("click", () => {
+          if (
+            window.__searchdecideGlobal &&
+            window.__searchdecideGlobal.showNotification
+          ) {
+            window.__searchdecideGlobal.showNotification(
+              "测试通知 " + new Date().toLocaleTimeString(),
+              "success",
+            );
+            log("✓ 手动触发通知", "info");
+          } else {
+            log("✗ 无法显示通知", "error");
+          }
+        });
+
+      document
+        .getElementById("testClipboardRead")
+        .addEventListener("click", async () => {
+          try {
+            const text = await navigator.clipboard.readText();
+            log(
+              `剪贴板内容: "${text.substring(0, 50)}${text.length > 50 ? "..." : ""}"`,
+              "info",
+            );
+            if (
+              window.__searchdecideGlobal &&
+              window.__searchdecideGlobal.showNotification
+            ) {
+              window.__searchdecideGlobal.showNotification(
+                "读取成功: " + text.substring(0, 20) + "...",
+                "info",
+              );
+            }
+          } catch (e) {
+            log(`✗ 读取失败: ${e.message}`, "error");
+          }
+        });
+
+      document
+        .getElementById("testToggleMonitoring")
+        .addEventListener("click", async () => {
+          try {
+            const response = await chrome.runtime.sendMessage({
+              action: "toggleGlobalMonitoring",
+            });
+            log(`切换监控: ${response.isActive}`, "info");
+            if (
+              window.__searchdecideGlobal &&
+              window.__searchdecideGlobal.showNotification
+            ) {
+              window.__searchdecideGlobal.showNotification(
+                `监控已${response.isActive ? "开启" : "关闭"}`,
+                response.isActive ? "success" : "info",
+              );
+            }
+          } catch (e) {
+            log(`✗ 切换失败: ${e.message}`, "error");
+          }
+        });
+
+      document
+        .getElementById("testOpenSidePanel")
+        .addEventListener("click", async () => {
+          try {
+            const [tab] = await chrome.tabs.query({
+              active: true,
+              currentWindow: true,
+            });
+            if (tab?.windowId) {
+              await chrome.sidePanel.open({ windowId: tab.windowId });
+              log("✓ 侧边栏已打开", "info");
+            }
+          } catch (e) {
+            log(`✗ 打开失败: ${e.message}`, "error");
+          }
+        });
+
+      // 运行所有测试
+      async function runTests() {
+        log("=".repeat(50), "info");
+        log("开始测试...", "info");
+
+        await testChromeAPI();
+        await testClipboardAPI();
+        await testStorage();
+        await testMessaging();
+        testContentScript();
+
+        log("=".repeat(50), "info");
+        log(`测试完成: 通过 ${passCount}, 失败 ${failCount}`, "info");
+      }
+
+      // 页面加载后运行测试
+      setTimeout(runTests, 500);
     </script>
-</body>
+  </body>
 </html>

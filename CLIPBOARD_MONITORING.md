@@ -2,7 +2,7 @@
 
 ## 📋 功能概述
 
-剪贴板监控是Enhance Search Buddy扩展的核心功能之一，它能够实时检测剪贴板内容的变化，并将新内容自动填入扩展的搜索框中。该功能支持一键开启/关闭，并提供了键盘快捷键支持。
+剪贴板监控是Enhance Search Decide扩展的核心功能之一，它能够实时检测剪贴板内容的变化，并将新内容自动填入扩展的搜索框中。该功能支持一键开启/关闭，并提供了键盘快捷键支持。
 
 ## 🔧 核心原理
 
@@ -17,31 +17,31 @@
 
 ### 2. 权限需求
 
-| 权限名称 | 用途说明 | 是否可选 |
-|---------|---------|---------|
-| `clipboardRead` | 读取剪贴板内容 | ✅ 可选 |
-| `tabs` | 与内容脚本通信 | ✅ 可选 |
-| `activeTab` | 在当前页面注入脚本 | ❌ 必需 |
+| 权限名称        | 用途说明           | 是否可选 |
+| --------------- | ------------------ | -------- |
+| `clipboardRead` | 读取剪贴板内容     | ✅ 可选  |
+| `tabs`          | 与内容脚本通信     | ✅ 可选  |
+| `activeTab`     | 在当前页面注入脚本 | ❌ 必需  |
 
 ### 3. 数据流
 
 ```
-+----------------+     +------------------+     +----------------+     +----------------+    
++----------------+     +------------------+     +----------------+     +----------------+
 | 剪贴板内容变化 | --> | 内容脚本检测变化 | --> | 发送消息到Popup | --> | 更新搜索框内容 |
-+----------------+     +------------------+     +----------------+     +----------------+    
++----------------+     +------------------+     +----------------+     +----------------+
 ```
 
 ## 📁 代码结构
 
 ### 1. 核心文件
 
-| 文件名 | 路径 | 功能说明 |
-|-------|------|---------|
-| `content/index.js` | `src/content/index.js` | 实现剪贴板监控的核心逻辑 |
-| `popup/main.js` | `src/popup/main.js` | 处理剪贴板变化事件，更新UI |
-| `popup/index.html` | `src/popup/index.html` | 提供剪贴板监控的UI控件 |
-| `popup/new-style.css` | `src/popup/new-style.css` | 剪贴板监控相关的样式 |
-| `manifest.json` | 项目根目录 | 配置权限和快捷键 |
+| 文件名                | 路径                      | 功能说明                   |
+| --------------------- | ------------------------- | -------------------------- |
+| `content/index.js`    | `src/content/index.js`    | 实现剪贴板监控的核心逻辑   |
+| `popup/main.js`       | `src/popup/main.js`       | 处理剪贴板变化事件，更新UI |
+| `popup/index.html`    | `src/popup/index.html`    | 提供剪贴板监控的UI控件     |
+| `popup/new-style.css` | `src/popup/new-style.css` | 剪贴板监控相关的样式       |
+| `manifest.json`       | 项目根目录                | 配置权限和快捷键           |
 
 ### 2. 关键变量
 
@@ -49,7 +49,7 @@
 // 剪贴板监控状态
 let isClipboardMonitoring = false;
 // 上次剪贴板内容
-let lastClipboardContent = '';
+let lastClipboardContent = "";
 // 轮询定时器
 let clipboardInterval = null;
 ```
@@ -61,51 +61,51 @@ let clipboardInterval = null;
 ```javascript
 // 切换剪贴板监控
 function toggleClipboardMonitoring() {
-    isClipboardMonitoring = !isClipboardMonitoring;
-    
-    if (isClipboardMonitoring) {
-        startClipboardMonitoring();
-        showPageNotification('剪贴板监控已启动', 'success');
-    } else {
-        stopClipboardMonitoring();
-        showPageNotification('剪贴板监控已停止', 'info');
-    }
+  isClipboardMonitoring = !isClipboardMonitoring;
+
+  if (isClipboardMonitoring) {
+    startClipboardMonitoring();
+    showPageNotification("剪贴板监控已启动", "success");
+  } else {
+    stopClipboardMonitoring();
+    showPageNotification("剪贴板监控已停止", "info");
+  }
 }
 
 // 启动剪贴板监控
 async function startClipboardMonitoring() {
-    if (clipboardInterval) {
-        clearInterval(clipboardInterval);
+  if (clipboardInterval) {
+    clearInterval(clipboardInterval);
+  }
+
+  clipboardInterval = setInterval(async () => {
+    if (!isClipboardMonitoring) return;
+
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text && text !== lastClipboardContent && text.trim().length > 0) {
+        lastClipboardContent = text;
+
+        // 通知popup有新的剪贴板内容
+        chrome.runtime.sendMessage({
+          action: "clipboardChanged",
+          content: text,
+        });
+
+        showPageNotification("检测到剪贴板内容变化", "info");
+      }
+    } catch (err) {
+      // 静默处理剪贴板读取错误
     }
-    
-    clipboardInterval = setInterval(async () => {
-        if (!isClipboardMonitoring) return;
-        
-        try {
-            const text = await navigator.clipboard.readText();
-            if (text && text !== lastClipboardContent && text.trim().length > 0) {
-                lastClipboardContent = text;
-                
-                // 通知popup有新的剪贴板内容
-                chrome.runtime.sendMessage({
-                    action: 'clipboardChanged',
-                    content: text
-                });
-                
-                showPageNotification('检测到剪贴板内容变化', 'info');
-            }
-        } catch (err) {
-            // 静默处理剪贴板读取错误
-        }
-    }, 1000);
+  }, 1000);
 }
 
 // 停止剪贴板监控
 function stopClipboardMonitoring() {
-    if (clipboardInterval) {
-        clearInterval(clipboardInterval);
-        clipboardInterval = null;
-    }
+  if (clipboardInterval) {
+    clearInterval(clipboardInterval);
+    clipboardInterval = null;
+  }
 }
 ```
 
@@ -114,63 +114,67 @@ function stopClipboardMonitoring() {
 ```javascript
 // 剪贴板监控功能
 async function toggleClipboardMonitoring() {
-    appState.clipboardMonitoring = elements.clipboard_monitor_switch.checked;
-    
-    if (appState.clipboardMonitoring) {
-        try {
-            await startClipboardMonitoring();
-            showNotification('剪贴板监控已启动');
-        } catch (error) {
-            logger.warn('剪贴板监控启动失败:', error);
-            elements.clipboard_monitor_switch.checked = false;
-            appState.clipboardMonitoring = false;
-            showNotification('无法启动剪贴板监控', false);
-        }
-    } else {
-        stopClipboardMonitoring();
-        showNotification('剪贴板监控已停止');
+  appState.clipboardMonitoring = elements.clipboard_monitor_switch.checked;
+
+  if (appState.clipboardMonitoring) {
+    try {
+      await startClipboardMonitoring();
+      showNotification("剪贴板监控已启动");
+    } catch (error) {
+      logger.warn("剪贴板监控启动失败:", error);
+      elements.clipboard_monitor_switch.checked = false;
+      appState.clipboardMonitoring = false;
+      showNotification("无法启动剪贴板监控", false);
     }
-    
-    updateClipboardButtonState(appState.clipboardMonitoring);
+  } else {
+    stopClipboardMonitoring();
+    showNotification("剪贴板监控已停止");
+  }
+
+  updateClipboardButtonState(appState.clipboardMonitoring);
 }
 
 async function startClipboardMonitoring() {
-    if (appState.clipboardInterval) {
-        clearInterval(appState.clipboardInterval);
-    }
-    
-    appState.clipboardInterval = setInterval(async () => {
-        if (!appState.clipboardMonitoring) return;
-        
-        try {
-            const text = await navigator.clipboard.readText();
-            if (text && text !== appState.lastClipboardContent && text.trim().length > 0) {
-                appState.lastClipboardContent = text;
-                if (elements.search_input) {
-                    elements.search_input.value = text;
-                    
-                    // 重置手动调整标记，允许自适应调整
-                    elements.search_input.isManuallyResized = false;
-                    
-                    // 触发输入处理和高度调整
-                    handleTextareaInput();
-                    
-                    // 更新搜索控件位置
-                    updateSearchControlsPosition();
-                }
-                showNotification('检测到剪贴板内容变化');
-            }
-        } catch (err) {
-            // 静默处理剪贴板读取错误
+  if (appState.clipboardInterval) {
+    clearInterval(appState.clipboardInterval);
+  }
+
+  appState.clipboardInterval = setInterval(async () => {
+    if (!appState.clipboardMonitoring) return;
+
+    try {
+      const text = await navigator.clipboard.readText();
+      if (
+        text &&
+        text !== appState.lastClipboardContent &&
+        text.trim().length > 0
+      ) {
+        appState.lastClipboardContent = text;
+        if (elements.search_input) {
+          elements.search_input.value = text;
+
+          // 重置手动调整标记，允许自适应调整
+          elements.search_input.isManuallyResized = false;
+
+          // 触发输入处理和高度调整
+          handleTextareaInput();
+
+          // 更新搜索控件位置
+          updateSearchControlsPosition();
         }
-    }, 1000);
+        showNotification("检测到剪贴板内容变化");
+      }
+    } catch (err) {
+      // 静默处理剪贴板读取错误
+    }
+  }, 1000);
 }
 
 function stopClipboardMonitoring() {
-    if (appState.clipboardInterval) {
-        clearInterval(appState.clipboardInterval);
-        appState.clipboardInterval = null;
-    }
+  if (appState.clipboardInterval) {
+    clearInterval(appState.clipboardInterval);
+    appState.clipboardInterval = null;
+  }
 }
 ```
 
@@ -179,17 +183,30 @@ function stopClipboardMonitoring() {
 ```html
 <!-- 剪贴板监控单独区域 -->
 <section class="clipboard-monitor-section">
-    <div class="switch-container" data-switch="clipboard">
-        <input type="checkbox" id="clipboard-monitor-switch" checked>
-        <label for="clipboard-monitor-switch">
-            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clipboard-check">
-                <rect width="8" height="4" x="8" y="2" rx="1" ry="1"/>
-                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-                <path d="m9 14 2 2 4-4"/>
-            </svg>
-            剪贴板监控
-        </label>
-    </div>
+  <div class="switch-container" data-switch="clipboard">
+    <input type="checkbox" id="clipboard-monitor-switch" checked />
+    <label for="clipboard-monitor-switch">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="lucide lucide-clipboard-check"
+      >
+        <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+        <path
+          d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
+        />
+        <path d="m9 14 2 2 4-4" />
+      </svg>
+      剪贴板监控
+    </label>
+  </div>
 </section>
 ```
 
@@ -197,10 +214,10 @@ function stopClipboardMonitoring() {
 
 ### 1. 现有快捷键
 
-| 快捷键 | 功能 | 配置位置 |
-|-------|------|---------|
-| `Alt+Shift+C` | 切换剪贴板监控 | manifest.json |
-| `Alt+L` | 打开扩展 | manifest.json |
+| 快捷键        | 功能             | 配置位置      |
+| ------------- | ---------------- | ------------- |
+| `Alt+Shift+C` | 切换剪贴板监控   | manifest.json |
+| `Alt+L`       | 打开扩展         | manifest.json |
 | `Alt+Shift+S` | 快速搜索选中文本 | manifest.json |
 
 ### 2. 新增快捷键 (`Alt+K`)
@@ -225,11 +242,11 @@ function stopClipboardMonitoring() {
 
 ### 1. 消息类型
 
-| 消息动作 | 发送方 | 接收方 | 用途 |
-|---------|-------|-------|------|
-| `toggleClipboardMonitoring` | background | content | 切换剪贴板监控状态 |
-| `clipboardChanged` | content | popup | 通知剪贴板内容变化 |
-| `contentScriptReady` | content | background | 通知内容脚本已准备就绪 |
+| 消息动作                    | 发送方     | 接收方     | 用途                   |
+| --------------------------- | ---------- | ---------- | ---------------------- |
+| `toggleClipboardMonitoring` | background | content    | 切换剪贴板监控状态     |
+| `clipboardChanged`          | content    | popup      | 通知剪贴板内容变化     |
+| `contentScriptReady`        | content    | background | 通知内容脚本已准备就绪 |
 
 ### 2. 消息处理
 
@@ -238,17 +255,17 @@ function stopClipboardMonitoring() {
 ```javascript
 // 监听来自background script的消息
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    logger.info('收到消息:', request);
-    
-    switch (request.action) {
-        case 'toggleClipboardMonitoring':
-            toggleClipboardMonitoring();
-            sendResponse({ success: true });
-            break;
-        // 其他消息处理...
-    }
-    
-    return true; // 保持消息通道开放
+  logger.info("收到消息:", request);
+
+  switch (request.action) {
+    case "toggleClipboardMonitoring":
+      toggleClipboardMonitoring();
+      sendResponse({ success: true });
+      break;
+    // 其他消息处理...
+  }
+
+  return true; // 保持消息通道开放
 });
 ```
 
@@ -276,22 +293,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 ### 1. 功能测试
 
-| 测试场景 | 预期结果 |
-|---------|---------|
-| 开启剪贴板监控 | 显示"剪贴板监控已启动"通知 |
-| 复制文本到剪贴板 | 文本自动填入搜索框 |
-| 复制相同内容 | 不触发重复处理 |
-| 关闭剪贴板监控 | 显示"剪贴板监控已停止"通知 |
-| 按Alt+K快捷键 | 切换剪贴板监控状态 |
+| 测试场景         | 预期结果                   |
+| ---------------- | -------------------------- |
+| 开启剪贴板监控   | 显示"剪贴板监控已启动"通知 |
+| 复制文本到剪贴板 | 文本自动填入搜索框         |
+| 复制相同内容     | 不触发重复处理             |
+| 关闭剪贴板监控   | 显示"剪贴板监控已停止"通知 |
+| 按Alt+K快捷键    | 切换剪贴板监控状态         |
 
 ### 2. 边界测试
 
-| 测试场景 | 预期结果 |
-|---------|---------|
-| 复制空文本 | 不触发处理 |
+| 测试场景   | 预期结果             |
+| ---------- | -------------------- |
+| 复制空文本 | 不触发处理           |
 | 复制大文本 | 正常处理，无性能问题 |
-| 频繁复制 | 正常处理，无性能问题 |
-| 权限被拒绝 | 显示友好的错误提示 |
+| 频繁复制   | 正常处理，无性能问题 |
+| 权限被拒绝 | 显示友好的错误提示   |
 
 ## 📈 性能分析
 

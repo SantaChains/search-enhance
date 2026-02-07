@@ -1,0 +1,11 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "List Trae Extensions",
+      "type": "shell",
+      "command": "& \"D:\\Users\\Jliu Pureey\\AppData\\Local\\Programs\\Trae CN\\Trae CN.exe\" --list-extensions",
+      "problemMatcher": []
+    }
+  ]
+}
