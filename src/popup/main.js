@@ -4,16 +4,28 @@ import { getSettings, saveSettings, DEFAULTS } from "../utils/storage.js";
 
 import {
   isURL,
-  processTextExtraction,
   splitText,
-  processPath,
-  processLinkGeneration,
-  analyzeTextForMultipleFormats,
-  chineseWordSegmentation,
   copyToClipboard as copyTextToClipboard,
   extractEmails,
   extractPhoneNumbers,
+  intelligentSegmentation,
+  chineseAnalyze,
+  englishAnalyze,
+  codeAnalyze,
+  aiAnalyze,
+  sentenceAnalyze,
+  halfSentenceAnalyze,
+  charBreak,
+  removeSymbolsAnalyze,
+  randomAnalyze,
+  multiRuleAnalyze,
+  processPath,
+  processLinkGeneration,
+  processTextExtraction,
+  analyzeTextForMultipleFormats,
 } from "../utils/textProcessor.js";
+
+import { applySingleRule } from "../utils/multiRuleAnalyzer.js";
 
 import linkHistoryManager from "../utils/linkHistory.js";
 
@@ -36,6 +48,7 @@ let appState = {
   clipboardMonitoring: false,
   lastClipboardContent: "",
   linkHistory: [],
+  resizeObserver: null,
   multiFormatState: {
     originalText: "",
     processingHistory: [],
@@ -47,6 +60,12 @@ let appState = {
   editingItemId: null,
   maxClipboardHistory: 100,
   backgroundPort: null,
+  // 多规则分析状态
+  multiRuleState: {
+    originalText: "",
+    processingHistory: [],
+    currentIndex: -1,
+  },
 };
 
 const elements = {};
@@ -91,6 +110,7 @@ function initializeElements() {
     "switch-link-gen",
     "switch-multi-format",
     "clipboard-btn",
+    "clipboard-monitor-switch",
     "settings-btn",
     "extract-container",
     "link-gen-container",
@@ -488,14 +508,14 @@ function renderNormalOrBatchItem(item, showCheckbox, isSelected) {
   const truncatedText = truncateText(item.text, 150);
 
   return `
-        <div class="history-item" data-id="${item.id}">
+        <div class="history-item" data-id="${escapeHtml(String(item.id))}">
             <div class="clipboard-item-content">
                 <div class="content-row">
                     <input type="checkbox" class="clipboard-checkbox"
-                           data-id="${item.id}"
+                           data-id="${escapeHtml(String(item.id))}"
                            style="display: ${showCheckbox ? "inline-block" : "none"}"
                            ${isSelected ? "checked" : ""}>
-                    <div class="clipboard-text-content" data-id="${item.id}">${escapeHtml(truncatedText)}</div>
+                    <div class="clipboard-text-content" data-id="${escapeHtml(String(item.id))}">${escapeHtml(truncatedText)}</div>
                     ${showActionBtns ? renderActionButtons(item.id, isBatchMode) : ""}
                 </div>
                 <div class="clipboard-meta">
@@ -508,25 +528,25 @@ function renderNormalOrBatchItem(item, showCheckbox, isSelected) {
 
 function renderEditModeItem(item) {
   return `
-        <div class="history-item editing" data-id="${item.id}">
+        <div class="history-item editing" data-id="${escapeHtml(String(item.id))}">
             <div class="clipboard-item-content">
                 <div class="edit-row">
                     <div class="edit-actions">
-                        <button class="save-edit-btn btn-sm" data-id="${item.id}" title="保存">
+                        <button class="save-edit-btn btn-sm" data-id="${escapeHtml(String(item.id))}" title="保存">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                                 <polyline points="17 21 17 13 7 13 7 21"/>
                                 <polyline points="7 3 7 8 15 8"/>
                             </svg>
                         </button>
-                        <button class="cancel-edit-btn btn-sm" data-id="${item.id}" title="取消">
+                        <button class="cancel-edit-btn btn-sm" data-id="${escapeHtml(String(item.id))}" title="取消">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="18" y1="6" x2="6" y2="18"/>
                                 <line x1="6" y1="6" x2="18" y2="18"/>
                             </svg>
                         </button>
                     </div>
-                    <textarea class="edit-textarea" data-id="${item.id}">${escapeHtml(item.text)}</textarea>
+                    <textarea class="edit-textarea" data-id="${escapeHtml(String(item.id))}">${escapeHtml(item.text)}</textarea>
                 </div>
             </div>
         </div>
@@ -535,10 +555,11 @@ function renderEditModeItem(item) {
 
 function renderActionButtons(itemId, isBatchMode = false) {
   // 批量模式下不显示编辑按钮
+  const safeId = escapeHtml(String(itemId));
   const editButton = isBatchMode
     ? ""
     : `
-            <button class="edit-btn btn-sm" data-id="${itemId}" title="编辑">
+            <button class="edit-btn btn-sm" data-id="${safeId}" title="编辑">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                     <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -548,7 +569,7 @@ function renderActionButtons(itemId, isBatchMode = false) {
 
   return `
         <div class="item-actions">
-            <button class="copy-btn btn-sm" data-id="${itemId}" title="复制">
+            <button class="copy-btn btn-sm" data-id="${safeId}" title="复制">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
                     <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
@@ -862,7 +883,6 @@ function updateClipboardToolbar() {
                     <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
                 </svg>
                 删除(${selectedCount})
-            </button>
             </button>
         `;
   } else if (mode === ClipboardMode.EDIT) {
@@ -1201,9 +1221,10 @@ function renderExtractionUI(text) {
     if (elements.path_conversion_result) {
       elements.path_conversion_result.innerHTML = pathResults
         .map((p) => {
-          const quotedPath = useQuotes ? `"${p}"` : p;
+          const safePath = escapeHtml(p);
+          const quotedPath = useQuotes ? `"${safePath}"` : safePath;
           return `<div class="path-item">
-                    <button class="path-copy-btn" data-path="${p}">复制</button>
+                    <button class="path-copy-btn" data-path="${safePath}">复制</button>
                     <pre>${quotedPath}</pre>
                 </div>`;
         })
@@ -1234,12 +1255,13 @@ function renderExtractionUI(text) {
     if (extractedLinks.length > 0) {
       extractedLinks.forEach((link) => addToHistoryEnhanced(link));
       linkHtml += extractedLinks
-        .map(
-          (link) => `<div class="link-item">
-                <button class="copy-btn" data-link="${link}">复制</button>
-                <a href="${link}" target="_blank">${link}</a>
-            </div>`,
-        )
+        .map((link) => {
+          const safeLink = escapeHtml(link);
+          return `<div class="link-item">
+                <button class="copy-btn" data-link="${safeLink}">复制</button>
+                <a href="${safeLink}" target="_blank">${safeLink}</a>
+            </div>`;
+        })
         .join("");
     } else {
       linkHtml += "<p>未找到链接。</p>";
@@ -1275,9 +1297,10 @@ function renderLinkGenerationUI(text) {
       linkGenResult.generatedLinks
         .map((link) => {
           addToHistoryEnhanced(link);
+          const safeLink = escapeHtml(link);
           return `<div class="link-item">
-                <button class="copy-btn" data-link="${link}">复制</button>
-                <a href="${link}" target="_blank">${link}</a>
+                <button class="copy-btn" data-link="${safeLink}">复制</button>
+                <a href="${safeLink}" target="_blank">${safeLink}</a>
             </div>`;
         })
         .join("");
@@ -1368,13 +1391,17 @@ function renderMultiFormatAnalysis(text) {
     const card = document.createElement("div");
     card.className = "format-card";
 
+    const safeType = escapeHtml(result.type);
+    const safeTypeId = result.type
+      .replace(/\s+/g, "-")
+      .replace(/[^a-zA-Z0-9-_]/g, "");
     card.innerHTML = `
-            <div class="format-header">${result.type}</div>
+            <div class="format-header">${safeType}</div>
             <div class="format-controls">
-                <button class="process-btn" data-type="${result.type}" data-original="${encodeURIComponent(text)}">单独处理</button>
+                <button class="process-btn" data-type="${safeType}" data-original="${encodeURIComponent(text)}">单独处理</button>
             </div>
-            <div class="format-content" id="format-${result.type.replace(/\s+/g, "-")}"></div>
-            <div class="format-processed-result" id="processed-${result.type.replace(/\s+/g, "-")}"></div>
+            <div class="format-content" id="format-${safeTypeId}"></div>
+            <div class="format-processed-result" id="processed-${safeTypeId}"></div>
         `;
 
     const content = card.querySelector(
@@ -1383,11 +1410,12 @@ function renderMultiFormatAnalysis(text) {
 
     if (result.type === "路径转换") {
       result.data.forEach((path) => {
+        const safePath = escapeHtml(path);
         const item = document.createElement("div");
         item.className = "path-item";
         item.innerHTML = `
-                    <button class="copy-btn" data-path="${path}">复制</button>
-                    <span class="path-text">${path}</span>
+                    <button class="copy-btn" data-path="${safePath}">复制</button>
+                    <span class="path-text">${safePath}</span>
                 `;
         content.appendChild(item);
       });
@@ -1395,12 +1423,13 @@ function renderMultiFormatAnalysis(text) {
       result.data.forEach((linkObj) => {
         const linkUrl = linkObj.url || linkObj;
         addToHistoryEnhanced(linkUrl);
+        const safeLinkUrl = escapeHtml(linkUrl);
 
         const item = document.createElement("div");
         item.className = "link-item";
         item.innerHTML = `
-                    <button class="copy-btn" data-link="${linkUrl}">复制</button>
-                    <a href="${linkUrl}" target="_blank">${linkUrl}</a>
+                    <button class="copy-btn" data-link="${safeLinkUrl}">复制</button>
+                    <a href="${safeLinkUrl}" target="_blank">${safeLinkUrl}</a>
                 `;
         content.appendChild(item);
       });
@@ -1408,11 +1437,13 @@ function renderMultiFormatAnalysis(text) {
       result.data.forEach((item) => {
         const value = item.url || item;
         const displayValue = value.replace(/^(mailto:|tel:|http:\/\/)/, "");
+        const safeValue = escapeHtml(value);
+        const safeDisplayValue = escapeHtml(displayValue);
         const itemEl = document.createElement("div");
         itemEl.className = "format-item";
         itemEl.innerHTML = `
-                    <button class="copy-btn" data-value="${value}">复制</button>
-                    <span class="format-value">${displayValue}</span>
+                    <button class="copy-btn" data-value="${safeValue}">复制</button>
+                    <span class="format-value">${safeDisplayValue}</span>
                 `;
         content.appendChild(itemEl);
       });
@@ -1471,6 +1502,44 @@ function handleBackToPrevious() {
       ];
     displayMultiFormatResult(previousResult);
     updateBackButtonState();
+  }
+}
+
+/**
+ * 处理拆分模式切换
+ */
+function handleSplitModeChange() {
+  const mode = elements.split_delimiter_select.value;
+  const multiRuleButtons = document.getElementById("multi-rule-buttons");
+  const splitOutput = elements.split_output_container;
+
+  if (mode === "multi") {
+    // 多规则模式
+    if (multiRuleButtons) {
+      multiRuleButtons.style.display = "block";
+    }
+
+    // 初始化多规则模式
+    const inputText = elements.search_input?.value?.trim();
+    if (inputText) {
+      initMultiRuleMode(inputText);
+    } else {
+      splitOutput.innerHTML = '<div class="no-results">请输入文本</div>';
+    }
+  } else {
+    // 其他模式
+    if (multiRuleButtons) {
+      multiRuleButtons.style.display = "none";
+    }
+
+    // 重置多规则状态
+    appState.multiRuleState.processingHistory = [];
+    appState.multiRuleState.currentIndex = -1;
+
+    // 执行普通拆分
+    if (elements.search_input && elements.search_input.value.trim()) {
+      renderSplittingTool(elements.search_input.value);
+    }
   }
 }
 
@@ -1766,18 +1835,226 @@ function renderSplittingTool(text) {
     return;
   }
 
-  let delimiter = elements.split_delimiter_select.value;
-
-  const multiRuleCheckbox = document.getElementById("enable-multi-rules");
-  if (multiRuleCheckbox && multiRuleCheckbox.checked) {
-    const selectedRules = getSelectedRules();
-    if (selectedRules.length > 0) {
-      delimiter = selectedRules;
+  // 检查是否是多规则模式
+  const multiRuleButtons = document.getElementById("multi-rule-buttons");
+  if (multiRuleButtons && multiRuleButtons.style.display !== "none") {
+    // 多规则模式：使用当前状态的结果
+    const currentResult = getMultiRuleCurrentResult();
+    if (currentResult) {
+      renderSplitItems(currentResult);
+      return;
     }
   }
 
-  const splitItems = splitText(text, delimiter);
+  let delimiter = elements.split_delimiter_select.value;
+  splitText(text, delimiter).then((splitItems) => {
+    renderSplitItems(splitItems);
+  });
+}
 
+/**
+ * 获取多规则当前结果
+ */
+function getMultiRuleCurrentResult() {
+  if (appState.multiRuleState.currentIndex >= 0) {
+    return appState.multiRuleState.processingHistory[
+      appState.multiRuleState.currentIndex
+    ];
+  }
+  return null;
+}
+
+/**
+ * 更新多规则状态
+ */
+function updateMultiRuleState(result) {
+  // 如果当前不是最后一步，截断历史
+  if (
+    appState.multiRuleState.currentIndex <
+    appState.multiRuleState.processingHistory.length - 1
+  ) {
+    appState.multiRuleState.processingHistory =
+      appState.multiRuleState.processingHistory.slice(
+        0,
+        appState.multiRuleState.currentIndex + 1,
+      );
+  }
+
+  // 添加新结果
+  appState.multiRuleState.processingHistory.push(result);
+  appState.multiRuleState.currentIndex++;
+
+  // 限制历史长度（最多6次）
+  const maxHistory = 6;
+  if (appState.multiRuleState.processingHistory.length > maxHistory) {
+    appState.multiRuleState.processingHistory.shift();
+    appState.multiRuleState.currentIndex--;
+  }
+
+  // 更新返回按钮状态
+  updateMultiRuleBackButton();
+}
+
+/**
+ * 处理多规则按钮点击
+ */
+function handleMultiRuleButtonClick(rule) {
+  const currentText = getMultiRuleCurrentText();
+  if (!currentText) {
+    showNotification("请先输入文本", false);
+    return;
+  }
+
+  const { result, hasConflict, conflictMessage } = applySingleRule(
+    currentText,
+    rule,
+  );
+
+  if (hasConflict && conflictMessage) {
+    showNotification(conflictMessage, false);
+  }
+
+  if (result && result.length > 0) {
+    updateMultiRuleState(result);
+    renderSplitItems(result);
+    showNotification(`已应用: ${getRuleName(rule)}`);
+  }
+}
+
+/**
+ * 获取多规则当前文本
+ */
+function getMultiRuleCurrentText() {
+  if (appState.multiRuleState.currentIndex >= 0) {
+    const current =
+      appState.multiRuleState.processingHistory[
+        appState.multiRuleState.currentIndex
+      ];
+    return Array.isArray(current) ? current.join("") : current;
+  }
+  // 从输入框获取初始文本
+  const inputText = elements.search_input?.value?.trim();
+  if (inputText) {
+    appState.multiRuleState.originalText = inputText;
+    appState.multiRuleState.processingHistory = [inputText];
+    appState.multiRuleState.currentIndex = 0;
+    return inputText;
+  }
+  return null;
+}
+
+/**
+ * 获取规则名称
+ */
+function getRuleName(rule) {
+  const ruleNames = {
+    symbolSplit: "符号分词",
+    whitespaceSplit: "空格分词",
+    newlineSplit: "换行分词",
+    chineseEnglishSplit: "中英分词",
+    uppercaseSplit: "大写分词",
+    namingSplit: "命名分词",
+    digitSplit: "数字分词",
+    removeWhitespace: "去除空格",
+    removeSymbols: "去除符号",
+    removeChinese: "去除中文",
+    removeEnglish: "去除英文",
+  };
+  return ruleNames[rule] || rule;
+}
+
+/**
+ * 多规则返回上一步
+ */
+function handleMultiRuleBack() {
+  if (appState.multiRuleState.currentIndex > 0) {
+    appState.multiRuleState.currentIndex--;
+    const result =
+      appState.multiRuleState.processingHistory[
+        appState.multiRuleState.currentIndex
+      ];
+    renderSplitItems(result);
+    updateMultiRuleBackButton();
+    showNotification("已返回上一步");
+  }
+}
+
+/**
+ * 多规则重置
+ */
+function handleMultiRuleReset() {
+  appState.multiRuleState.processingHistory = [];
+  appState.multiRuleState.currentIndex = -1;
+  updateMultiRuleBackButton();
+
+  // 重新渲染初始文本
+  const inputText = elements.search_input?.value?.trim();
+  if (inputText) {
+    renderSplitItems([inputText]);
+  } else {
+    elements.split_output_container.innerHTML =
+      '<div class="no-results">请输入文本</div>';
+  }
+  showNotification("已重置");
+}
+
+/**
+ * 更新多规则返回按钮状态
+ */
+function updateMultiRuleBackButton() {
+  const backBtn = document.getElementById("multi-rule-back-btn");
+  if (backBtn) {
+    backBtn.disabled = appState.multiRuleState.currentIndex <= 0;
+  }
+}
+
+/**
+ * 初始化多规则模式
+ */
+function initMultiRuleMode(text) {
+  appState.multiRuleState.originalText = text;
+  appState.multiRuleState.processingHistory = [text];
+  appState.multiRuleState.currentIndex = 0;
+  updateMultiRuleBackButton();
+  renderSplitItems([text]);
+}
+
+/**
+ * 处理刷新按钮点击
+ */
+function handleRefreshSplit() {
+  const inputText = elements.search_input?.value?.trim();
+  if (!inputText) {
+    showNotification("请先输入文本", false);
+    return;
+  }
+
+  const mode = elements.split_delimiter_select?.value;
+
+  switch (mode) {
+    case "random":
+      // 随机分词：重新生成
+      randomAnalyze(inputText).then((result) => {
+        renderSplitItems(result);
+        showNotification("随机分词已刷新");
+      });
+      break;
+
+    case "multi":
+      // 多规则模式：重置到初始状态
+      handleMultiRuleReset();
+      showNotification("多规则模式已重置");
+      break;
+
+    default:
+      // 其他模式：重新执行拆分
+      renderSplittingTool(inputText);
+      showNotification("已刷新");
+      break;
+  }
+}
+
+function renderSplitItems(splitItems) {
   appState.splitItemsState = splitItems.map((item) => ({
     text: item,
     selected: false,
@@ -2027,11 +2304,7 @@ function setupEventListeners() {
   setupSwitchContainerListeners();
 
   if (elements.refresh_split_btn) {
-    elements.refresh_split_btn.addEventListener("click", () =>
-      renderSplittingTool(
-        elements.search_input ? elements.search_input.value : "",
-      ),
-    );
+    elements.refresh_split_btn.addEventListener("click", handleRefreshSplit);
   }
 
   const multiRuleCheckbox = document.getElementById("enable-multi-rules");
@@ -2049,10 +2322,33 @@ function setupEventListeners() {
 
   if (elements.split_delimiter_select) {
     elements.split_delimiter_select.addEventListener("change", () => {
-      if (elements.search_input && elements.search_input.value.trim()) {
-        renderSplittingTool(elements.search_input.value);
+      handleSplitModeChange();
+    });
+  }
+
+  // 多规则按钮事件
+  const multiRuleButtons = document.querySelectorAll(
+    "#multi-rule-buttons .format-btn",
+  );
+  multiRuleButtons.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const rule = e.target.dataset.rule;
+      if (rule) {
+        handleMultiRuleButtonClick(rule);
       }
     });
+  });
+
+  // 多规则返回按钮
+  const multiRuleBackBtn = document.getElementById("multi-rule-back-btn");
+  if (multiRuleBackBtn) {
+    multiRuleBackBtn.addEventListener("click", handleMultiRuleBack);
+  }
+
+  // 多规则重置按钮
+  const multiRuleResetBtn = document.getElementById("multi-rule-reset-btn");
+  if (multiRuleResetBtn) {
+    multiRuleResetBtn.addEventListener("click", handleMultiRuleReset);
   }
 
   if (elements.copy_selected_btn) {
@@ -2308,7 +2604,12 @@ function updateSearchControlsPosition() {
 }
 
 function initializeResponsiveLayout() {
-  const resizeObserver = new ResizeObserver((entries) => {
+  // 如果已存在observer，先断开连接
+  if (appState.resizeObserver) {
+    appState.resizeObserver.disconnect();
+  }
+
+  appState.resizeObserver = new ResizeObserver((entries) => {
     for (let entry of entries) {
       const width = entry.contentRect.width;
 
@@ -2329,7 +2630,7 @@ function initializeResponsiveLayout() {
 
   const container = document.getElementById("resizable-container");
   if (container) {
-    resizeObserver.observe(container);
+    appState.resizeObserver.observe(container);
   }
 
   updateSearchControlsPosition();
@@ -2381,7 +2682,7 @@ function toggleHistoryDisplay() {
 
 async function exportHistory() {
   try {
-    const history = await getHistory();
+    const history = await linkHistoryManager.getHistory();
     const exportData = {
       history,
       exportDate: new Date().toISOString(),

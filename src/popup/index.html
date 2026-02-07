@@ -232,102 +232,168 @@
             <div class="split-controls">
               <select id="split-delimiter-select">
                 <option
-                  value="auto"
-                  title="智能分析：根据内容类型自动选择最适合的分隔方式，支持列表、代码、包裹内容等复杂场景"
+                  value="smart"
+                  title="智能分析：英文单词分格，中文整句分格，连着的数字一格，去除空格，每个标点占一格"
                 >
                   智能分析
                 </option>
                 <option
-                  value="mixed-sentence"
-                  title="中英混合：按语言边界智能拆分，中文部分用中文规则，英文部分用英文规则"
+                  value="chinese"
+                  title="中文分析：中英分离，空格整句符号分离，符号空格留在上字词尾，数字分格，剩余中文先查字典再算法分词"
                 >
-                  中英混合
+                  中文分析
                 </option>
                 <option
-                  value="zh-sentence"
-                  title="中文句子：按中文标点（。！？；）拆分句子，长句按逗号、顿号拆分并过滤虚词"
+                  value="english"
+                  title="英文分析：中英分离，空格符号整句分离，符号空格留在上字词尾，数字分格，命名法分词"
                 >
-                  中文句子
+                  英文分析
                 </option>
                 <option
-                  value="zh-word"
-                  title="中文分词：基于正向最大匹配算法，将中文文本拆分为有意义的词语序列"
+                  value="code"
+                  title="代码分析：C++/Python代码结构分析，函数体识别，成对符号匹配"
                 >
-                  中文分词
+                  代码分析
                 </option>
                 <option
-                  value="en-sentence"
-                  title="英文句子：按句号、感叹号、问号拆分英文句子，长句子会按逗号进一步拆分"
+                  value="ai"
+                  title="AI分析：链接识别补全，智能分词，先输出链接和补全链接，剩余严格分词"
                 >
-                  英文句子
+                  AI分析
                 </option>
                 <option
-                  value="code-naming"
-                  title="代码命名：识别驼峰、蛇形、串式命名法，拆分函数名和变量名为基础语义单元"
+                  value="sentence"
+                  title="整句分析：用换行和结束标点分割，保留所有内容（包括空格）"
                 >
-                  代码命名
+                  整句分析
                 </option>
                 <option
-                  value="list-items"
-                  title="列表项目：提取有序列表（1. 一、 ①）和无序列表（- * •）的内容，自动过滤序号标记"
+                  value="halfSentence"
+                  title="半句分析：使用标点、空格、换行分割文本"
                 >
-                  列表项目
+                  半句分析
                 </option>
                 <option
-                  value="wrapped-content"
-                  title="包裹内容：提取引号、括号、书名号等包裹符号内的内容，支持中英文标点"
+                  value="removeSymbols"
+                  title="去除符号：先按符号分格，再去除符号，再按整句空格换行分离，再中英数字分离"
                 >
-                  包裹内容
+                  去除符号
                 </option>
                 <option
-                  value="space"
-                  title="空格分隔：按空格拆分单词，适合英文文本的基础分词"
+                  value="charBreak"
+                  title="字符断行：按设定的行字符数，直接按字符硬断行"
                 >
-                  空格分隔
+                  字符断行
                 </option>
                 <option
-                  value="newline"
-                  title="换行分隔：按换行符拆分，适合处理多行文本内容"
+                  value="random"
+                  title="随机分词：将所有字符随机分成1-10的字符串，从头到尾处理，支持刷新重跑"
                 >
-                  换行分隔
-                </option>
-                <option
-                  value="punctuation"
-                  title="标点分隔：按中英文标点符号拆分，获取基础文本片段"
-                >
-                  标点分隔
-                </option>
-                <option
-                  value="word"
-                  title="单词分隔：按非字母数字字符拆分，提取纯单词内容"
-                >
-                  单词分隔
+                  随机分词
                 </option>
               </select>
-              <div class="multi-rule-container">
-                <label class="multi-rule-label">
-                  <input type="checkbox" id="enable-multi-rules" />
-                  多规则组合
-                </label>
-                <div id="multi-rule-selection" style="display: none">
-                  <div class="rule-checkboxes">
-                    <label
-                      ><input type="checkbox" value="list-items" />
-                      列表项目</label
-                    >
-                    <label
-                      ><input type="checkbox" value="code-naming" />
-                      代码命名</label
-                    >
-                    <label
-                      ><input type="checkbox" value="wrapped-content" />
-                      包裹内容</label
-                    >
-                    <label
-                      ><input type="checkbox" value="mixed-sentence" />
-                      中英混合</label
-                    >
-                  </div>
+              <!-- 多规则组合按钮 -->
+              <div
+                id="multi-rule-buttons"
+                style="display: none; margin-top: var(--space-3)"
+              >
+                <div class="format-buttons-grid">
+                  <button
+                    class="format-btn"
+                    data-rule="symbolSplit"
+                    title="符号放在上词尾，除非是成对符号的前一个"
+                  >
+                    符号分词
+                  </button>
+                  <button
+                    class="format-btn"
+                    data-rule="whitespaceSplit"
+                    title="空格放前一词词尾"
+                  >
+                    空格分词
+                  </button>
+                  <button
+                    class="format-btn"
+                    data-rule="newlineSplit"
+                    title="换行放前一词词尾"
+                  >
+                    换行分词
+                  </button>
+                  <button
+                    class="format-btn"
+                    data-rule="chineseEnglishSplit"
+                    title="分离中文和英文"
+                  >
+                    中英分词
+                  </button>
+                  <button
+                    class="format-btn"
+                    data-rule="uppercaseSplit"
+                    title="将每个大写字母分成一格"
+                  >
+                    大写分词
+                  </button>
+                  <button
+                    class="format-btn"
+                    data-rule="namingSplit"
+                    title="各类命名法分格（驼峰、蛇形等）"
+                  >
+                    命名分词
+                  </button>
+                  <button
+                    class="format-btn"
+                    data-rule="digitSplit"
+                    title="数字单独分出来"
+                  >
+                    数字分词
+                  </button>
+                  <button
+                    class="format-btn"
+                    data-rule="removeWhitespace"
+                    title="去除所有空格"
+                  >
+                    去除空格
+                  </button>
+                  <button
+                    class="format-btn"
+                    data-rule="removeSymbols"
+                    title="去除所有符号"
+                  >
+                    去除符号
+                  </button>
+                  <button
+                    class="format-btn"
+                    data-rule="removeChinese"
+                    title="去除所有中文字符"
+                  >
+                    去除中文
+                  </button>
+                  <button
+                    class="format-btn"
+                    data-rule="removeEnglish"
+                    title="去除所有英文字符"
+                  >
+                    去除英文
+                  </button>
+                </div>
+                <div
+                  class="multi-rule-actions"
+                  style="
+                    margin-top: var(--space-3);
+                    display: flex;
+                    gap: var(--space-2);
+                  "
+                >
+                  <button
+                    id="multi-rule-back-btn"
+                    class="secondary-btn"
+                    disabled
+                  >
+                    返回
+                  </button>
+                  <button id="multi-rule-reset-btn" class="secondary-btn">
+                    重置
+                  </button>
                 </div>
               </div>
               <button id="refresh-split-btn">

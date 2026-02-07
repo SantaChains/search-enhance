@@ -11,7 +11,7 @@ import {
     chineseWordSegmentation,
     intelligentSegmentation,
     detectContentType,
-    processMultiFormat,
+    analyzeTextForMultipleFormats,
     processTextExtraction,
     processPath,
     processLinkGeneration,
@@ -19,9 +19,16 @@ import {
     extractPhoneNumbers,
     isURL,
     getAvailableSplitRules,
-    Tokenizer,
-    ContentDetector,
-    RuleEngine
+    smartAnalyze,
+    chineseAnalyze,
+    englishAnalyze,
+    codeAnalyze,
+    aiAnalyze,
+    sentenceAnalyze,
+    charBreak,
+    removeSymbolsAnalyze,
+    randomAnalyze,
+    multiRuleAnalyze,
 } from './textProcessor.js';
 
 // 测试工具

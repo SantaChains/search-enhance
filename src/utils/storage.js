@@ -7,44 +7,102 @@
 
 // Storage keys constants
 export const STORAGE_KEYS = {
-    SEARCH_ENGINES: 'searchEngines',
-    HISTORY: 'history',
-    HISTORY_LIMIT: 'historyLimit',
-    DEFAULT_ENGINE: 'defaultEngine',
-    USER_PREFERENCES: 'userPreferences',
-    LAST_BACKUP: 'lastBackup'
+  SEARCH_ENGINES: "searchEngines",
+  HISTORY: "history",
+  HISTORY_LIMIT: "historyLimit",
+  DEFAULT_ENGINE: "defaultEngine",
+  USER_PREFERENCES: "userPreferences",
+  LAST_BACKUP: "lastBackup",
+  // 分词设置
+  TOKENIZER_SETTINGS: "tokenizerSettings",
 };
 
 // Default settings with enhanced search engines
 export const DEFAULTS = {
-    searchEngines: [
-        { name: 'Bing', template: 'https://www.bing.com/search?q=%s', category: 'general' },
-        { name: 'Google', template: 'https://www.google.com/search?q=%s', category: 'general' },
-        { name: 'Google Scholar', template: 'https://scholar.google.com/scholar?q=%s', category: 'academic' },
-        { name: 'Metaso', template: 'https://metaso.cn/search?q=%s', category: 'ai' },
-        { name: 'Sogou', template: 'https://www.sogou.com/web?query=%s', category: 'general' },
-        { name: 'GitHub', template: 'https://github.com/search?q=%s', category: 'code' },
-        { name: 'Stack Overflow', template: 'https://stackoverflow.com/search?q=%s', category: 'code' },
-        { name: 'MDN', template: 'https://developer.mozilla.org/en-US/search?q=%s', category: 'docs' },
-    ],
-    history: [],
-    historyLimit: 100,
-    defaultEngine: 'Bing',
-    userPreferences: {
-        theme: 'auto',
-        language: 'zh-CN',
-        autoClipboard: true,
-        showNotifications: true,
-        compactMode: false
+  searchEngines: [
+    {
+      name: "Bing",
+      template: "https://www.bing.com/search?q=%s",
+      category: "general",
     },
-    lastBackup: null
+    {
+      name: "Google",
+      template: "https://www.google.com/search?q=%s",
+      category: "general",
+    },
+    {
+      name: "Google Scholar",
+      template: "https://scholar.google.com/scholar?q=%s",
+      category: "academic",
+    },
+    {
+      name: "Metaso",
+      template: "https://metaso.cn/search?q=%s",
+      category: "ai",
+    },
+    {
+      name: "Sogou",
+      template: "https://www.sogou.com/web?query=%s",
+      category: "general",
+    },
+    {
+      name: "GitHub",
+      template: "https://github.com/search?q=%s",
+      category: "code",
+    },
+    {
+      name: "Stack Overflow",
+      template: "https://stackoverflow.com/search?q=%s",
+      category: "code",
+    },
+    {
+      name: "MDN",
+      template: "https://developer.mozilla.org/en-US/search?q=%s",
+      category: "docs",
+    },
+  ],
+  history: [],
+  historyLimit: 100,
+  defaultEngine: "Bing",
+  userPreferences: {
+    theme: "auto",
+    language: "zh-CN",
+    autoClipboard: true,
+    showNotifications: true,
+    compactMode: false,
+  },
+  lastBackup: null,
+  // 分词设置
+  tokenizerSettings: {
+    // 中文分词
+    cnUseDict: true, // 是否启用词典
+    cnUseAlgo: true, // 是否启用算法
+    // AI分析
+    aiEnabled: false, // 是否启用AI分析（默认关闭，避免浪费API Key）
+    aiProvider: "openai", // AI 服务商：openai, claude, gemini, azure, custom
+    aiApiKey: "", // API Key
+    aiBaseURL: "", // Base URL（如硅基流动填写 https://api.siliconFlow.cn/v1）
+    aiModel: "gpt-4o-mini", // 默认模型
+    aiDefaultProtocol: "https://", // 默认协议头
+    // 句子分析
+    sentenceMode: "sentence", // 句子分析模式：sentence(整句), halfSentence(半句)
+    // 字符断行（混沌分词）
+    charBreakLength: 100, // 每行字符数
+    // 随机分词
+    randomMinLen: 1, // 最小分词长度
+    randomMaxLen: 10, // 最大分词长度
+    // 命名分词
+    namingRemoveSymbol: true, // 是否去除符号（默认true）
+    // 历史栈
+    historyMaxSize: 6, // 历史栈上限
+  },
 };
 
 // Utility functions
 const logger = {
-    info: (message, ...args) => console.log(`[Storage] ${message}`, ...args),
-    error: (message, ...args) => console.error(`[Storage] ${message}`, ...args),
-    warn: (message, ...args) => console.warn(`[Storage] ${message}`, ...args)
+  info: (message, ...args) => console.log(`[Storage] ${message}`, ...args),
+  error: (message, ...args) => console.error(`[Storage] ${message}`, ...args),
+  warn: (message, ...args) => console.warn(`[Storage] ${message}`, ...args),
 };
 
 /**
@@ -53,24 +111,33 @@ const logger = {
  * @returns {boolean} - Whether settings are valid
  */
 function validateSettings(settings) {
-    if (!settings || typeof settings !== 'object') return false;
-    
-    // Validate search engines
-    if (settings.searchEngines && Array.isArray(settings.searchEngines)) {
-        for (const engine of settings.searchEngines) {
-            if (!engine.name || !engine.template || typeof engine.name !== 'string' || typeof engine.template !== 'string') {
-                return false;
-            }
-        }
+  if (!settings || typeof settings !== "object") return false;
+
+  // Validate search engines
+  if (settings.searchEngines && Array.isArray(settings.searchEngines)) {
+    for (const engine of settings.searchEngines) {
+      if (
+        !engine.name ||
+        !engine.template ||
+        typeof engine.name !== "string" ||
+        typeof engine.template !== "string"
+      ) {
+        return false;
+      }
     }
-    
-    // Validate history
-    if (settings.history && !Array.isArray(settings.history)) return false;
-    
-    // Validate history limit
-    if (settings.historyLimit && (typeof settings.historyLimit !== 'number' || settings.historyLimit < 1)) return false;
-    
-    return true;
+  }
+
+  // Validate history
+  if (settings.history && !Array.isArray(settings.history)) return false;
+
+  // Validate history limit
+  if (
+    settings.historyLimit &&
+    (typeof settings.historyLimit !== "number" || settings.historyLimit < 1)
+  )
+    return false;
+
+  return true;
 }
 
 /**
@@ -78,21 +145,21 @@ function validateSettings(settings) {
  * @returns {Promise<object>} Settings object
  */
 export async function getSettings() {
-    try {
-        const data = await chrome.storage.local.get(Object.keys(DEFAULTS));
-        const settings = { ...DEFAULTS, ...data };
-        
-        // Validate loaded settings
-        if (!validateSettings(settings)) {
-            logger.warn('Invalid settings detected, using defaults');
-            return DEFAULTS;
-        }
-        
-        return settings;
-    } catch (error) {
-        logger.error('Failed to load settings:', error);
-        return DEFAULTS;
+  try {
+    const data = await chrome.storage.local.get(Object.keys(DEFAULTS));
+    const settings = { ...DEFAULTS, ...data };
+
+    // Validate loaded settings
+    if (!validateSettings(settings)) {
+      logger.warn("Invalid settings detected, using defaults");
+      return DEFAULTS;
     }
+
+    return settings;
+  } catch (error) {
+    logger.error("Failed to load settings:", error);
+    return DEFAULTS;
+  }
 }
 
 /**
@@ -101,19 +168,19 @@ export async function getSettings() {
  * @returns {Promise<boolean>} Success status
  */
 export async function saveSettings(settings) {
-    try {
-        if (!validateSettings(settings)) {
-            logger.error('Invalid settings provided for saving');
-            return false;
-        }
-        
-        await chrome.storage.local.set(settings);
-        logger.info('Settings saved successfully');
-        return true;
-    } catch (error) {
-        logger.error('Failed to save settings:', error);
-        return false;
+  try {
+    if (!validateSettings(settings)) {
+      logger.error("Invalid settings provided for saving");
+      return false;
     }
+
+    await chrome.storage.local.set(settings);
+    logger.info("Settings saved successfully");
+    return true;
+  } catch (error) {
+    logger.error("Failed to save settings:", error);
+    return false;
+  }
 }
 
 /**
@@ -122,40 +189,40 @@ export async function saveSettings(settings) {
  * @returns {Promise<boolean>} Success status
  */
 export async function addToHistory(item) {
-    try {
-        if (!item || typeof item !== 'string' || !item.trim()) {
-            logger.warn('Invalid history item provided');
-            return false;
-        }
-        
-        const { history, historyLimit } = await getSettings();
-        const trimmedItem = item.trim();
-        
-        // Enhanced history entry with metadata
-        const historyEntry = createHistoryEntry(trimmedItem);
-        
-        // Remove duplicates (by URL) and add to front
-        const filteredHistory = history.filter(h => {
-            const existing = typeof h === 'string' ? h : h.url;
-            return existing !== historyEntry.url;
-        });
-        const newHistory = [historyEntry, ...filteredHistory];
-        
-        // Enforce history limit
-        if (newHistory.length > historyLimit) {
-            newHistory.length = historyLimit;
-        }
-        
-        const success = await saveSettings({ history: newHistory });
-        if (success) {
-            logger.info(`Added to history: ${trimmedItem.substring(0, 50)}...`);
-        }
-        
-        return success;
-    } catch (error) {
-        logger.error('Failed to add to history:', error);
-        return false;
+  try {
+    if (!item || typeof item !== "string" || !item.trim()) {
+      logger.warn("Invalid history item provided");
+      return false;
     }
+
+    const { history, historyLimit } = await getSettings();
+    const trimmedItem = item.trim();
+
+    // Enhanced history entry with metadata
+    const historyEntry = createHistoryEntry(trimmedItem);
+
+    // Remove duplicates (by URL) and add to front
+    const filteredHistory = history.filter((h) => {
+      const existing = typeof h === "string" ? h : h.url;
+      return existing !== historyEntry.url;
+    });
+    const newHistory = [historyEntry, ...filteredHistory];
+
+    // Enforce history limit
+    if (newHistory.length > historyLimit) {
+      newHistory.length = historyLimit;
+    }
+
+    const success = await saveSettings({ history: newHistory });
+    if (success) {
+      logger.info(`Added to history: ${trimmedItem.substring(0, 50)}...`);
+    }
+
+    return success;
+  } catch (error) {
+    logger.error("Failed to add to history:", error);
+    return false;
+  }
 }
 
 /**
@@ -164,59 +231,61 @@ export async function addToHistory(item) {
  * @returns {object} History entry with metadata
  */
 export function createHistoryEntry(url) {
-    const entry = {
-        url,
-        timestamp: new Date().toISOString(),
-        type: 'other',
-        domain: '',
-        title: '',
-        isGitHubRepo: false,
-        repoInfo: null
-    };
-    
-    try {
-        const urlObj = new URL(url);
-        entry.domain = urlObj.hostname;
-        
-        // GitHub repository detection
-        if (urlObj.hostname === 'github.com') {
-            const pathParts = urlObj.pathname.split('/').filter(Boolean);
-            if (pathParts.length >= 2) {
-                entry.type = 'github';
-                entry.isGitHubRepo = true;
-                entry.repoInfo = {
-                    username: pathParts[0],
-                    repository: pathParts[1],
-                    fullName: `${pathParts[0]}/${pathParts[1]}`
-                };
-                entry.title = entry.repoInfo.fullName;
-            }
-        }
-        // Other code platforms
-        else if (['zread.ai', 'deepwiki.com', 'context7.com'].includes(urlObj.hostname)) {
-            const pathParts = urlObj.pathname.split('/').filter(Boolean);
-            if (pathParts.length >= 2) {
-                entry.type = 'code_platform';
-                entry.repoInfo = {
-                    username: pathParts[0],
-                    repository: pathParts[1],
-                    fullName: `${pathParts[0]}/${pathParts[1]}`
-                };
-                entry.title = entry.repoInfo.fullName;
-            }
-        }
-        // Regular websites
-        else {
-            entry.type = 'website';
-            entry.title = urlObj.hostname;
-        }
-    } catch (e) {
-        // If not a valid URL, treat as search query
-        entry.type = 'search';
-        entry.title = url.length > 30 ? url.substring(0, 30) + '...' : url;
+  const entry = {
+    url,
+    timestamp: new Date().toISOString(),
+    type: "other",
+    domain: "",
+    title: "",
+    isGitHubRepo: false,
+    repoInfo: null,
+  };
+
+  try {
+    const urlObj = new URL(url);
+    entry.domain = urlObj.hostname;
+
+    // GitHub repository detection
+    if (urlObj.hostname === "github.com") {
+      const pathParts = urlObj.pathname.split("/").filter(Boolean);
+      if (pathParts.length >= 2) {
+        entry.type = "github";
+        entry.isGitHubRepo = true;
+        entry.repoInfo = {
+          username: pathParts[0],
+          repository: pathParts[1],
+          fullName: `${pathParts[0]}/${pathParts[1]}`,
+        };
+        entry.title = entry.repoInfo.fullName;
+      }
     }
-    
-    return entry;
+    // Other code platforms
+    else if (
+      ["zread.ai", "deepwiki.com", "context7.com"].includes(urlObj.hostname)
+    ) {
+      const pathParts = urlObj.pathname.split("/").filter(Boolean);
+      if (pathParts.length >= 2) {
+        entry.type = "code_platform";
+        entry.repoInfo = {
+          username: pathParts[0],
+          repository: pathParts[1],
+          fullName: `${pathParts[0]}/${pathParts[1]}`,
+        };
+        entry.title = entry.repoInfo.fullName;
+      }
+    }
+    // Regular websites
+    else {
+      entry.type = "website";
+      entry.title = urlObj.hostname;
+    }
+  } catch (e) {
+    // If not a valid URL, treat as search query
+    entry.type = "search";
+    entry.title = url.length > 30 ? url.substring(0, 30) + "..." : url;
+  }
+
+  return entry;
 }
 
 /**
@@ -224,16 +293,16 @@ export function createHistoryEntry(url) {
  * @returns {Promise<boolean>} Success status
  */
 export async function clearHistory() {
-    try {
-        const success = await saveSettings({ history: [] });
-        if (success) {
-            logger.info('History cleared successfully');
-        }
-        return success;
-    } catch (error) {
-        logger.error('Failed to clear history:', error);
-        return false;
+  try {
+    const success = await saveSettings({ history: [] });
+    if (success) {
+      logger.info("History cleared successfully");
     }
+    return success;
+  } catch (error) {
+    logger.error("Failed to clear history:", error);
+    return false;
+  }
 }
 
 /**
@@ -243,52 +312,51 @@ export async function clearHistory() {
  * @param {string} type - Optional type filter ('github', 'website', 'search', 'all')
  * @returns {Promise<Array>} History items
  */
-export async function getHistory(limit = null, filter = null, type = 'all') {
-    try {
-        const { history } = await getSettings();
-        let filteredHistory = history;
-        
-        // Ensure backward compatibility - convert string entries to objects
-        filteredHistory = history.map(item => {
-            if (typeof item === 'string') {
-                return createHistoryEntry(item);
-            }
-            return item;
-        });
-        
-        // Apply type filter
-        if (type && type !== 'all') {
-            filteredHistory = filteredHistory.filter(item => {
-                if (type === 'github') {
-                    return item.type === 'github' || item.isGitHubRepo;
-                }
-                if (type === 'other') {
-                    return item.type !== 'github' && !item.isGitHubRepo;
-                }
-                return item.type === type;
-            });
+export async function getHistory(limit = null, filter = null, type = "all") {
+  try {
+    const { history } = await getSettings();
+    let filteredHistory = (history || []).map((item) => {
+      if (typeof item === "string") {
+        return createHistoryEntry(item);
+      }
+      return item;
+    });
+
+    // Apply type filter
+    if (type && type !== "all") {
+      filteredHistory = filteredHistory.filter((item) => {
+        if (type === "github") {
+          return item.type === "github" || item.isGitHubRepo;
         }
-        
-        // Apply text filter
-        if (filter && typeof filter === 'string') {
-            const filterLower = filter.toLowerCase();
-            filteredHistory = filteredHistory.filter(item => 
-                item.url.toLowerCase().includes(filterLower) ||
-                item.title.toLowerCase().includes(filterLower) ||
-                (item.repoInfo && item.repoInfo.fullName.toLowerCase().includes(filterLower))
-            );
+        if (type === "other") {
+          return item.type !== "github" && !item.isGitHubRepo;
         }
-        
-        // Apply limit if provided
-        if (limit && typeof limit === 'number' && limit > 0) {
-            filteredHistory = filteredHistory.slice(0, limit);
-        }
-        
-        return filteredHistory;
-    } catch (error) {
-        logger.error('Failed to get history:', error);
-        return [];
+        return item.type === type;
+      });
     }
+
+    // Apply text filter
+    if (filter && typeof filter === "string") {
+      const filterLower = filter.toLowerCase();
+      filteredHistory = filteredHistory.filter(
+        (item) =>
+          item.url.toLowerCase().includes(filterLower) ||
+          item.title.toLowerCase().includes(filterLower) ||
+          (item.repoInfo &&
+            item.repoInfo.fullName.toLowerCase().includes(filterLower)),
+      );
+    }
+
+    // Apply limit if provided
+    if (limit && typeof limit === "number" && limit > 0) {
+      filteredHistory = filteredHistory.slice(0, limit);
+    }
+
+    return filteredHistory;
+  } catch (error) {
+    logger.error("Failed to get history:", error);
+    return [];
+  }
 }
 
 /**
@@ -297,7 +365,7 @@ export async function getHistory(limit = null, filter = null, type = 'all') {
  * @returns {Promise<Array>} GitHub repository entries
  */
 export async function getGitHubRepositories(limit = null) {
-    return await getHistory(limit, null, 'github');
+  return await getHistory(limit, null, "github");
 }
 
 /**
@@ -306,23 +374,23 @@ export async function getGitHubRepositories(limit = null) {
  * @returns {Promise<boolean>} Success status
  */
 export async function removeFromHistory(url) {
-    try {
-        const { history } = await getSettings();
-        const filteredHistory = history.filter(item => {
-            const itemUrl = typeof item === 'string' ? item : item.url;
-            return itemUrl !== url;
-        });
-        
-        const success = await saveSettings({ history: filteredHistory });
-        if (success) {
-            logger.info(`Removed from history: ${url}`);
-        }
-        
-        return success;
-    } catch (error) {
-        logger.error('Failed to remove from history:', error);
-        return false;
+  try {
+    const { history } = await getSettings();
+    const filteredHistory = history.filter((item) => {
+      const itemUrl = typeof item === "string" ? item : item.url;
+      return itemUrl !== url;
+    });
+
+    const success = await saveSettings({ history: filteredHistory });
+    if (success) {
+      logger.info(`Removed from history: ${url}`);
     }
+
+    return success;
+  } catch (error) {
+    logger.error("Failed to remove from history:", error);
+    return false;
+  }
 }
 
 /**
@@ -330,20 +398,20 @@ export async function removeFromHistory(url) {
  * @returns {Promise<object|null>} Settings object or null if failed
  */
 export async function exportSettings() {
-    try {
-        const settings = await getSettings();
-        const exportData = {
-            ...settings,
-            exportDate: new Date().toISOString(),
-            version: '1.0.0'
-        };
-        
-        logger.info('Settings exported successfully');
-        return exportData;
-    } catch (error) {
-        logger.error('Failed to export settings:', error);
-        return null;
-    }
+  try {
+    const settings = await getSettings();
+    const exportData = {
+      ...settings,
+      exportDate: new Date().toISOString(),
+      version: "1.0.0",
+    };
+
+    logger.info("Settings exported successfully");
+    return exportData;
+  } catch (error) {
+    logger.error("Failed to export settings:", error);
+    return null;
+  }
 }
 
 /**
@@ -352,30 +420,30 @@ export async function exportSettings() {
  * @returns {Promise<boolean>} Success status
  */
 export async function importSettings(importData) {
-    try {
-        if (!importData || typeof importData !== 'object') {
-            logger.error('Invalid import data provided');
-            return false;
-        }
-        
-        // Extract settings (exclude metadata)
-        const { exportDate, version, ...settings } = importData;
-        
-        if (!validateSettings(settings)) {
-            logger.error('Invalid settings in import data');
-            return false;
-        }
-        
-        const success = await saveSettings(settings);
-        if (success) {
-            logger.info('Settings imported successfully');
-        }
-        
-        return success;
-    } catch (error) {
-        logger.error('Failed to import settings:', error);
-        return false;
+  try {
+    if (!importData || typeof importData !== "object") {
+      logger.error("Invalid import data provided");
+      return false;
     }
+
+    // Extract settings (exclude metadata)
+    const { exportDate, version, ...settings } = importData;
+
+    if (!validateSettings(settings)) {
+      logger.error("Invalid settings in import data");
+      return false;
+    }
+
+    const success = await saveSettings(settings);
+    if (success) {
+      logger.info("Settings imported successfully");
+    }
+
+    return success;
+  } catch (error) {
+    logger.error("Failed to import settings:", error);
+    return false;
+  }
 }
 
 /**
@@ -383,16 +451,16 @@ export async function importSettings(importData) {
  * @returns {Promise<boolean>} Success status
  */
 export async function resetSettings() {
-    try {
-        const success = await saveSettings(DEFAULTS);
-        if (success) {
-            logger.info('Settings reset to defaults');
-        }
-        return success;
-    } catch (error) {
-        logger.error('Failed to reset settings:', error);
-        return false;
+  try {
+    const success = await saveSettings(DEFAULTS);
+    if (success) {
+      logger.info("Settings reset to defaults");
     }
+    return success;
+  } catch (error) {
+    logger.error("Failed to reset settings:", error);
+    return false;
+  }
 }
 
 /**
@@ -400,23 +468,23 @@ export async function resetSettings() {
  * @returns {Promise<object>} Storage usage stats
  */
 export async function getStorageInfo() {
-    try {
-        const usage = await chrome.storage.local.getBytesInUse();
-        const settings = await getSettings();
-        
-        return {
-            bytesUsed: usage,
-            historyCount: settings.history.length,
-            engineCount: settings.searchEngines.length,
-            lastBackup: settings.lastBackup
-        };
-    } catch (error) {
-        logger.error('Failed to get storage info:', error);
-        return {
-            bytesUsed: 0,
-            historyCount: 0,
-            engineCount: 0,
-            lastBackup: null
-        };
-    }
+  try {
+    const usage = await chrome.storage.local.getBytesInUse();
+    const settings = await getSettings();
+
+    return {
+      bytesUsed: usage,
+      historyCount: settings.history.length,
+      engineCount: settings.searchEngines.length,
+      lastBackup: settings.lastBackup,
+    };
+  } catch (error) {
+    logger.error("Failed to get storage info:", error);
+    return {
+      bytesUsed: 0,
+      historyCount: 0,
+      engineCount: 0,
+      lastBackup: null,
+    };
+  }
 }
