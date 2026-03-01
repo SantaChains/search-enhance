@@ -55,12 +55,41 @@
         border-radius: 4px;
         margin-top: 10px;
       }
+      .mode-tabs {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+      }
+      .mode-tab {
+        padding: 6px 12px;
+        border: 1px solid #ddd;
+        background: #fff;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 13px;
+      }
+      .mode-tab.active {
+        background: #4caf50;
+        color: white;
+        border-color: #4caf50;
+      }
+      .mode-tab:hover:not(.active) {
+        background: #f0f0f0;
+      }
+      .stats {
+        margin-top: 10px;
+        padding: 10px;
+        background: #e8f5e9;
+        border-radius: 4px;
+        font-size: 13px;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <h1>分词功能测试</h1>
-      <p>测试改进后的中文分词功能</p>
+      <p>测试改进后的智能分词功能</p>
 
       <div>
         <textarea id="test-text" placeholder="请输入要分词的中文文本...">
@@ -72,9 +101,44 @@ JavaScript是一种广泛使用的编程语言，主要用于Web开发。它可�
         >
       </div>
 
+      <div class="mode-tabs">
+        <div class="mode-tab active" data-mode="smart">智能分析</div>
+        <div class="mode-tab" data-mode="chinese">中文分析</div>
+        <div class="mode-tab" data-mode="english">英文分析</div>
+        <div class="mode-tab" data-mode="code">代码分析</div>
+        <div class="mode-tab" data-mode="sentence">整句分析</div>
+        <div class="mode-tab" data-mode="halfSentence">半句分析</div>
+        <div class="mode-tab" data-mode="removeSymbols">去除符号</div>
+        <div class="mode-tab" data-mode="charBreak">字符断行</div>
+        <div class="mode-tab" data-mode="random">随机分词</div>
+        <div class="mode-tab" data-mode="multi">多规则组合</div>
+      </div>
+
+      <div id="multi-rule-section" style="display: none; margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 4px;">
+        <p>选择多个规则（分词规则在前，去除规则在后）：</p>
+        <div id="multi-rule-checkboxes">
+          <label style="margin-right: 10px;"><input type="checkbox" value="symbolSplit" /> 符号分词</label>
+          <label style="margin-right: 10px;"><input type="checkbox" value="whitespaceSplit" /> 空格分词</label>
+          <label style="margin-right: 10px;"><input type="checkbox" value="newlineSplit" /> 换行分词</label>
+          <label style="margin-right: 10px;"><input type="checkbox" value="chineseEnglishSplit" /> 中英分词</label>
+          <label style="margin-right: 10px;"><input type="checkbox" value="uppercaseSplit" /> 大写分词</label>
+          <label style="margin-right: 10px;"><input type="checkbox" value="namingSplit" /> 命名分词</label>
+          <label style="margin-right: 10px;"><input type="checkbox" value="digitSplit" /> 数字分词</label>
+          <br><br>
+          <label style="margin-right: 10px;"><input type="checkbox" value="removeWhitespace" /> 去除空格</label>
+          <label style="margin-right: 10px;"><input type="checkbox" value="removeSymbols" /> 去除符号</label>
+          <label style="margin-right: 10px;"><input type="checkbox" value="removeChinese" /> 去除中文</label>
+          <label style="margin-right: 10px;"><input type="checkbox" value="removeEnglish" /> 去除英文</label>
+          <label style="margin-right: 10px;"><input type="checkbox" value="removeDigits" /> 去除数字</label>
+        </div>
+      </div>
+
       <div>
-        <button onclick="testSegmentation()">测试分词</button>
-        <button onclick="clearResult()">清空结果</button>
+        <button id="btn-test">测试分词</button>
+        <button id="btn-clear">清空结果</button>
+        <button id="btn-example-chinese">中文示例</button>
+        <button id="btn-example-mixed">混合示例</button>
+        <button id="btn-example-code">代码示例</button>
       </div>
 
       <div class="result" id="result-container">
@@ -82,60 +146,10 @@ JavaScript是一种广泛使用的编程语言，主要用于Web开发。它可�
         <div id="segmentation-result" class="segmentation-result">
           请点击上方按钮进行测试
         </div>
+        <div class="stats" id="stats" style="display: none;"></div>
       </div>
     </div>
 
-    <script type="module">
-      // 导入分词函数
-      import {
-        chineseWordSegmentation,
-        intelligentSegmentation,
-        splitText,
-      } from "./src/utils/textProcessor.js";
-
-      function testSegmentation() {
-        const text = document.getElementById("test-text").value;
-        const resultContainer = document.getElementById("segmentation-result");
-
-        if (!text.trim()) {
-          resultContainer.textContent = "请输入要分词的文本";
-          return;
-        }
-
-        try {
-          // 测试增强版分词
-          const enhancedResult = chineseWordSegmentation(text);
-
-          // 测试智能分词
-          const intelligentResult = intelligentSegmentation(text);
-
-          // 测试通过splitText函数的分词
-          const splitTextResult = splitText(text, "zh-word");
-
-          let resultText = "增强版分词结果:\n";
-          resultText += enhancedResult.join(" / ") + "\n\n";
-
-          resultText += "智能分词结果:\n";
-          resultText += intelligentResult.join(" / ") + "\n\n";
-
-          resultText += "splitText分词结果:\n";
-          resultText += splitTextResult.join(" / ");
-
-          resultContainer.textContent = resultText;
-        } catch (error) {
-          resultContainer.textContent = "测试出错: " + error.message;
-        }
-      }
-
-      function clearResult() {
-        document.getElementById("segmentation-result").textContent =
-          "请点击上方按钮进行测试";
-      }
-
-      // 页面加载完成后自动测试
-      window.onload = function () {
-        testSegmentation();
-      };
-    </script>
+    <script type="module" src="exam.js"></script>
   </body>
 </html>

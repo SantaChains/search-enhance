@@ -1,0 +1,24 @@
+# 依赖目录
+node_modules/
+
+# 构建输出
+*.zip
+
+# 日志文件
+*.log
+
+# 备份文件
+*.bak
+*.bak2
+
+# 图片资源
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+
+# 其他
+*.md
+*.canvas

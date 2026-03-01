@@ -7,66 +7,66 @@
 
 // Storage keys constants
 export const STORAGE_KEYS = {
-  SEARCH_ENGINES: "searchEngines",
-  HISTORY: "history",
-  HISTORY_LIMIT: "historyLimit",
-  DEFAULT_ENGINE: "defaultEngine",
-  USER_PREFERENCES: "userPreferences",
-  LAST_BACKUP: "lastBackup",
+  SEARCH_ENGINES: 'searchEngines',
+  HISTORY: 'history',
+  HISTORY_LIMIT: 'historyLimit',
+  DEFAULT_ENGINE: 'defaultEngine',
+  USER_PREFERENCES: 'userPreferences',
+  LAST_BACKUP: 'lastBackup',
   // 分词设置
-  TOKENIZER_SETTINGS: "tokenizerSettings",
+  TOKENIZER_SETTINGS: 'tokenizerSettings',
 };
 
 // Default settings with enhanced search engines
 export const DEFAULTS = {
   searchEngines: [
     {
-      name: "Bing",
-      template: "https://www.bing.com/search?q=%s",
-      category: "general",
+      name: 'Bing',
+      template: 'https://www.bing.com/search?q=%s',
+      category: 'general',
     },
     {
-      name: "Google",
-      template: "https://www.google.com/search?q=%s",
-      category: "general",
+      name: 'Google',
+      template: 'https://www.google.com/search?q=%s',
+      category: 'general',
     },
     {
-      name: "Google Scholar",
-      template: "https://scholar.google.com/scholar?q=%s",
-      category: "academic",
+      name: 'Google Scholar',
+      template: 'https://scholar.google.com/scholar?q=%s',
+      category: 'academic',
     },
     {
-      name: "Metaso",
-      template: "https://metaso.cn/search?q=%s",
-      category: "ai",
+      name: 'Metaso',
+      template: 'https://metaso.cn/search?q=%s',
+      category: 'ai',
     },
     {
-      name: "Sogou",
-      template: "https://www.sogou.com/web?query=%s",
-      category: "general",
+      name: 'Sogou',
+      template: 'https://www.sogou.com/web?query=%s',
+      category: 'general',
     },
     {
-      name: "GitHub",
-      template: "https://github.com/search?q=%s",
-      category: "code",
+      name: 'GitHub',
+      template: 'https://github.com/search?q=%s',
+      category: 'code',
     },
     {
-      name: "Stack Overflow",
-      template: "https://stackoverflow.com/search?q=%s",
-      category: "code",
+      name: 'Stack Overflow',
+      template: 'https://stackoverflow.com/search?q=%s',
+      category: 'code',
     },
     {
-      name: "MDN",
-      template: "https://developer.mozilla.org/en-US/search?q=%s",
-      category: "docs",
+      name: 'MDN',
+      template: 'https://developer.mozilla.org/en-US/search?q=%s',
+      category: 'docs',
     },
   ],
   history: [],
   historyLimit: 100,
-  defaultEngine: "Bing",
+  defaultEngine: 'Bing',
   userPreferences: {
-    theme: "auto",
-    language: "zh-CN",
+    theme: 'auto',
+    language: 'zh-CN',
     autoClipboard: true,
     showNotifications: true,
     compactMode: false,
@@ -79,13 +79,13 @@ export const DEFAULTS = {
     cnUseAlgo: true, // 是否启用算法
     // AI分析
     aiEnabled: false, // 是否启用AI分析（默认关闭，避免浪费API Key）
-    aiProvider: "openai", // AI 服务商：openai, claude, gemini, azure, custom
-    aiApiKey: "", // API Key
-    aiBaseURL: "", // Base URL（如硅基流动填写 https://api.siliconFlow.cn/v1）
-    aiModel: "gpt-4o-mini", // 默认模型
-    aiDefaultProtocol: "https://", // 默认协议头
+    aiProvider: 'openai', // AI 服务商：openai, claude, gemini, azure, custom
+    aiApiKey: '', // API Key
+    aiBaseURL: '', // Base URL（如硅基流动填写 https://api.siliconFlow.cn/v1）
+    aiModel: 'gpt-4o-mini', // 默认模型
+    aiDefaultProtocol: 'https://', // 默认协议头
     // 句子分析
-    sentenceMode: "sentence", // 句子分析模式：sentence(整句), halfSentence(半句)
+    sentenceMode: 'sentence', // 句子分析模式：sentence(整句), halfSentence(半句)
     // 字符断行（混沌分词）
     charBreakLength: 100, // 每行字符数
     // 随机分词
@@ -111,7 +111,7 @@ const logger = {
  * @returns {boolean} - Whether settings are valid
  */
 function validateSettings(settings) {
-  if (!settings || typeof settings !== "object") return false;
+  if (!settings || typeof settings !== 'object') return false;
 
   // Validate search engines
   if (settings.searchEngines && Array.isArray(settings.searchEngines)) {
@@ -119,8 +119,8 @@ function validateSettings(settings) {
       if (
         !engine.name ||
         !engine.template ||
-        typeof engine.name !== "string" ||
-        typeof engine.template !== "string"
+        typeof engine.name !== 'string' ||
+        typeof engine.template !== 'string'
       ) {
         return false;
       }
@@ -133,7 +133,7 @@ function validateSettings(settings) {
   // Validate history limit
   if (
     settings.historyLimit &&
-    (typeof settings.historyLimit !== "number" || settings.historyLimit < 1)
+    (typeof settings.historyLimit !== 'number' || settings.historyLimit < 1)
   )
     return false;
 
@@ -151,13 +151,13 @@ export async function getSettings() {
 
     // Validate loaded settings
     if (!validateSettings(settings)) {
-      logger.warn("Invalid settings detected, using defaults");
+      logger.warn('Invalid settings detected, using defaults');
       return DEFAULTS;
     }
 
     return settings;
   } catch (error) {
-    logger.error("Failed to load settings:", error);
+    logger.error('Failed to load settings:', error);
     return DEFAULTS;
   }
 }
@@ -170,15 +170,15 @@ export async function getSettings() {
 export async function saveSettings(settings) {
   try {
     if (!validateSettings(settings)) {
-      logger.error("Invalid settings provided for saving");
+      logger.error('Invalid settings provided for saving');
       return false;
     }
 
     await chrome.storage.local.set(settings);
-    logger.info("Settings saved successfully");
+    logger.info('Settings saved successfully');
     return true;
   } catch (error) {
-    logger.error("Failed to save settings:", error);
+    logger.error('Failed to save settings:', error);
     return false;
   }
 }
@@ -190,8 +190,8 @@ export async function saveSettings(settings) {
  */
 export async function addToHistory(item) {
   try {
-    if (!item || typeof item !== "string" || !item.trim()) {
-      logger.warn("Invalid history item provided");
+    if (!item || typeof item !== 'string' || !item.trim()) {
+      logger.warn('Invalid history item provided');
       return false;
     }
 
@@ -203,7 +203,7 @@ export async function addToHistory(item) {
 
     // Remove duplicates (by URL) and add to front
     const filteredHistory = history.filter((h) => {
-      const existing = typeof h === "string" ? h : h.url;
+      const existing = typeof h === 'string' ? h : h.url;
       return existing !== historyEntry.url;
     });
     const newHistory = [historyEntry, ...filteredHistory];
@@ -220,7 +220,7 @@ export async function addToHistory(item) {
 
     return success;
   } catch (error) {
-    logger.error("Failed to add to history:", error);
+    logger.error('Failed to add to history:', error);
     return false;
   }
 }
@@ -234,9 +234,9 @@ export function createHistoryEntry(url) {
   const entry = {
     url,
     timestamp: new Date().toISOString(),
-    type: "other",
-    domain: "",
-    title: "",
+    type: 'other',
+    domain: '',
+    title: '',
     isGitHubRepo: false,
     repoInfo: null,
   };
@@ -246,10 +246,10 @@ export function createHistoryEntry(url) {
     entry.domain = urlObj.hostname;
 
     // GitHub repository detection
-    if (urlObj.hostname === "github.com") {
-      const pathParts = urlObj.pathname.split("/").filter(Boolean);
+    if (urlObj.hostname === 'github.com') {
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
       if (pathParts.length >= 2) {
-        entry.type = "github";
+        entry.type = 'github';
         entry.isGitHubRepo = true;
         entry.repoInfo = {
           username: pathParts[0],
@@ -260,12 +260,10 @@ export function createHistoryEntry(url) {
       }
     }
     // Other code platforms
-    else if (
-      ["zread.ai", "deepwiki.com", "context7.com"].includes(urlObj.hostname)
-    ) {
-      const pathParts = urlObj.pathname.split("/").filter(Boolean);
+    else if (['zread.ai', 'deepwiki.com', 'context7.com'].includes(urlObj.hostname)) {
+      const pathParts = urlObj.pathname.split('/').filter(Boolean);
       if (pathParts.length >= 2) {
-        entry.type = "code_platform";
+        entry.type = 'code_platform';
         entry.repoInfo = {
           username: pathParts[0],
           repository: pathParts[1],
@@ -276,13 +274,13 @@ export function createHistoryEntry(url) {
     }
     // Regular websites
     else {
-      entry.type = "website";
+      entry.type = 'website';
       entry.title = urlObj.hostname;
     }
   } catch (e) {
     // If not a valid URL, treat as search query
-    entry.type = "search";
-    entry.title = url.length > 30 ? url.substring(0, 30) + "..." : url;
+    entry.type = 'search';
+    entry.title = url.length > 30 ? url.substring(0, 30) + '...' : url;
   }
 
   return entry;
@@ -296,11 +294,11 @@ export async function clearHistory() {
   try {
     const success = await saveSettings({ history: [] });
     if (success) {
-      logger.info("History cleared successfully");
+      logger.info('History cleared successfully');
     }
     return success;
   } catch (error) {
-    logger.error("Failed to clear history:", error);
+    logger.error('Failed to clear history:', error);
     return false;
   }
 }
@@ -312,49 +310,48 @@ export async function clearHistory() {
  * @param {string} type - Optional type filter ('github', 'website', 'search', 'all')
  * @returns {Promise<Array>} History items
  */
-export async function getHistory(limit = null, filter = null, type = "all") {
+export async function getHistory(limit = null, filter = null, type = 'all') {
   try {
     const { history } = await getSettings();
     let filteredHistory = (history || []).map((item) => {
-      if (typeof item === "string") {
+      if (typeof item === 'string') {
         return createHistoryEntry(item);
       }
       return item;
     });
 
     // Apply type filter
-    if (type && type !== "all") {
+    if (type && type !== 'all') {
       filteredHistory = filteredHistory.filter((item) => {
-        if (type === "github") {
-          return item.type === "github" || item.isGitHubRepo;
+        if (type === 'github') {
+          return item.type === 'github' || item.isGitHubRepo;
         }
-        if (type === "other") {
-          return item.type !== "github" && !item.isGitHubRepo;
+        if (type === 'other') {
+          return item.type !== 'github' && !item.isGitHubRepo;
         }
         return item.type === type;
       });
     }
 
     // Apply text filter
-    if (filter && typeof filter === "string") {
+    if (filter && typeof filter === 'string') {
       const filterLower = filter.toLowerCase();
       filteredHistory = filteredHistory.filter(
         (item) =>
           item.url.toLowerCase().includes(filterLower) ||
           item.title.toLowerCase().includes(filterLower) ||
-          (item.repoInfo &&
-            item.repoInfo.fullName.toLowerCase().includes(filterLower)),
+          (item.repoInfo && item.repoInfo.fullName.toLowerCase().includes(filterLower))
       );
     }
 
     // Apply limit if provided
-    if (limit && typeof limit === "number" && limit > 0) {
+    if (limit && typeof limit === 'number' && limit > 0) {
       filteredHistory = filteredHistory.slice(0, limit);
     }
 
     return filteredHistory;
   } catch (error) {
-    logger.error("Failed to get history:", error);
+    logger.error('Failed to get history:', error);
     return [];
   }
 }
@@ -365,7 +362,7 @@ export async function getHistory(limit = null, filter = null, type = "all") {
  * @returns {Promise<Array>} GitHub repository entries
  */
 export async function getGitHubRepositories(limit = null) {
-  return await getHistory(limit, null, "github");
+  return await getHistory(limit, null, 'github');
 }
 
 /**
@@ -377,7 +374,7 @@ export async function removeFromHistory(url) {
   try {
     const { history } = await getSettings();
     const filteredHistory = history.filter((item) => {
-      const itemUrl = typeof item === "string" ? item : item.url;
+      const itemUrl = typeof item === 'string' ? item : item.url;
       return itemUrl !== url;
     });
 
@@ -388,7 +385,7 @@ export async function removeFromHistory(url) {
 
     return success;
   } catch (error) {
-    logger.error("Failed to remove from history:", error);
+    logger.error('Failed to remove from history:', error);
     return false;
   }
 }
@@ -403,13 +400,13 @@ export async function exportSettings() {
     const exportData = {
       ...settings,
       exportDate: new Date().toISOString(),
-      version: "1.0.0",
+      version: '1.0.0',
     };
 
-    logger.info("Settings exported successfully");
+    logger.info('Settings exported successfully');
     return exportData;
   } catch (error) {
-    logger.error("Failed to export settings:", error);
+    logger.error('Failed to export settings:', error);
     return null;
   }
 }
@@ -421,8 +418,8 @@ export async function exportSettings() {
  */
 export async function importSettings(importData) {
   try {
-    if (!importData || typeof importData !== "object") {
-      logger.error("Invalid import data provided");
+    if (!importData || typeof importData !== 'object') {
+      logger.error('Invalid import data provided');
       return false;
     }
 
@@ -430,18 +427,18 @@ export async function importSettings(importData) {
     const { exportDate, version, ...settings } = importData;
 
     if (!validateSettings(settings)) {
-      logger.error("Invalid settings in import data");
+      logger.error('Invalid settings in import data');
       return false;
     }
 
     const success = await saveSettings(settings);
     if (success) {
-      logger.info("Settings imported successfully");
+      logger.info('Settings imported successfully');
     }
 
     return success;
   } catch (error) {
-    logger.error("Failed to import settings:", error);
+    logger.error('Failed to import settings:', error);
     return false;
   }
 }
@@ -454,11 +451,11 @@ export async function resetSettings() {
   try {
     const success = await saveSettings(DEFAULTS);
     if (success) {
-      logger.info("Settings reset to defaults");
+      logger.info('Settings reset to defaults');
     }
     return success;
   } catch (error) {
-    logger.error("Failed to reset settings:", error);
+    logger.error('Failed to reset settings:', error);
     return false;
   }
 }
@@ -479,7 +476,7 @@ export async function getStorageInfo() {
       lastBackup: settings.lastBackup,
     };
   } catch (error) {
-    logger.error("Failed to get storage info:", error);
+    logger.error('Failed to get storage info:', error);
     return {
       bytesUsed: 0,
       historyCount: 0,

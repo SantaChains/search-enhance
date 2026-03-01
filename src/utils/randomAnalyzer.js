@@ -16,7 +16,7 @@
 // 配置
 // ============================================================================
 
-let CONFIG = {
+const CONFIG = {
   randomMinLength: 1,
   randomMaxLength: 10,
   chaosMinTokens: 3,
@@ -56,9 +56,10 @@ function shuffleArray(arr) {
 // ============================================================================
 
 function getRandomLength() {
-  return Math.floor(
-    Math.random() * (CONFIG.randomMaxLength - CONFIG.randomMinLength + 1)
-  ) + CONFIG.randomMinLength;
+  return (
+    Math.floor(Math.random() * (CONFIG.randomMaxLength - CONFIG.randomMinLength + 1)) +
+    CONFIG.randomMinLength
+  );
 }
 
 /**
@@ -86,16 +87,14 @@ export function randomAnalyze(text, options = {}) {
     // 随机决定当前分词的长度
     const remainingChars = chars.length - i;
     const availableMaxLen = Math.min(currentMaxLen, remainingChars);
-    
+
     // 确保至少能分出 minTokens 个词
     const remainingTokensNeeded = Math.max(1, minTokens - result.length);
     const maxAllowedLen = Math.floor(remainingChars / remainingTokensNeeded);
     const actualMaxLen = Math.min(availableMaxLen, Math.max(minLen, maxAllowedLen));
-    
-    const length = Math.floor(
-      Math.random() * (actualMaxLen - minLen + 1)
-    ) + minLen;
-    
+
+    const length = Math.floor(Math.random() * (actualMaxLen - minLen + 1)) + minLen;
+
     const chunk = chars.slice(i, i + length).join('');
     if (chunk) result.push(chunk);
     i += length;

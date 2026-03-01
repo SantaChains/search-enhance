@@ -18,68 +18,64 @@
 const DEFAULT_CONFIG = {
   // OpenAI
   openai: {
-    name: "OpenAI",
-    baseURL: "https://api.openai.com/v1",
-    apiKey: "",
-    defaultModel: "gpt-4o-mini",
-    models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-3.5-turbo"],
+    name: 'OpenAI',
+    baseURL: 'https://api.openai.com/v1',
+    apiKey: '',
+    defaultModel: 'gpt-4o-mini',
+    models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
     headers: {},
-    requestFormat: "openai",
-    responseFormat: "openai",
+    requestFormat: 'openai',
+    responseFormat: 'openai',
   },
 
   // Claude (Anthropic)
   claude: {
-    name: "Claude",
-    baseURL: "https://api.anthropic.com/v1",
-    apiKey: "",
-    defaultModel: "claude-3-5-sonnet-20241022",
-    models: [
-      "claude-3-5-sonnet-20241022",
-      "claude-3-5-haiku-20241022",
-      "claude-3-opus-20240229",
-    ],
+    name: 'Claude',
+    baseURL: 'https://api.anthropic.com/v1',
+    apiKey: '',
+    defaultModel: 'claude-3-5-sonnet-20241022',
+    models: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
     headers: {
-      "anthropic-version": "2023-06-01",
+      'anthropic-version': '2023-06-01',
     },
-    requestFormat: "claude",
-    responseFormat: "claude",
+    requestFormat: 'claude',
+    responseFormat: 'claude',
   },
 
   // Google Gemini
   gemini: {
-    name: "Gemini",
-    baseURL: "https://generativelanguage.googleapis.com/v1beta",
-    apiKey: "",
-    defaultModel: "gemini-1.5-flash",
-    models: ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"],
+    name: 'Gemini',
+    baseURL: 'https://generativelanguage.googleapis.com/v1beta',
+    apiKey: '',
+    defaultModel: 'gemini-1.5-flash',
+    models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro'],
     headers: {},
-    requestFormat: "gemini",
-    responseFormat: "gemini",
+    requestFormat: 'gemini',
+    responseFormat: 'gemini',
   },
 
   // Azure OpenAI
   azure: {
-    name: "Azure OpenAI",
-    baseURL: "",
-    apiKey: "",
-    defaultModel: "gpt-4",
-    models: ["gpt-4", "gpt-4o", "gpt-35-turbo"],
+    name: 'Azure OpenAI',
+    baseURL: '',
+    apiKey: '',
+    defaultModel: 'gpt-4',
+    models: ['gpt-4', 'gpt-4o', 'gpt-35-turbo'],
     headers: {},
-    requestFormat: "openai",
-    responseFormat: "openai",
+    requestFormat: 'openai',
+    responseFormat: 'openai',
   },
 
   // 自定义接口
   custom: {
-    name: "自定义",
-    baseURL: "",
-    apiKey: "",
-    defaultModel: "",
+    name: '自定义',
+    baseURL: '',
+    apiKey: '',
+    defaultModel: '',
     models: [],
     headers: {},
-    requestFormat: "openai",
-    responseFormat: "openai",
+    requestFormat: 'openai',
+    responseFormat: 'openai',
   },
 };
 
@@ -89,64 +85,64 @@ const DEFAULT_CONFIG = {
 
 const ProviderTemplates = {
   openaiCompatible: {
-    name: "OpenAI 兼容",
-    requestFormat: "openai",
-    responseFormat: "openai",
+    name: 'OpenAI 兼容',
+    requestFormat: 'openai',
+    responseFormat: 'openai',
     headers: {},
   },
 
   ollama: {
-    name: "Ollama",
-    baseURL: "http://localhost:11434/v1",
-    requestFormat: "openai",
-    responseFormat: "openai",
-    defaultModel: "llama2",
-    models: ["llama2", "mistral", "codellama", "qwen"],
+    name: 'Ollama',
+    baseURL: 'http://localhost:11434/v1',
+    requestFormat: 'openai',
+    responseFormat: 'openai',
+    defaultModel: 'llama2',
+    models: ['llama2', 'mistral', 'codellama', 'qwen'],
   },
 
   zhipu: {
-    name: "智谱 AI",
-    baseURL: "https://open.bigmodel.cn/api/paas/v4",
-    requestFormat: "openai",
-    responseFormat: "openai",
-    defaultModel: "glm-4",
-    models: ["glm-4", "glm-4-plus", "glm-4-flash"],
+    name: '智谱 AI',
+    baseURL: 'https://open.bigmodel.cn/api/paas/v4',
+    requestFormat: 'openai',
+    responseFormat: 'openai',
+    defaultModel: 'glm-4',
+    models: ['glm-4', 'glm-4-plus', 'glm-4-flash'],
   },
 
   wenxin: {
-    name: "百度文心",
-    baseURL: "https://qianfan.baidubce.com/v2",
-    requestFormat: "openai",
-    responseFormat: "openai",
-    defaultModel: "ernie-4.0-turbo-8k",
-    models: ["ernie-4.0-turbo-8k", "ernie-3.5-128k"],
+    name: '百度文心',
+    baseURL: 'https://qianfan.baidubce.com/v2',
+    requestFormat: 'openai',
+    responseFormat: 'openai',
+    defaultModel: 'ernie-4.0-turbo-8k',
+    models: ['ernie-4.0-turbo-8k', 'ernie-3.5-128k'],
   },
 
   qwen: {
-    name: "阿里通义",
-    baseURL: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-    requestFormat: "openai",
-    responseFormat: "openai",
-    defaultModel: "qwen-turbo",
-    models: ["qwen-max", "qwen-plus", "qwen-turbo"],
+    name: '阿里通义',
+    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
+    requestFormat: 'openai',
+    responseFormat: 'openai',
+    defaultModel: 'qwen-turbo',
+    models: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
   },
 
   deepseek: {
-    name: "DeepSeek",
-    baseURL: "https://api.deepseek.com/v1",
-    requestFormat: "openai",
-    responseFormat: "openai",
-    defaultModel: "deepseek-chat",
-    models: ["deepseek-chat", "deepseek-coder"],
+    name: 'DeepSeek',
+    baseURL: 'https://api.deepseek.com/v1',
+    requestFormat: 'openai',
+    responseFormat: 'openai',
+    defaultModel: 'deepseek-chat',
+    models: ['deepseek-chat', 'deepseek-coder'],
   },
 
   siliconflow: {
-    name: "SiliconFlow",
-    baseURL: "https://api.siliconflow.cn/v1",
-    requestFormat: "openai",
-    responseFormat: "openai",
-    defaultModel: "Qwen/Qwen2.5-7B-Instruct",
-    models: ["Qwen/Qwen2.5-7B-Instruct", "deepseek-ai/DeepSeek-V2.5"],
+    name: 'SiliconFlow',
+    baseURL: 'https://api.siliconflow.cn/v1',
+    requestFormat: 'openai',
+    responseFormat: 'openai',
+    defaultModel: 'Qwen/Qwen2.5-7B-Instruct',
+    models: ['Qwen/Qwen2.5-7B-Instruct', 'deepseek-ai/DeepSeek-V2.5'],
   },
 };
 
@@ -229,8 +225,7 @@ JSON对象：
  * URL模式正则 - 识别完整URL
  * 支持：http://, https://, ftp:// 等协议
  */
-const URL_PATTERN =
-  /https?:\/\/[^\s<>"{}|\\^`\[\]]+|ftp:\/\/[^\s<>"{}|\\^`\[\]]+/gi;
+const URL_PATTERN = /https?:\/\/[^\s<>"{}|\\^`[]]+|ftp:\/\/[^\s<>"{}|\\^`[]]+/gi;
 
 /**
  * 域名模式正则 - 识别疑似链接
@@ -244,22 +239,22 @@ const SUSPECT_LINK_REGEX =
  * 域名黑名单 - 排除误判
  */
 const DOMAIN_BLACKLIST = new Set([
-  "version",
-  "release",
-  "chapter",
-  "section",
-  "figure",
-  "table",
-  "algorithm",
-  "function",
-  "method",
-  "class",
-  "object",
-  "property",
-  "copyright",
-  "trademark",
-  "trademarked",
-  "registered",
+  'version',
+  'release',
+  'chapter',
+  'section',
+  'figure',
+  'table',
+  'algorithm',
+  'function',
+  'method',
+  'class',
+  'object',
+  'property',
+  'copyright',
+  'trademark',
+  'trademarked',
+  'registered',
 ]);
 
 /**
@@ -295,7 +290,7 @@ export function extractSuspectLinks(text) {
   for (const match of matches) {
     const domain = match.toLowerCase();
     // 排除黑名单词汇
-    if (DOMAIN_BLACKLIST.has(domain.split(".")[0])) {
+    if (DOMAIN_BLACKLIST.has(domain.split('.')[0])) {
       continue;
     }
     links.push(match);
@@ -319,7 +314,7 @@ export function inferProtocolFromContext(text, position) {
   }
 
   // 无上下文，默认 https://
-  return "https://";
+  return 'https://';
 }
 
 /**
@@ -328,8 +323,8 @@ export function inferProtocolFromContext(text, position) {
  * @param {string} protocol 协议头
  * @returns {string} 完整URL
  */
-export function completeLink(suspectLink, protocol = "https://") {
-  if (suspectLink.startsWith("http://") || suspectLink.startsWith("https://")) {
+export function completeLink(suspectLink, protocol = 'https://') {
+  if (suspectLink.startsWith('http://') || suspectLink.startsWith('https://')) {
     return suspectLink;
   }
   return `${protocol}${suspectLink}`;
@@ -352,12 +347,12 @@ export function completeLink(suspectLink, protocol = "https://") {
  */
 export async function aiAnalyzePipeline(text, options = {}) {
   const {
-    protocol = "https://",
+    protocol = 'https://',
     enableStrictTokenization = true,
-    provider = "openai",
-    baseURL = "",
-    apiKey = "",
-    model = "",
+    provider = 'openai',
+    baseURL = '',
+    apiKey = '',
+    model = '',
   } = options;
 
   // 阶段1：链接识别
@@ -368,7 +363,7 @@ export async function aiAnalyzePipeline(text, options = {}) {
 
   // 阶段3：上下文补全
   const completedLinks = [];
-  let lastUrlPosition = 0;
+  const lastUrlPosition = 0;
 
   for (const link of suspectLinks) {
     const position = text.indexOf(link, lastUrlPosition);
@@ -379,7 +374,7 @@ export async function aiAnalyzePipeline(text, options = {}) {
   // 边界处理：无上下文链接，使用默认协议
   if (urls.length === 0 && completedLinks.length > 0) {
     for (let i = 0; i < completedLinks.length; i++) {
-      if (!completedLinks[i].startsWith("http")) {
+      if (!completedLinks[i].startsWith('http')) {
         completedLinks[i] = `${protocol}${completedLinks[i]}`;
       }
     }
@@ -400,11 +395,8 @@ export async function aiAnalyzePipeline(text, options = {}) {
     const placeholder = `{{LINK_${linkIndex}}}`;
     linkPlaceholders.push({ placeholder, original: link });
     // 使用正则表达式进行全局替换，避免只替换第一个匹配项
-    const escapedLink = link.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    restructuredText = restructuredText.replace(
-      new RegExp(escapedLink, "g"),
-      placeholder,
-    );
+    const escapedLink = link.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    restructuredText = restructuredText.replace(new RegExp(escapedLink, 'g'), placeholder);
     linkIndex++;
   }
 
@@ -414,34 +406,28 @@ export async function aiAnalyzePipeline(text, options = {}) {
     const adapterConfig = {
       providers: {
         [provider]: {
-          name: ProviderTemplates[provider]?.name || "自定义",
+          name: ProviderTemplates[provider]?.name || '自定义',
           baseURL:
             baseURL ||
             ProviderTemplates[provider]?.baseURL ||
             DEFAULT_CONFIG[provider]?.baseURL ||
-            "",
-          apiKey: apiKey || "",
+            '',
+          apiKey: apiKey || '',
           defaultModel:
             model ||
             ProviderTemplates[provider]?.defaultModel ||
             DEFAULT_CONFIG[provider]?.defaultModel ||
-            "",
-          models:
-            ProviderTemplates[provider]?.models ||
-            DEFAULT_CONFIG[provider]?.models ||
-            [],
+            '',
+          models: ProviderTemplates[provider]?.models || DEFAULT_CONFIG[provider]?.models || [],
           requestFormat:
             ProviderTemplates[provider]?.requestFormat ||
             DEFAULT_CONFIG[provider]?.requestFormat ||
-            "openai",
+            'openai',
           responseFormat:
             ProviderTemplates[provider]?.responseFormat ||
             DEFAULT_CONFIG[provider]?.responseFormat ||
-            "openai",
-          headers:
-            ProviderTemplates[provider]?.headers ||
-            DEFAULT_CONFIG[provider]?.headers ||
-            {},
+            'openai',
+          headers: ProviderTemplates[provider]?.headers || DEFAULT_CONFIG[provider]?.headers || {},
         },
       },
       defaultProvider: provider,
@@ -471,7 +457,7 @@ export async function aiAnalyzePipeline(text, options = {}) {
   const orderedResults = [
     ...urls,
     ...completedLinks.filter((l) => !urls.includes(l)),
-    ...tokenizedResult.filter((t) => !t.startsWith("{{LINK_")),
+    ...tokenizedResult.filter((t) => !t.startsWith('{{LINK_')),
   ];
 
   return {
@@ -498,9 +484,7 @@ export async function aiAnalyzePipeline(text, options = {}) {
 const RequestFormatters = {
   openai: (messages, model, options = {}) => {
     const validMessages = messages
-      .filter(
-        (m) => m && m.role && m.content !== undefined && m.content !== null,
-      )
+      .filter((m) => m && m.role && m.content !== undefined && m.content !== null)
       .map((m) => ({
         role: m.role,
         content: String(m.content),
@@ -518,10 +502,10 @@ const RequestFormatters = {
 
   claude: (messages, model, options = {}) => {
     const validMessages = messages.filter(
-      (m) => m && m.role && m.content !== undefined && m.content !== null,
+      (m) => m && m.role && m.content !== undefined && m.content !== null
     );
-    const systemMessage = validMessages.find((m) => m.role === "system");
-    const userMessages = validMessages.filter((m) => m.role !== "system");
+    const systemMessage = validMessages.find((m) => m.role === 'system');
+    const userMessages = validMessages.filter((m) => m.role !== 'system');
 
     return {
       model,
@@ -529,9 +513,7 @@ const RequestFormatters = {
         role: m.role,
         content: String(m.content),
       })),
-      system: systemMessage?.content
-        ? String(systemMessage.content)
-        : undefined,
+      system: systemMessage?.content ? String(systemMessage.content) : undefined,
       temperature: options.temperature ?? 0.7,
       max_tokens: options.maxTokens ?? 2048,
       stream: options.stream ?? false,
@@ -541,10 +523,10 @@ const RequestFormatters = {
 
   gemini: (messages, model, options = {}) => {
     const validMessages = messages.filter(
-      (m) => m && m.role && m.content !== undefined && m.content !== null,
+      (m) => m && m.role && m.content !== undefined && m.content !== null
     );
     const contents = validMessages.map((m) => ({
-      role: m.role === "user" ? "user" : "model",
+      role: m.role === 'user' ? 'user' : 'model',
       parts: [{ text: String(m.content) }],
     }));
 
@@ -573,16 +555,16 @@ const ResponseParsers = {
 
     if (!data.choices || data.choices.length === 0) {
       return {
-        content: "",
+        content: '',
         usage: data.usage,
         model: data.model,
-        finishReason: "stop",
+        finishReason: 'stop',
         raw: data,
       };
     }
 
     return {
-      content: data.choices[0]?.message?.content || "",
+      content: data.choices[0]?.message?.content || '',
       usage: data.usage,
       model: data.model,
       finishReason: data.choices[0]?.finish_reason,
@@ -599,16 +581,16 @@ const ResponseParsers = {
 
     if (!data.content || data.content.length === 0) {
       return {
-        content: "",
+        content: '',
         usage: data.usage,
         model: data.model,
-        finishReason: data.stop_reason || "stop",
+        finishReason: data.stop_reason || 'stop',
         raw: data,
       };
     }
 
     return {
-      content: data.content[0]?.text || "",
+      content: data.content[0]?.text || '',
       usage: data.usage,
       model: data.model,
       finishReason: data.stop_reason,
@@ -625,10 +607,10 @@ const ResponseParsers = {
 
     if (!data.candidates || data.candidates.length === 0) {
       return {
-        content: "",
+        content: '',
         usage: data.usageMetadata,
         model: data.modelVersion,
-        finishReason: "stop",
+        finishReason: 'stop',
         raw: data,
       };
     }
@@ -636,7 +618,7 @@ const ResponseParsers = {
     const candidate = data.candidates[0];
 
     return {
-      content: candidate?.content?.parts?.[0]?.text || "",
+      content: candidate?.content?.parts?.[0]?.text || '',
       usage: data.usageMetadata,
       model: data.modelVersion,
       finishReason: candidate?.finishReason,
@@ -653,24 +635,25 @@ const StreamHandlers = {
   openai: async (response, onChunk) => {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = "";
+    let buffer = '';
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
+      const lines = buffer.split('\n');
       buffer = lines.pop();
 
       for (const line of lines) {
-        if (line.startsWith("data: ")) {
+        if (line.startsWith('data: ')) {
           const data = line.slice(6);
-          if (data === "[DONE]") continue;
+          if (data === '[DONE]') continue;
 
           try {
             const parsed = JSON.parse(data);
-            const content = parsed.choices?.[0]?.delta?.content || "";
+            const content = parsed.choices?.[0]?.delta?.content || '';
             if (content) {
               onChunk(content, parsed);
             }
@@ -685,24 +668,25 @@ const StreamHandlers = {
   claude: async (response, onChunk) => {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = "";
+    let buffer = '';
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
+      const lines = buffer.split('\n');
       buffer = lines.pop();
 
       for (const line of lines) {
-        if (line.startsWith("data: ")) {
+        if (line.startsWith('data: ')) {
           const data = line.slice(6);
 
           try {
             const parsed = JSON.parse(data);
-            if (parsed.type === "content_block_delta") {
-              const content = parsed.delta?.text || "";
+            if (parsed.type === 'content_block_delta') {
+              const content = parsed.delta?.text || '';
               if (content) {
                 onChunk(content, parsed);
               }
@@ -718,25 +702,25 @@ const StreamHandlers = {
   gemini: async (response, onChunk) => {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
-    let buffer = "";
+    let buffer = '';
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n");
+      const lines = buffer.split('\n');
       buffer = lines.pop();
 
       for (const line of lines) {
-        if (line.startsWith("data: ")) {
+        if (line.startsWith('data: ')) {
           const data = line.slice(6);
-          if (data === "[DONE]") continue;
+          if (data === '[DONE]') continue;
 
           try {
             const parsed = JSON.parse(data);
-            const content =
-              parsed.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            const content = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
             if (content) {
               onChunk(content, parsed);
             }
@@ -756,7 +740,7 @@ const StreamHandlers = {
 class AIError extends Error {
   constructor(message, code = null, type = null) {
     super(message);
-    this.name = "AIError";
+    this.name = 'AIError';
     this.code = code;
     this.type = type;
   }
@@ -764,9 +748,9 @@ class AIError extends Error {
 
 // 连接测试错误处理辅助函数
 function formatConnectionError(error) {
-  let errorMsg = "连接失败";
-  if (error.name === "TypeError" && error.message.includes("fetch")) {
-    errorMsg = "连接失败: 无法连接到服务器，请检查网络或Base URL";
+  let errorMsg = '连接失败';
+  if (error.name === 'TypeError' && error.message.includes('fetch')) {
+    errorMsg = '连接失败: 无法连接到服务器，请检查网络或Base URL';
   } else if (error.message) {
     errorMsg = `连接失败: ${error.message}`;
   }
@@ -780,7 +764,7 @@ function formatConnectionError(error) {
 class AIAdapter {
   constructor(config = {}) {
     this.configs = { ...DEFAULT_CONFIG };
-    this.activeProvider = "openai";
+    this.activeProvider = 'openai';
 
     if (config.providers) {
       Object.entries(config.providers).forEach(([key, value]) => {
@@ -831,14 +815,11 @@ class AIAdapter {
     const format = config.requestFormat;
 
     switch (format) {
-      case "gemini":
+      case 'gemini':
         return `${config.baseURL}/models/${model}:generateContent?key=${config.apiKey}`;
-      case "openai":
+      case 'openai':
       default:
-        if (
-          config.baseURL.includes("azure.com") ||
-          config.baseURL.includes("deployments")
-        ) {
+        if (config.baseURL.includes('azure.com') || config.baseURL.includes('deployments')) {
           return `${config.baseURL}/chat/completions?api-version=2024-02-01`;
         }
         return `${config.baseURL}/chat/completions`;
@@ -847,16 +828,16 @@ class AIAdapter {
 
   buildHeaders(config) {
     const headers = {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
       ...config.headers,
     };
 
-    if (config.requestFormat !== "gemini" && config.apiKey) {
+    if (config.requestFormat !== 'gemini' && config.apiKey) {
       headers.Authorization = `Bearer ${config.apiKey}`;
     }
 
-    if (config.requestFormat === "claude") {
-      headers["x-api-key"] = config.apiKey;
+    if (config.requestFormat === 'claude') {
+      headers['x-api-key'] = config.apiKey;
     }
 
     return headers;
@@ -864,29 +845,28 @@ class AIAdapter {
 
   async chat(messages, options = {}) {
     if (!Array.isArray(messages)) {
-      throw new AIError("messages 必须是数组");
+      throw new AIError('messages 必须是数组');
     }
 
     if (messages.length === 0) {
-      throw new AIError("messages 不能为空");
+      throw new AIError('messages 不能为空');
     }
 
     const config = this.getCurrentConfig();
     const model = options.model || config.defaultModel;
 
     if (!config.baseURL) {
-      throw new AIError("未配置 API 地址");
+      throw new AIError('未配置 API 地址');
     }
 
     if (!config.apiKey) {
-      throw new AIError("未配置 API Key");
+      throw new AIError('未配置 API Key');
     }
 
     const url = this.buildURL(config, model);
     const headers = this.buildHeaders(config);
 
-    const formatter =
-      RequestFormatters[config.requestFormat] || RequestFormatters.openai;
+    const formatter = RequestFormatters[config.requestFormat] || RequestFormatters.openai;
     const body = formatter(messages, model, options);
 
     const maxRetries = options.maxRetries ?? 3;
@@ -895,28 +875,23 @@ class AIAdapter {
     for (let attempt = 0; attempt < maxRetries; attempt++) {
       try {
         const response = await fetch(url, {
-          method: "POST",
+          method: 'POST',
           headers,
           body: JSON.stringify(body),
         });
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new AIError(
-            errorData.error?.message || `HTTP ${response.status}`,
-            response.status,
-          );
+          throw new AIError(errorData.error?.message || `HTTP ${response.status}`, response.status);
         }
 
         if (options.stream && options.onChunk) {
-          const handler =
-            StreamHandlers[config.responseFormat] || StreamHandlers.openai;
+          const handler = StreamHandlers[config.responseFormat] || StreamHandlers.openai;
           await handler(response, options.onChunk);
           return { stream: true };
         }
 
-        const parser =
-          ResponseParsers[config.responseFormat] || ResponseParsers.openai;
+        const parser = ResponseParsers[config.responseFormat] || ResponseParsers.openai;
         return await parser(response);
       } catch (error) {
         lastError = error;
@@ -944,15 +919,15 @@ class AIAdapter {
 
   async simpleChat(content, options = {}) {
     if (content === undefined || content === null) {
-      throw new AIError("content 不能为空");
+      throw new AIError('content 不能为空');
     }
 
     const messages = [
       {
-        role: "system",
-        content: options.systemPrompt || "你是一个 helpful 的助手。",
+        role: 'system',
+        content: options.systemPrompt || '你是一个 helpful 的助手。',
       },
-      { role: "user", content: String(content) },
+      { role: 'user', content: String(content) },
     ];
 
     const response = await this.chat(messages, options);
@@ -970,19 +945,14 @@ class AIAdapter {
 
 const aiAdapter = new AIAdapter();
 
-export {
-  AIAdapter,
-  aiAdapter,
-  AIError,
-  ProviderTemplates,
-  DEFAULT_CONFIG,
-  SystemPrompts,
-};
+export { AIAdapter, aiAdapter, AIError, ProviderTemplates, DEFAULT_CONFIG, SystemPrompts };
 
 export default aiAdapter;
 
 // 兼容 CommonJS
-if (typeof module !== "undefined" && module.exports) {
+// eslint-disable-next-line no-undef
+if (typeof module !== 'undefined' && module.exports) {
+  // eslint-disable-next-line no-undef
   module.exports = {
     AIAdapter,
     aiAdapter,

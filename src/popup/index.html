@@ -29,9 +29,7 @@
               class="lucide lucide-clipboard"
             >
               <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
-              <path
-                d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
-              />
+              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
             </svg>
             <span class="clipboard-status"></span>
           </button>
@@ -49,7 +47,7 @@
               class="lucide lucide-settings"
             >
               <path
-                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l-.15.09a2 2 0 0 0-.73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
               />
               <circle cx="12" cy="12" r="3" />
             </svg>
@@ -134,12 +132,8 @@
                 stroke-linejoin="round"
                 class="lucide lucide-link"
               >
-                <path
-                  d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
-                />
-                <path
-                  d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
-                />
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
               </svg>
               链接生成
             </label>
@@ -216,10 +210,14 @@
                 </svg>
                 路径转换
               </h5>
-              <label>
-                <input type="checkbox" id="path-quote-checkbox" />
-                使用引号包裹
-              </label>
+              <div class="path-actions">
+                <button id="path-add-quote-btn" class="path-action-btn" title="为路径添加引号包裹">
+                  添加引号
+                </button>
+                <button id="path-reset-quote-btn" class="path-action-btn secondary" title="重置引号操作">
+                  重置
+                </button>
+              </div>
             </div>
             <div id="path-conversion-result"></div>
           </div>
@@ -267,10 +265,7 @@
                 >
                   整句分析
                 </option>
-                <option
-                  value="halfSentence"
-                  title="半句分析：使用标点、空格、换行分割文本"
-                >
+                <option value="halfSentence" title="半句分析：使用标点、空格、换行分割文本">
                   半句分析
                 </option>
                 <option
@@ -279,10 +274,7 @@
                 >
                   去除符号
                 </option>
-                <option
-                  value="charBreak"
-                  title="字符断行：按设定的行字符数，直接按字符硬断行"
-                >
+                <option value="charBreak" title="字符断行：按设定的行字符数，直接按字符硬断行">
                   字符断行
                 </option>
                 <option
@@ -291,13 +283,34 @@
                 >
                   随机分词
                 </option>
+                <option value="multi" title="多规则组合：支持11个独立规则组合分词">
+                  多规则组合
+                </option>
               </select>
               <!-- 多规则组合按钮 -->
-              <div
-                id="multi-rule-buttons"
-                style="display: none; margin-top: var(--space-3)"
-              >
-                <div class="format-buttons-grid">
+              <div id="multi-rule-buttons" style="display: none; margin-top: var(--space-3)">
+                <!-- 操作历史显示 -->
+                <div
+                  id="multi-rule-history"
+                  style="
+                    margin-bottom: var(--space-3);
+                    padding: var(--space-2) var(--space-3);
+                    background: var(--bg-lighter);
+                    border-radius: var(--radius-sm);
+                    font-size: 12px;
+                    color: var(--text-secondary);
+                    min-height: 32px;
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: var(--space-1);
+                  "
+                >
+                  <span>操作顺序：</span>
+                  <span id="multi-rule-history-list">无</span>
+                </div>
+                <!-- 规则按钮网格 -->
+                <div class="multi-format-buttons">
                   <button
                     class="format-btn"
                     data-rule="symbolSplit"
@@ -305,25 +318,13 @@
                   >
                     符号分词
                   </button>
-                  <button
-                    class="format-btn"
-                    data-rule="whitespaceSplit"
-                    title="空格放前一词词尾"
-                  >
+                  <button class="format-btn" data-rule="whitespaceSplit" title="空格放前一词词尾">
                     空格分词
                   </button>
-                  <button
-                    class="format-btn"
-                    data-rule="newlineSplit"
-                    title="换行放前一词词尾"
-                  >
+                  <button class="format-btn" data-rule="newlineSplit" title="换行放前一词词尾">
                     换行分词
                   </button>
-                  <button
-                    class="format-btn"
-                    data-rule="chineseEnglishSplit"
-                    title="分离中文和英文"
-                  >
+                  <button class="format-btn" data-rule="chineseEnglishSplit" title="分离中文和英文">
                     中英分词
                   </button>
                   <button
@@ -340,60 +341,32 @@
                   >
                     命名分词
                   </button>
-                  <button
-                    class="format-btn"
-                    data-rule="digitSplit"
-                    title="数字单独分出来"
-                  >
+                  <button class="format-btn" data-rule="digitSplit" title="数字单独分出来">
                     数字分词
                   </button>
-                  <button
-                    class="format-btn"
-                    data-rule="removeWhitespace"
-                    title="去除所有空格"
-                  >
+                  <button class="format-btn" data-rule="removeWhitespace" title="去除所有空格">
                     去除空格
                   </button>
-                  <button
-                    class="format-btn"
-                    data-rule="removeSymbols"
-                    title="去除所有符号"
-                  >
+                  <button class="format-btn" data-rule="removeSymbols" title="去除所有符号">
                     去除符号
                   </button>
-                  <button
-                    class="format-btn"
-                    data-rule="removeChinese"
-                    title="去除所有中文字符"
-                  >
+                  <button class="format-btn" data-rule="removeChinese" title="去除所有中文字符">
                     去除中文
                   </button>
-                  <button
-                    class="format-btn"
-                    data-rule="removeEnglish"
-                    title="去除所有英文字符"
-                  >
+                  <button class="format-btn" data-rule="removeEnglish" title="去除所有英文字符">
                     去除英文
                   </button>
+                  <button class="format-btn" data-rule="removeDigits" title="去除所有数字">
+                    去除数字
+                  </button>
                 </div>
+                <!-- 操作按钮 -->
                 <div
                   class="multi-rule-actions"
-                  style="
-                    margin-top: var(--space-3);
-                    display: flex;
-                    gap: var(--space-2);
-                  "
+                  style="margin-top: var(--space-3); display: flex; gap: var(--space-2)"
                 >
-                  <button
-                    id="multi-rule-back-btn"
-                    class="secondary-btn"
-                    disabled
-                  >
-                    返回
-                  </button>
-                  <button id="multi-rule-reset-btn" class="secondary-btn">
-                    重置
-                  </button>
+                  <button id="multi-rule-back-btn" class="secondary-btn" disabled>撤销</button>
+                  <button id="multi-rule-reset-btn" class="secondary-btn">重置</button>
                 </div>
               </div>
               <button id="refresh-split-btn">
@@ -409,34 +382,19 @@
                   stroke-linejoin="round"
                   class="lucide lucide-refresh-cw"
                 >
-                  <path
-                    d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"
-                  />
+                  <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
                   <path d="M21 3v5h-5" />
-                  <path
-                    d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"
-                  />
+                  <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
                   <path d="M3 21v-5h5" />
                 </svg>
                 刷新拆分
               </button>
             </div>
             <div class="copy-options">
-              <label
-                ><input type="checkbox" id="select-all-checkbox" /> 全选</label
-              >
-              <label
-                ><input type="checkbox" id="copy-opt-space" />
-                空格<br />分隔</label
-              >
-              <label
-                ><input type="checkbox" id="copy-opt-newline" />
-                换行<br />分隔</label
-              >
-              <label
-                ><input type="checkbox" id="copy-opt-tab" />
-                制表<br />分隔</label
-              >
+              <label><input type="checkbox" id="select-all-checkbox" /> 全选</label>
+              <label><input type="checkbox" id="copy-opt-space" /> 空格<br />分隔</label>
+              <label><input type="checkbox" id="copy-opt-newline" /> 换行<br />分隔</label>
+              <label><input type="checkbox" id="copy-opt-tab" /> 制表<br />分隔</label>
             </div>
             <div id="split-output-container"></div>
             <button id="copy-selected-btn">
@@ -453,9 +411,7 @@
                 class="lucide lucide-copy"
               >
                 <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
-                <path
-                  d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"
-                />
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
               </svg>
               复制选中项
             </button>
@@ -477,12 +433,8 @@
               stroke-linejoin="round"
               class="lucide lucide-link"
             >
-              <path
-                d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"
-              />
-              <path
-                d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"
-              />
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
             </svg>
             链接生成结果
           </h4>
@@ -513,55 +465,28 @@
             多格式分析
           </h4>
           <div class="multi-format-controls">
-            <button class="format-btn" id="back-to-previous">
-              回到上一次处理结果
-            </button>
+            <button class="format-btn" id="back-to-previous">回到上一次处理结果</button>
           </div>
           <div class="multi-format-buttons">
-            <button class="format-btn" data-action="remove-chinese">
-              去中文及中符
-            </button>
-            <button class="format-btn" data-action="remove-non-url-chars">
-              去除非url字符
-            </button>
-            <button class="format-btn" data-action="remove-spaces">
-              去除空格
-            </button>
-            <button class="format-btn" data-action="convert-to-url-chars">
-              非url符转url
-            </button>
-            <button class="format-btn" data-action="convert-period">
-              。转.符号
-            </button>
-            <button class="format-btn" data-action="convert-slash-to-backslash">
-              /转\
-            </button>
-            <button class="format-btn" data-action="convert-backslash-to-slash">
-              \转/
-            </button>
-            <button class="format-btn" data-action="convert-slash-to-double">
-              /转//
-            </button>
-            <button
-              class="format-btn"
-              data-action="convert-backslash-to-double"
-            >
-              \转\\
-            </button>
-            <button class="format-btn" data-action="add-file-protocol">
-              路径前加file:///
-            </button>
+            <button class="format-btn" data-action="remove-chinese">去中文及中符</button>
+            <button class="format-btn" data-action="remove-non-url-chars">去除非url字符</button>
+            <button class="format-btn" data-action="remove-spaces">去除空格</button>
+            <button class="format-btn" data-action="convert-to-url-chars">非url符转url</button>
+            <button class="format-btn" data-action="convert-period">。转.符号</button>
+            <button class="format-btn" data-action="convert-slash-to-backslash">/转\</button>
+            <button class="format-btn" data-action="convert-backslash-to-slash">\转/</button>
+            <button class="format-btn" data-action="convert-slash-to-double">/转//</button>
+            <button class="format-btn" data-action="convert-backslash-to-double">\转\\</button>
+            <button class="format-btn" data-action="add-file-protocol">路径前加file:///</button>
+            <button class="format-btn" data-action="remove-brackets">去除[]及其中内容</button>
+            <button class="format-btn" data-action="escape-spaces">空格转义</button>
           </div>
           <div class="processing-result">
             <div class="result-header">
               <span>处理结果</span>
               <div class="result-actions">
-                <button class="result-btn" id="copy-result-btn">
-                  复制结果
-                </button>
-                <button class="result-btn" id="search-result-btn">
-                  搜索结果
-                </button>
+                <button class="result-btn" id="copy-result-btn">复制结果</button>
+                <button class="result-btn" id="search-result-btn">搜索结果</button>
               </div>
             </div>
             <div class="result-content" id="multi-format-result">
@@ -613,7 +538,7 @@
                 </svg>
                 历史
               </button>
-              <button id="export-history-btn" class="btn-sm">
+              <button id="edit-history-btn" class="btn-sm">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="14"
@@ -624,15 +549,14 @@
                   stroke-width="2"
                   stroke-linecap="round"
                   stroke-linejoin="round"
-                  class="lucide lucide-download"
+                  class="lucide lucide-edit"
                 >
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="7 10 12 15 17 10" />
-                  <line x1="12" x2="12" y1="15" y2="3" />
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
-                导出
+                编辑
               </button>
-              <button id="clear-history-btn" class="btn-sm">
+              <button id="clear-history-btn" class="btn-sm btn-danger">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="14"
@@ -657,25 +581,26 @@
           </div>
           <div id="history-container" style="display: none">
             <div class="history-filter">
-              <input
-                type="text"
-                id="history-search"
-                placeholder="搜索历史..."
-              />
+              <input type="text" id="history-search" placeholder="搜索历史..." />
               <div class="filter-tabs">
-                <button class="filter-tab active" data-filter="all">
-                  全部
-                </button>
+                <button class="filter-tab active" data-filter="all">全部</button>
                 <button class="filter-tab" data-filter="github">GitHub</button>
                 <button class="filter-tab" data-filter="other">其他</button>
               </div>
             </div>
             <div id="history-list"></div>
           </div>
+          <!-- 隐藏的文件输入用于链接历史导入 -->
+          <input
+            type="file"
+            id="link-history-import-input"
+            accept=".json,.csv,.txt"
+            style="display: none"
+          />
         </section>
 
         <!-- 剪贴板历史区域 -->
-        <section class="clipboard-section">
+        <section class="history-section clipboard-section">
           <div class="section-header">
             <h3>
               <svg
@@ -697,8 +622,104 @@
               </svg>
               剪贴历史
             </h3>
-            <div class="clipboard-controls" id="clipboard-controls">
-              <!-- 按钮将由JavaScript根据模式动态渲染 -->
+            <div class="history-controls clipboard-controls" id="clipboard-controls">
+              <button id="show-clipboard-btn" class="btn-sm">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+                  <path
+                    d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
+                  />
+                  <path d="M9 14h6" />
+                  <path d="M9 18h6" />
+                  <path d="M9 10h6" />
+                </svg>
+                历史
+              </button>
+              <button id="export-clipboard-btn" class="btn-sm">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="7 10 12 15 17 10" />
+                  <line x1="12" x2="12" y1="15" y2="3" />
+                </svg>
+                导出
+              </button>
+              <button id="import-clipboard-btn" class="btn-sm">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" x2="12" y1="3" y2="15" />
+                </svg>
+                导入
+              </button>
+              <button id="clipboard-settings-btn" class="btn-sm">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+                  />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+                设置
+              </button>
+              <button id="clear-clipboard-btn" class="btn-sm btn-danger">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="M3 6h18" />
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                  <line x1="10" x2="10" y1="11" y2="17" />
+                  <line x1="14" x2="14" y1="11" y1="17" />
+                </svg>
+                清空
+              </button>
             </div>
           </div>
           <!-- 剪贴板操作区域 -->
@@ -742,10 +763,7 @@
                   </svg>
                   读取剪贴板
                 </button>
-                <button
-                  id="toggle-auto-monitor-btn"
-                  class="permission-btn secondary"
-                >
+                <button id="toggle-auto-monitor-btn" class="permission-btn secondary">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="14"
@@ -761,17 +779,11 @@
                   开启自动监控
                 </button>
               </div>
-              <small class="permission-hint"
-                >自动监控需要额外权限，可在网页中授权</small
-              >
+              <small class="permission-hint">自动监控需要额外权限，可在网页中授权</small>
             </div>
           </div>
           <!-- 剪贴板权限请求区域（用于全局自动监控） -->
-          <div
-            id="clipboard-permission-panel"
-            class="permission-panel"
-            style="display: none"
-          >
+          <div id="clipboard-permission-panel" class="permission-panel" style="display: none">
             <div class="permission-content">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -792,10 +804,7 @@
                 <path d="M12 17h.01" />
               </svg>
               <p>需要剪贴板权限才能自动监控剪贴板变化</p>
-              <button
-                id="request-clipboard-permission-btn"
-                class="permission-btn"
-              >
+              <button id="request-clipboard-permission-btn" class="permission-btn">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
                   width="14"
@@ -812,9 +821,52 @@
               </button>
             </div>
           </div>
+          <!-- 剪贴板设置面板 -->
+          <div id="clipboard-settings-panel" style="display: none" class="settings-panel">
+            <div class="settings-content">
+              <h4>剪贴板历史设置</h4>
+              <div class="setting-item">
+                <label>
+                  <input type="checkbox" id="clipboard-enabled" checked />
+                  启用剪贴板历史记录
+                </label>
+              </div>
+              <div class="setting-item">
+                <label>
+                  <input type="checkbox" id="clipboard-auto-save" checked />
+                  自动保存剪贴板内容
+                </label>
+              </div>
+              <div class="setting-item">
+                <label for="clipboard-max-items">最大记录条数:</label>
+                <input type="number" id="clipboard-max-items" min="10" max="1000" value="100" />
+              </div>
+              <div class="setting-actions">
+                <button id="save-clipboard-settings" class="btn-sm primary">保存设置</button>
+                <button id="cancel-clipboard-settings" class="btn-sm">取消</button>
+              </div>
+            </div>
+          </div>
+          <!-- 剪贴板历史列表 -->
           <div id="clipboard-history-container" style="display: none">
+            <div class="history-filter">
+              <input type="text" id="clipboard-history-search" placeholder="搜索剪贴板历史..." />
+              <div class="filter-tabs">
+                <button class="filter-tab active" data-filter="all">全部</button>
+                <button class="filter-tab" data-filter="url">URL</button>
+                <button class="filter-tab" data-filter="code">代码</button>
+                <button class="filter-tab" data-filter="text">文本</button>
+              </div>
+            </div>
             <div id="clipboard-history-list"></div>
           </div>
+          <!-- 隐藏的文件输入用于导入 -->
+          <input
+            type="file"
+            id="clipboard-import-input"
+            accept=".json,.csv,.txt"
+            style="display: none"
+          />
         </section>
       </main>
     </div>

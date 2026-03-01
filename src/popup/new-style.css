@@ -59,8 +59,8 @@
 
 body {
   font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', sans-serif;
   font-size: 14px;
   line-height: 1.6;
   color: var(--text-medium);
@@ -330,7 +330,7 @@ body {
   background: var(--bg-lighter);
 }
 
-.switch-container input[type="checkbox"] {
+.switch-container input[type='checkbox'] {
   width: 16px;
   height: 16px;
   accent-color: var(--primary);
@@ -436,7 +436,7 @@ body {
   background: var(--bg-lighter);
 }
 
-.switch-container input[type="checkbox"] {
+.switch-container input[type='checkbox'] {
   width: 16px;
   height: 16px;
   accent-color: var(--primary);
@@ -521,6 +521,39 @@ body {
   cursor: pointer;
 }
 
+/* 路径操作按钮组 */
+.path-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.path-action-btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  white-space: nowrap;
+}
+
+.path-action-btn:hover {
+  background: var(--primary-dark);
+}
+
+.path-action-btn.secondary {
+  background: var(--bg-lighter);
+  color: var(--text-medium);
+  border: 1px solid var(--border-color);
+}
+
+.path-action-btn.secondary:hover {
+  background: var(--border-color);
+  color: var(--text-dark);
+}
+
 .path-item {
   display: flex;
   align-items: flex-start;
@@ -540,8 +573,7 @@ body {
 .path-item pre {
   flex: 1;
   font-family:
-    "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New",
-    monospace;
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 12px;
   color: var(--text-dark);
   white-space: pre-wrap;
@@ -551,6 +583,7 @@ body {
 }
 
 .path-copy-btn,
+.path-open-btn,
 .copy-btn {
   background: var(--primary);
   color: white;
@@ -566,6 +599,14 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.path-open-btn {
+  background: var(--success);
+}
+
+.path-open-btn:hover {
+  background: #5cb85c;
 }
 
 .path-copy-btn:hover,
@@ -701,7 +742,7 @@ body {
   user-select: none;
 }
 
-.multi-rule-label input[type="checkbox"] {
+.multi-rule-label input[type='checkbox'] {
   width: 14px;
   height: 14px;
   accent-color: var(--primary);
@@ -738,7 +779,7 @@ body {
   color: var(--text-dark);
 }
 
-.rule-checkboxes input[type="checkbox"] {
+.rule-checkboxes input[type='checkbox'] {
   width: 14px;
   height: 14px;
   accent-color: var(--primary);
@@ -1035,8 +1076,7 @@ body {
   white-space: pre-wrap;
   word-break: break-all;
   font-family:
-    "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New",
-    monospace;
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 13px;
   color: var(--text-dark);
   line-height: 1.6;
@@ -1268,6 +1308,22 @@ body {
   height: 12px;
 }
 
+.btn-sm:disabled {
+  background: var(--bg-lighter);
+  color: var(--text-light);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.btn-sm.btn-danger {
+  background: var(--danger);
+}
+
+.btn-sm.btn-danger:hover {
+  background: var(--danger-light);
+  color: var(--text-dark);
+}
+
 .history-filter {
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--border-color);
@@ -1281,6 +1337,7 @@ body {
   font-size: 13px;
   margin-bottom: var(--space-3);
   color: var(--text-dark);
+  background: var(--bg-white);
   transition: all var(--transition-normal);
 }
 
@@ -1288,6 +1345,10 @@ body {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.history-filter input::placeholder {
+  color: var(--text-light);
 }
 
 .filter-tabs {
@@ -1321,7 +1382,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 0;
+  padding: var(--space-3) var(--space-4);
   border-bottom: 1px solid var(--border-color);
   transition: all var(--transition-normal);
 }
@@ -1337,6 +1398,18 @@ body {
 .history-content {
   flex: 1;
   min-width: 0;
+  padding-right: var(--space-3);
+}
+
+.history-link {
+  display: block;
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 13px;
+  word-break: break-all;
+  line-height: 1.5;
+  margin-bottom: var(--space-1);
+  padding: var(--space-1) 0;
 }
 
 .history-link {
@@ -1354,6 +1427,12 @@ body {
   color: var(--primary-dark);
 }
 
+.history-link.disabled {
+  color: var(--text-medium);
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .history-domain {
   font-size: 11px;
   color: var(--text-light);
@@ -1363,6 +1442,176 @@ body {
   display: flex;
   gap: var(--space-2);
   margin-left: var(--space-3);
+}
+
+/* 链接历史编辑模式样式 */
+.history-item.editable {
+  cursor: pointer;
+  position: relative;
+}
+
+.history-item.editable::before {
+  content: '点击编辑';
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 11px;
+  color: var(--primary);
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+  pointer-events: none;
+  background: var(--bg-card);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--primary);
+  box-shadow: var(--shadow-sm);
+  z-index: 10;
+}
+
+.history-item.editable:hover::before {
+  opacity: 1;
+}
+
+.history-item.editable:hover {
+  background: rgba(124, 158, 232, 0.08);
+  border-left: 3px solid var(--primary);
+}
+
+/* 编辑状态 - 卡片式设计 */
+.history-item.editing {
+  background: var(--bg-card);
+  border: 1px solid var(--primary);
+  border-radius: var(--radius-md);
+  margin: var(--space-3) var(--space-4);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-md);
+}
+
+.history-content.edit-mode {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: 100%;
+}
+
+.edit-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.edit-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.edit-domain {
+  font-size: 11px;
+  color: var(--text-light);
+  background: var(--bg-lighter);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+
+.edit-url-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: var(--space-3);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-dark);
+  background: var(--bg-white);
+  font-family: inherit;
+  resize: vertical;
+  transition: all var(--transition-normal);
+}
+
+.edit-url-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(124, 158, 232, 0.15);
+}
+
+.edit-url-textarea::placeholder {
+  color: var(--text-light);
+}
+
+.edit-actions-row {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  padding-top: var(--space-2);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.btn-primary svg {
+  width: 14px;
+  height: 14px;
+}
+
+.btn-secondary {
+  background: var(--bg-lighter);
+  color: var(--text-medium);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  height: 32px;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-white);
+  color: var(--text-dark);
+  border-color: var(--text-light);
+}
+
+.btn-secondary svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* 编辑按钮激活状态 */
+.btn-sm.active {
+  background: var(--warning);
+  color: var(--text-dark);
+}
+
+.btn-sm.active:hover {
+  background: var(--warning-light);
 }
 
 .github-item {
@@ -1556,7 +1805,7 @@ body {
     font-size: 10px;
   }
 
-  .switch-container input[type="checkbox"] {
+  .switch-container input[type='checkbox'] {
     width: 12px;
     height: 12px;
   }
@@ -2008,6 +2257,16 @@ button:disabled:hover {
   border-color: var(--primary);
 }
 
+/* 批量模式下点击文本框也能勾选 */
+.batch-mode .clipboard-text-content {
+  cursor: pointer;
+  user-select: none;
+}
+
+.batch-mode .clipboard-text-content:hover {
+  background: var(--bg-lighter);
+}
+
 .clipboard-checkbox {
   accent-color: var(--primary);
   width: 16px;
@@ -2025,8 +2284,7 @@ button:disabled:hover {
   margin: 0;
   background: var(--bg-card);
   font-family:
-    "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New",
-    monospace;
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   font-size: 13px;
   color: var(--text-dark);
   white-space: pre-wrap;
@@ -2050,8 +2308,7 @@ button:disabled:hover {
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-family:
-    "SF Mono", Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New",
-    monospace;
+    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
   color: var(--text-dark);
   background: var(--bg-card);
   resize: none;

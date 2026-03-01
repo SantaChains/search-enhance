@@ -32,13 +32,6 @@
         "mac": "Command+Shift+K"
       },
       "description": "Toggle clipboard monitoring"
-    },
-    "quick_search": {
-      "suggested_key": {
-        "default": "Alt+Shift+S",
-        "mac": "Command+Shift+S"
-      },
-      "description": "Quick search selected text"
     }
   },
   "background": {
@@ -57,7 +50,6 @@
   },
   "action": {
     "default_title": "Enhance Search Buddy",
-    "default_popup": "src/popup/index.html",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -76,6 +68,10 @@
       "resources": [
         "src/popup/index.html",
         "src/settings/index.html",
+        "test.html",
+        "debug.html",
+        "exam.html",
+        "src/utils/*.js",
         "icons/*"
       ],
       "matches": ["http://localhost/*", "https://*/*"],

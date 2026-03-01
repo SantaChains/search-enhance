@@ -9,12 +9,12 @@
  * - 词典算法开关配置
  */
 
-import { fastCWS } from "./fastCWS.js";
-import { getSettings } from "./storage.js";
-import { aiAnalyzePipeline } from "./aiAdapter.js";
-import { codeAnalyze as analyzeCode } from "./codeAnalyzer.js";
-import { randomAnalyze as randomSplit } from "./randomAnalyzer.js";
-import { multiRuleAnalyze as analyzeMultiRules } from "./multiRuleAnalyzer.js";
+import { fastCWS } from './fastCWS.js';
+import { getSettings } from './storage.js';
+import { aiAnalyzePipeline } from './aiAdapter.js';
+import { codeAnalyze as analyzeCode } from './codeAnalyzer.js';
+import { randomAnalyze as randomSplit } from './randomAnalyzer.js';
+import { multiRuleAnalyze as analyzeMultiRules } from './multiRuleAnalyzer.js';
 
 // ============================================================================
 // 预编译正则表达式
@@ -28,7 +28,7 @@ const REGEX = {
   whitespace: /\s+/,
 
   // 标点符号（用于智能分析）
-  punctuation: /[，。！？；：""''（）【】《》<>「」『』,.!?;:'"()\[\]{}–—-]/,
+  punctuation: /[，。！？；：""''（）【】《》<>「」『』,.!?;:'"()[]{}–—-]/,
 
   // 中文标点（用于中文分析）
   chinesePunctuation: /[，。！？；：""''（）【】《》<>「」『』]/,
@@ -47,6 +47,10 @@ const REGEX = {
 
   // URL相关（用于AI分析）
   url: /(?:https?:\/\/|www\.)[^\s<>"']+/gi,
+
+  // 路径相关（用于智能分析）
+  windowsPath: /[a-zA-Z]:[\\/][^\s<>"|?*]*/g,
+  unixPath: /(?:\/[\\/]?(?:home|Users|usr|etc|var|opt|tmp)[\\/][^\s<>"|?*]*)/g,
 
   // 辅助
   empty: /^\s*$/,
@@ -98,7 +102,7 @@ export function getConfig() {
 // ============================================================================
 
 function escapeRegExp(string) {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function removeDuplicates(arr) {
@@ -127,7 +131,7 @@ function filterEmpty(arr) {
  */
 function splitNaming(word) {
   const result = [];
-  let buffer = "";
+  let buffer = '';
 
   for (let i = 0; i < word.length; i++) {
     const char = word[i];
@@ -139,7 +143,7 @@ function splitNaming(word) {
       if (uppercaseSeq && uppercaseSeq[0].length >= 2) {
         if (buffer) {
           result.push(buffer);
-          buffer = "";
+          buffer = '';
         }
         const seq = uppercaseSeq[0];
         // 检查后面是否接着小写字母
@@ -159,21 +163,17 @@ function splitNaming(word) {
     }
 
     // 检测小写字母后接大写字母（驼峰边界）
-    if (
-      buffer &&
-      /[a-z]/.test(buffer[buffer.length - 1]) &&
-      /[A-Z]/.test(char)
-    ) {
+    if (buffer && /[a-z]/.test(buffer[buffer.length - 1]) && /[A-Z]/.test(char)) {
       result.push(buffer);
       buffer = char;
       continue;
     }
 
     // 检测下划线和横杠
-    if (char === "_" || char === "-") {
+    if (char === '_' || char === '-') {
       if (buffer) {
         result.push(buffer);
-        buffer = "";
+        buffer = '';
       }
       continue;
     }
@@ -208,7 +208,54 @@ export function smartAnalyze(text) {
   const result = [];
   let i = 0;
 
+  // 首先提取所有路径和URL，避免被拆分
+  const paths = [];
+  const pathRegexes = [
+    // URL格式（包括查询参数）- 优先匹配
+    { type: 'url', regex: /https?:\/\/[^\s<>"{}|^`[\]]+/gi },
+    // file:// 协议路径
+    { type: 'file', regex: /file:\/\/[^\s<>"{}|^`[\]]+/gi },
+    // chrome:// 和 about:// 等浏览器内部协议
+    { type: 'browser_protocol', regex: /(?:chrome|about|edge|firefox):\/\/[^\s<>"{}|^`[\]]+/gi },
+    // Windows路径 - 允许空格，但排除非法字符，前面不能是字母
+    { type: 'windows', regex: /(?<![a-zA-Z])[a-zA-Z]:[\\/][^<>"|?*]*/g },
+    // Unix路径 - 同样允许空格
+    { type: 'unix', regex: /(?:\/[\\/]?(?:home|Users|usr|etc|var|opt|tmp)[\\/][^<>"|?*]*)/g },
+  ];
+
+  for (const { regex } of pathRegexes) {
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      paths.push({ start: match.index, end: match.index + match[0].length, content: match[0] });
+    }
+  }
+
+  // 按起始位置排序路径
+  paths.sort((a, b) => a.start - b.start);
+
+  // 合并重叠的路径（优先保留URL，因为URL可能包含路径特征）
+  const mergedPaths = [];
+  for (const path of paths) {
+    const last = mergedPaths[mergedPaths.length - 1];
+    if (last && path.start < last.end) {
+      // 重叠，保留较长的路径
+      if (path.end - path.start > last.end - last.start) {
+        mergedPaths[mergedPaths.length - 1] = path;
+      }
+    } else {
+      mergedPaths.push(path);
+    }
+  }
+
   while (i < text.length) {
+    // 检查当前位置是否在路径范围内
+    const currentPath = mergedPaths.find((p) => i >= p.start && i < p.end);
+    if (currentPath) {
+      result.push(currentPath.content);
+      i = currentPath.end;
+      continue;
+    }
+
     const char = text[i];
 
     // 跳过空白字符
@@ -226,7 +273,7 @@ export function smartAnalyze(text) {
 
     // 中文字符：整句收集直到遇到非中文字符
     if (REGEX.chineseChar.test(char)) {
-      let chineseSegment = "";
+      let chineseSegment = '';
       while (i < text.length && REGEX.chineseChar.test(text[i])) {
         chineseSegment += text[i];
         i++;
@@ -239,7 +286,7 @@ export function smartAnalyze(text) {
 
     // 数字：连续数字作为一格
     if (/\d/.test(char)) {
-      let number = "";
+      let number = '';
       while (i < text.length && /\d/.test(text[i])) {
         number += text[i];
         i++;
@@ -252,7 +299,7 @@ export function smartAnalyze(text) {
 
     // 英文字母：按单词分格
     if (/[a-zA-Z]/.test(char)) {
-      let word = "";
+      let word = '';
       while (i < text.length && /[a-zA-Z]/.test(text[i])) {
         word += text[i];
         i++;
@@ -288,7 +335,7 @@ export function smartAnalyze(text) {
 export function chineseAnalyze(text) {
   if (!text || !text.trim()) return [];
 
-  let result = [];
+  const result = [];
 
   // 中英分离
   const parts = text.split(/([a-zA-Z]+)/).filter(Boolean);
@@ -307,7 +354,7 @@ export function chineseAnalyze(text) {
       const punctuations = chinesePart.match(REGEX.chinesePunctuation) || [];
       for (const p of punctuations) {
         const pieces = chinesePart.split(p);
-        chinesePart = pieces.join(" ");
+        chinesePart = pieces.join(' ');
       }
 
       // 空格分词
@@ -386,7 +433,7 @@ function chineseWordSegmentation(text, options = {}) {
 export function englishAnalyze(text) {
   if (!text || !text.trim()) return [];
 
-  let result = [];
+  const result = [];
 
   // 中英分离
   const parts = text.split(/([\u4e00-\u9fa5]+)/).filter(Boolean);
@@ -394,15 +441,15 @@ export function englishAnalyze(text) {
   for (const part of parts) {
     if (/[\u4e00-\u9fa5]/.test(part)) {
       // 中文部分：直接保留
-      const noSpace = part.replace(/\s+/g, "");
+      const noSpace = part.replace(/\s+/g, '');
       if (noSpace) result.push(noSpace);
     } else {
       // 英文部分
       let englishPart = part;
 
       // 符号分离，符号空格留在上字词尾
-      const symbols = /[,.!?;:'"()\[\]{}–—-]/g;
-      englishPart = englishPart.replace(symbols, " $&");
+      const symbols = /[,.!?;:'"()[]{}–—-]/g;
+      englishPart = englishPart.replace(symbols, ' $&');
 
       // 空格分词
       const words = englishPart.split(/\s+/).filter(Boolean);
@@ -415,14 +462,14 @@ export function englishAnalyze(text) {
         }
 
         // 符号已经在上面处理过了，这里只处理命名分词
-        const cleanWord = word.replace(/[,.!?;:'"()\[\]{}–—-]/g, "");
+        const cleanWord = word.replace(/[,.!?;:'"()[]{}–—-]/g, '');
         if (!cleanWord) continue;
 
         // 命名分词
         const tokens = splitNaming(cleanWord);
         // 符号空格留在上字词尾
         for (const token of tokens) {
-          const symbolMatch = word.match(/[,.!?;:'"()\[\]{}–—-]+$/);
+          const symbolMatch = word.match(/[,.!?;:'"()[]{}–—-]+$/);
           if (symbolMatch && token === tokens[tokens.length - 1]) {
             result.push(token + symbolMatch[0]);
           } else {
@@ -492,7 +539,7 @@ export function charBreak(text, charLimit = CONFIG.lineCharLimit) {
       // 检查是否是分隔符：空格、换行、或标点符号
       if (
         /\s/.test(char) ||
-        /[，。！？；：""''（）【】《》<>「」『』,!?;:'"()\[\]{}–—-]/.test(char)
+        /[，。！？；：""''（）【】《》<>「」『』,!?;:'"()[]{}–—-]/.test(char)
       ) {
         breakPoint = i + 1; // 在分隔符后断行
         break;
@@ -541,35 +588,29 @@ export async function aiAnalyze(text) {
 
     // 检查AI是否启用
     if (ts.aiEnabled !== true) {
-      console.log("AI分析已禁用，使用智能分析");
+      console.log('AI分析已禁用，使用智能分析');
       return smartAnalyze(text);
     }
 
-    const protocol = ts.aiDefaultProtocol || "https://";
+    const protocol = ts.aiDefaultProtocol || 'https://';
     const enableStrictTokenization = true;
 
     const result = await aiAnalyzePipeline(text, {
       protocol,
       enableStrictTokenization,
-      provider: ts.aiProvider || "openai",
-      baseURL: ts.aiBaseURL || "",
-      apiKey: ts.aiApiKey || "",
-      model: ts.aiModel || "",
+      provider: ts.aiProvider || 'openai',
+      baseURL: ts.aiBaseURL || '',
+      apiKey: ts.aiApiKey || '',
+      model: ts.aiModel || '',
     });
 
-    if (
-      result &&
-      result.tokenizedResult &&
-      Array.isArray(result.tokenizedResult)
-    ) {
-      return result.tokenizedResult.filter(
-        (item) => typeof item === "string" && item.length > 0,
-      );
+    if (result && result.tokenizedResult && Array.isArray(result.tokenizedResult)) {
+      return result.tokenizedResult.filter((item) => typeof item === 'string' && item.length > 0);
     }
 
     return smartAnalyze(text);
   } catch (error) {
-    console.error("AI分析失败，回退到智能分析:", error);
+    console.error('AI分析失败，回退到智能分析:', error);
     return smartAnalyze(text);
   }
 }
@@ -587,27 +628,56 @@ export async function aiAnalyze(text) {
 export function sentenceAnalyze(text) {
   if (!text || !text.trim()) return [];
 
-  // 使用换行和结束标点分割：换行符、句号、感叹号、问号
-  const sentences = text.split(/[\n。！？!?]+/);
+  // 使用换行和结束标点分割，但保留标点符号
+  const regex = /([\n。！？!?]+)/;
+  const parts = text.split(regex);
 
-  return sentences.map((s) => s.trim()).filter((s) => s.length > 0);
+  // 合并分割符和前面的内容
+  const result = [];
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i].trim();
+    if (!part) continue;
+
+    // 如果当前部分是标点，则合并到前一个结果
+    if (regex.test(part) && result.length > 0) {
+      result[result.length - 1] += part;
+    } else {
+      result.push(part);
+    }
+  }
+
+  return result.filter((s) => s.length > 0);
 }
 
 /**
  * 半句分析模式
- * 使用标点、空格、换行分割文本
+ * 使用换行和主要结束标点分割文本，保留标点符号在结果中
  * @param {string} text 输入文本
  * @returns {Array} 分词结果
  */
 export function halfSentenceAnalyze(text) {
   if (!text || !text.trim()) return [];
 
-  // 使用标点、空格、换行分割
-  const parts = text.split(
-    /[\s，。！？；：""''（）【】《》<>「」『』,!?;:'"()\[\]{}–—-]+/,
-  );
+  // 使用换行和主要结束标点分割，但保留标点
+  // 匹配：换行符、句号、感叹号、问号、分号
+  const regex = /([\n。！？；;]+)/;
+  const parts = text.split(regex);
 
-  return parts.map((s) => s.trim()).filter((s) => s.length > 0);
+  // 合并分割符和前面的内容
+  const result = [];
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i].trim();
+    if (!part) continue;
+
+    // 如果当前部分是标点，则合并到前一个结果
+    if (regex.test(part) && result.length > 0) {
+      result[result.length - 1] += part;
+    } else {
+      result.push(part);
+    }
+  }
+
+  return result.filter((s) => s.length > 0);
 }
 
 // ============================================================================
@@ -623,7 +693,7 @@ export function halfSentenceAnalyze(text) {
 export function removeSymbolsAnalyze(text) {
   if (!text || !text.trim()) return [];
 
-  let result = [];
+  const result = [];
 
   // 按符号分格
   const parts = text.split(REGEX.punctuation);
@@ -632,9 +702,9 @@ export function removeSymbolsAnalyze(text) {
     if (!part.trim()) continue;
 
     // 去除符号后，按整句、空格、换行分离
-    let cleaned = part
-      .replace(/[,.!?;:'"()\[\]{}–—-]/g, "")
-      .replace(/\s+/g, " ")
+    const cleaned = part
+      .replace(/[,.!?;:'"()[]{}–—-]/g, '')
+      .replace(/\s+/g, ' ')
       .trim();
 
     if (!cleaned) continue;
@@ -711,43 +781,43 @@ export async function multiRuleAnalyze(text, rules = []) {
  * @param {object} options 分词选项
  * @returns {Promise<Array>} 分割结果
  */
-export async function splitText(text, mode = "smart", options = {}) {
+export async function splitText(text, mode = 'smart', options = {}) {
   if (!text || !text.trim()) return [];
 
   const charLimit = options.charLimit || CONFIG.lineCharLimit;
 
   switch (mode) {
-    case "smart":
+    case 'smart':
       return smartAnalyze(text);
 
-    case "chinese":
+    case 'chinese':
       return chineseAnalyze(text);
 
-    case "english":
+    case 'english':
       return englishAnalyze(text);
 
-    case "code":
+    case 'code':
       return codeAnalyze(text);
 
-    case "ai":
+    case 'ai':
       return await aiAnalyze(text);
 
-    case "sentence":
+    case 'sentence':
       return sentenceAnalyze(text);
 
-    case "halfSentence":
+    case 'halfSentence':
       return halfSentenceAnalyze(text);
 
-    case "charBreak":
+    case 'charBreak':
       return charBreak(text, charLimit);
 
-    case "removeSymbols":
+    case 'removeSymbols':
       return removeSymbolsAnalyze(text);
 
-    case "random":
+    case 'random':
       return await randomAnalyze(text, options);
 
-    case "multi":
+    case 'multi':
       return multiRuleAnalyze(text, options.rules || []);
 
     default:
@@ -781,11 +851,7 @@ export function extractPhoneNumbers(text) {
 }
 
 export function isClipboardAPIAvailable() {
-  return !!(
-    navigator.clipboard &&
-    navigator.clipboard.writeText &&
-    navigator.clipboard.readText
-  );
+  return !!(navigator.clipboard && navigator.clipboard.writeText && navigator.clipboard.readText);
 }
 
 export async function copyToClipboard(text) {
@@ -795,7 +861,7 @@ export async function copyToClipboard(text) {
     await navigator.clipboard.writeText(text);
     return true;
   } catch (err) {
-    console.error("剪贴板复制失败:", err);
+    console.error('剪贴板复制失败:', err);
     return false;
   }
 }
@@ -806,7 +872,7 @@ export async function readFromClipboard() {
   try {
     return await navigator.clipboard.readText();
   } catch (err) {
-    console.error("读取剪贴板失败:", err);
+    console.error('读取剪贴板失败:', err);
     return null;
   }
 }
@@ -817,129 +883,129 @@ export async function readFromClipboard() {
 
 export const ANALYZE_MODES = {
   smart: {
-    name: "智能分析",
-    description: "默认启用，英文单词分格，中文整句分格，数字、标点分格",
+    name: '智能分析',
+    description: '默认启用，英文单词分格，中文整句分格，数字、标点分格',
     exclusive: true,
     options: [],
   },
   chinese: {
-    name: "中文分析",
-    description: "中英分离，数字分格，剩余中文查字典后算法分词",
+    name: '中文分析',
+    description: '中英分离，数字分格，剩余中文查字典后算法分词',
     exclusive: true,
-    options: ["useDictionary", "useAlgorithm"],
+    options: ['useDictionary', 'useAlgorithm'],
   },
   english: {
-    name: "英文分析",
-    description: "中英分离，空格符号分格，命名法分词",
+    name: '英文分析',
+    description: '中英分离，空格符号分格，命名法分词',
     exclusive: true,
     options: [],
   },
   code: {
-    name: "代码分析",
-    description: "C++/Python代码结构分析，函数体识别",
+    name: '代码分析',
+    description: 'C++/Python代码结构分析，函数体识别',
     exclusive: true,
     options: [],
   },
   ai: {
-    name: "AI分析",
-    description: "链接识别补全，智能分词",
+    name: 'AI分析',
+    description: '链接识别补全，智能分词',
     exclusive: true,
     options: [],
   },
   sentence: {
-    name: "整句分析",
-    description: "用换行和结束标点分割，保留所有内容",
+    name: '整句分析',
+    description: '用换行和结束标点分割，保留所有内容',
     exclusive: true,
-    options: ["sentenceMode"],
+    options: ['sentenceMode'],
   },
   halfSentence: {
-    name: "半句分析",
-    description: "使用标点、空格、换行分割文本",
+    name: '半句分析',
+    description: '使用标点、空格、换行分割文本',
     exclusive: true,
     options: [],
   },
   removeSymbols: {
-    name: "去除符号",
-    description: "去除所有符号后分词",
+    name: '去除符号',
+    description: '去除所有符号后分词',
     exclusive: true,
     options: [],
   },
   charBreak: {
-    name: "字符断行",
-    description: "按设定字符数硬断行",
+    name: '字符断行',
+    description: '按设定字符数硬断行',
     exclusive: true,
-    options: ["charLimit"],
+    options: ['charLimit'],
   },
   random: {
-    name: "随机分词",
-    description: "随机分词，结果不保存到历史栈",
+    name: '随机分词',
+    description: '随机分词，结果不保存到历史栈',
     exclusive: true,
-    options: ["randomMinLength", "randomMaxLength"],
+    options: ['randomMinLength', 'randomMaxLength'],
   },
 };
 
 export const MULTI_RULES = {
   symbolSplit: {
-    name: "符号分词",
-    description: "符号放在上词词尾，除非是成对符号的前一个",
-    group: "split",
+    name: '符号分词',
+    description: '符号放在上词词尾，除非是成对符号的前一个',
+    group: 'split',
   },
   whitespaceSplit: {
-    name: "空格分词",
-    description: "空格放前一词词尾",
-    group: "split",
+    name: '空格分词',
+    description: '空格放前一词词尾',
+    group: 'split',
   },
   newlineSplit: {
-    name: "换行分词",
-    description: "换行放前一词词尾",
-    group: "split",
+    name: '换行分词',
+    description: '换行放前一词词尾',
+    group: 'split',
   },
   chineseEnglishSplit: {
-    name: "中英分词",
-    description: "分离中文和英文",
-    group: "split",
+    name: '中英分词',
+    description: '分离中文和英文',
+    group: 'split',
   },
   uppercaseSplit: {
-    name: "大写分词",
-    description: "将每个大写字母分成一格",
-    group: "split",
+    name: '大写分词',
+    description: '将每个大写字母分成一格',
+    group: 'split',
   },
   namingSplit: {
-    name: "命名分词",
-    description: "各类命名法分格（驼峰、蛇形等）",
-    group: "split",
-    dependsOn: ["uppercaseSplit"],
+    name: '命名分词',
+    description: '各类命名法分格（驼峰、蛇形等）',
+    group: 'split',
+    dependsOn: ['uppercaseSplit'],
   },
   digitSplit: {
-    name: "数字分词",
-    description: "数字单独分出来",
-    group: "split",
+    name: '数字分词',
+    description: '数字单独分出来',
+    group: 'split',
   },
   removeWhitespace: {
-    name: "去除空格",
-    description: "去除所有空格",
-    group: "remove",
+    name: '去除空格',
+    description: '去除所有空格',
+    group: 'remove',
   },
   removeSymbols: {
-    name: "去除符号",
-    description: "去除所有符号",
-    group: "remove",
-    dependsOn: ["symbolSplit"],
+    name: '去除符号',
+    description: '去除所有符号',
+    group: 'remove',
+    dependsOn: ['symbolSplit'],
   },
   removeChinese: {
-    name: "去除中文",
-    description: "去除所有中文字符",
-    group: "remove",
+    name: '去除中文',
+    description: '去除所有中文字符',
+    group: 'remove',
   },
   removeEnglish: {
-    name: "去除英文",
-    description: "去除所有英文字符",
-    group: "remove",
+    name: '去除英文',
+    description: '去除所有英文字符',
+    group: 'remove',
   },
   removeDigits: {
-    name: "去除数字",
-    description: "去除所有数字",
-    group: "remove",
+    name: '去除数字',
+    description: '去除所有数字',
+    group: 'remove',
   },
 };
 
@@ -947,25 +1013,111 @@ export const MULTI_RULES = {
 // 辅助函数：路径处理
 // ============================================================================
 
+/**
+ * 处理路径提取
+ * 支持多种路径格式：
+ * - Windows 本地路径 (C:\\path, D:/path)
+ * - Unix/Linux 路径 (/home/user, /usr/local)
+ * - 网络路径 (\\\\server\\share)
+ * - URL (http://, https://, file://)
+ * - 带引号的路径 ("C:\\Program Files", '/home/user')
+ * - 带空格的路径
+ * @param {string} text - 输入文本
+ * @returns {Array|null} - 提取的路径数组或 null
+ */
 export function processPath(text) {
+  if (!text || !text.trim()) return null;
+
   const pathPatterns = [
-    /"[^"]*:[\\/][^"]*"/g,
-    /'[^']*:[\\/][^']*'/g,
-    /[a-zA-Z]:[\\/][^\s<>"|?*]+/g,
-    /(?:\/[\\/]?(?:home|Users|usr)[\\/][^\s<>"|?*]+)/g,
+    // URL格式（包括查询参数）- 优先匹配
+    { type: 'url', regex: /https?:\/\/[^\s<>"{}|^`[\]]+/gi },
+    // file:// 协议路径
+    { type: 'file', regex: /file:\/\/[^\s<>"{}|^`[\]]+/gi },
+    // chrome:// 和 about:// 等浏览器内部协议
+    { type: 'browser_protocol', regex: /(?:chrome|about|edge|firefox):\/\/[^\s<>"{}|^`[\]]+/gi },
+    // Windows路径（带引号）- 支持带空格的路径
+    { type: 'windows_quoted', regex: /"[a-zA-Z]:[\\/][^"]*"/g },
+    { type: 'windows_quoted_single', regex: /'[a-zA-Z]:[\\/][^']*'/g },
+    // Windows路径 - 支持空格，排除非法字符 <>
+    // 匹配 D:\\path 或 D:/path 格式，但前面不能是字母（避免匹配 URL 协议部分）
+    { type: 'windows', regex: /(?<![a-zA-Z])[a-zA-Z]:[\\/][^<>"|?*]*/g },
+    // Unix/Linux/Mac 路径 - 以 / 开头
+    {
+      type: 'unix',
+      regex: /(?:\/[\\/]?(?:home|Users|usr|etc|var|opt|tmp|bin|lib|mnt|media)[\\/][^<>"|?*]*)/g,
+    },
+    // 通用 Unix 绝对路径
+    { type: 'unix_general', regex: /\/(?:[^<>"|?*\s]+\/)*[^<>"|?*\s]*/g },
+    // 网络路径 (UNC路径) \\\\server\\share
+    { type: 'unc', regex: /\\\\[^<>"|?*]+/g },
   ];
 
-  let paths = [];
-  for (const pattern of pathPatterns) {
-    const matches = text.match(pattern) || [];
-    paths = [...paths, ...matches];
+  let allMatches = [];
+
+  for (const { type, regex } of pathPatterns) {
+    let match;
+    // 重置正则表达式的 lastIndex
+    regex.lastIndex = 0;
+    while ((match = regex.exec(text)) !== null) {
+      allMatches.push({
+        type,
+        path: match[0],
+        index: match.index,
+        length: match[0].length,
+      });
+    }
   }
 
-  if (paths.length === 0) {
-    return null;
+  // 按起始位置排序
+  allMatches.sort((a, b) => a.index - b.index);
+
+  // 去重和合并重叠的匹配
+  const uniquePaths = [];
+  const seen = new Set();
+
+  for (const item of allMatches) {
+    let cleaned = item.path;
+
+    // 根据类型清理路径
+    switch (item.type) {
+      case 'windows_quoted':
+      case 'windows_quoted_single':
+        // 去除引号
+        cleaned = cleaned.slice(1, -1);
+        break;
+      case 'url':
+      case 'file':
+      case 'browser_protocol':
+        // URL 和浏览器协议保持原样
+        break;
+      default:
+        // 其他路径去除尾部非法字符和空白
+        cleaned = cleaned.trim().replace(/[<>"|?*]+$/, '');
+    }
+
+    // 过滤无效路径
+    if (!cleaned || cleaned.length < 2) continue;
+
+    // 检查是否已存在
+    if (seen.has(cleaned)) continue;
+
+    // 检查是否与已保存的路径重叠
+    const isOverlapping = uniquePaths.some((p) => {
+      const existingStart = text.indexOf(p);
+      const existingEnd = existingStart + p.length;
+      return (
+        (item.index >= existingStart && item.index < existingEnd) ||
+        (item.index + item.length > existingStart && item.index + item.length <= existingEnd)
+      );
+    });
+
+    if (!isOverlapping) {
+      seen.add(cleaned);
+      uniquePaths.push(cleaned);
+    }
   }
 
-  return paths.map((p) => p.replace(/^["']|["']$/g, ""));
+  return uniquePaths.length > 0 ? uniquePaths : null;
 }
 
 // ============================================================================
@@ -973,12 +1125,12 @@ export function processPath(text) {
 // ============================================================================
 
 export function processTextExtraction(text) {
-  const urlRegex = /https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi;
+  const urlRegex = /https?:\/\/[^\s<>"{}|\\^`[]]+/gi;
   const links = text.match(urlRegex) || [];
 
   let cleanedText = text;
   for (const link of links) {
-    cleanedText = cleanedText.replace(link, "");
+    cleanedText = cleanedText.replace(link, '');
   }
 
   return {
@@ -1000,7 +1152,7 @@ export function processLinkGeneration(input) {
   const githubMatch = input.match(githubPattern);
   if (githubMatch) {
     [, username, repo] = githubMatch;
-    repo = repo.replace(/\.git$/, "");
+    repo = repo.replace(/\.git$/, '');
   } else {
     const simpleMatch = input.match(simplePattern);
     if (simpleMatch) {
@@ -1030,47 +1182,45 @@ export function processLinkGeneration(input) {
 export function analyzeTextForMultipleFormats(text) {
   const results = [];
 
-  const urls = text.match(/https?:\/\/[^\s<>"{}|\\^`\[\]]+/gi) || [];
+  const urls = text.match(/https?:\/\/[^\s<>"{}|\\^`[]]+/gi) || [];
   if (urls.length > 0) {
-    results.push({ type: "链接提取", data: [...new Set(urls)] });
+    results.push({ type: '链接提取', data: [...new Set(urls)] });
   }
 
-  const emails =
-    text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi) || [];
+  const emails = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi) || [];
   if (emails.length > 0) {
-    results.push({ type: "邮箱地址", data: [...new Set(emails)] });
+    results.push({ type: '邮箱地址', data: [...new Set(emails)] });
   }
 
-  const phones =
-    text.match(/(?:\+86[-\s]?)?(?:1[3-9]\d{9}|0\d{2,3}[-\s]?\d{7,8})/g) || [];
+  const phones = text.match(/(?:\+86[-\s]?)?(?:1[3-9]\d{9}|0\d{2,3}[-\s]?\d{7,8})/g) || [];
   if (phones.length > 0) {
-    results.push({ type: "电话号码", data: [...new Set(phones)] });
+    results.push({ type: '电话号码', data: [...new Set(phones)] });
   }
 
   const ips =
     text.match(
-      /(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/g,
+      /(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/g
     ) || [];
   if (ips.length > 0) {
-    results.push({ type: "IP地址", data: [...new Set(ips)] });
+    results.push({ type: 'IP地址', data: [...new Set(ips)] });
   }
 
   const paths = processPath(text);
   if (paths) {
-    results.push({ type: "路径转换", data: paths });
+    results.push({ type: '路径转换', data: paths });
   }
 
   const githubPattern = /github\.com[/:]([\w-]+)\/([\w.-]+)/i;
   if (githubPattern.test(text)) {
     const linkGen = processLinkGeneration(text);
     if (linkGen) {
-      results.push({ type: "GitHub链接", data: linkGen.generatedLinks });
+      results.push({ type: 'GitHub链接', data: linkGen.generatedLinks });
     }
   }
 
   const dates = text.match(/\d{4}[-/年]\d{1,2}[-/月]\d{1,2}/g) || [];
   if (dates.length > 0) {
-    results.push({ type: "日期", data: [...new Set(dates)] });
+    results.push({ type: '日期', data: [...new Set(dates)] });
   }
 
   return results;
@@ -1082,16 +1232,16 @@ export function analyzeTextForMultipleFormats(text) {
 
 export function getAvailableSplitRules() {
   return [
-    { value: "smart", label: "智能分析" },
-    { value: "chinese", label: "中文分析" },
-    { value: "english", label: "英文分析" },
-    { value: "code", label: "代码分析" },
-    { value: "ai", label: "AI分析" },
-    { value: "sentence", label: "整句分析" },
-    { value: "charBreak", label: "字符断行" },
-    { value: "removeSymbols", label: "去除符号" },
-    { value: "random", label: "随机分词" },
-    { value: "multi", label: "多规则组合" },
+    { value: 'smart', label: '智能分析' },
+    { value: 'chinese', label: '中文分析' },
+    { value: 'english', label: '英文分析' },
+    { value: 'code', label: '代码分析' },
+    { value: 'ai', label: 'AI分析' },
+    { value: 'sentence', label: '整句分析' },
+    { value: 'charBreak', label: '字符断行' },
+    { value: 'removeSymbols', label: '去除符号' },
+    { value: 'random', label: '随机分词' },
+    { value: 'multi', label: '多规则组合' },
   ];
 }
 
@@ -1109,7 +1259,7 @@ export function intelligentSegmentation(text) {
 
 export function detectContentType(text) {
   if (!text || !text.trim()) {
-    return { type: "empty", confidence: 1, features: {} };
+    return { type: 'empty', confidence: 1, features: {} };
   }
 
   const features = {
@@ -1125,26 +1275,26 @@ export function detectContentType(text) {
   const chineseRatio = features.chineseCount / totalChars;
   const englishRatio = features.englishCount / totalChars;
 
-  let type = "mixed_text";
+  let type = 'mixed_text';
   let confidence = 0.5;
 
   if (features.hasUrl && !features.hasEmail) {
-    type = "url_collection";
+    type = 'url_collection';
     confidence = 0.9;
   } else if (features.hasEmail) {
-    type = "contact_info";
+    type = 'contact_info';
     confidence = 0.9;
   } else if (features.hasRepo) {
-    type = "repository";
+    type = 'repository';
     confidence = 0.85;
   } else if (features.hasPath) {
-    type = "file_path";
+    type = 'file_path';
     confidence = 0.8;
   } else if (chineseRatio > 0.5) {
-    type = "chinese_text";
+    type = 'chinese_text';
     confidence = Math.min(0.95, chineseRatio + 0.3);
   } else if (englishRatio > 0.5) {
-    type = "english_text";
+    type = 'english_text';
     confidence = Math.min(0.95, englishRatio + 0.3);
   }
 

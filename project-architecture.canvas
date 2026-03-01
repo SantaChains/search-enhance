@@ -1,0 +1,455 @@
+{
+  "nodes": [
+    {
+      "id": "root-project",
+      "type": "text",
+      "x": 600,
+      "y": 0,
+      "width": 400,
+      "height": 100,
+      "text": "# 🎯 Decide Search\n## 项目架构总览\n**智能文本处理与搜索增强工具**",
+      "color": "5"
+    },
+    {
+      "id": "manifest-group",
+      "type": "group",
+      "x": 50,
+      "y": 150,
+      "width": 300,
+      "height": 200,
+      "label": "📄 扩展配置",
+      "color": "1"
+    },
+    {
+      "id": "manifest-file",
+      "type": "text",
+      "x": 70,
+      "y": 180,
+      "width": 260,
+      "height": 140,
+      "text": "## manifest.json\n- **Manifest V3** 标准\n- 权限声明\n- 后台脚本配置\n- 内容脚本注入\n- 图标和资源"
+    },
+    {
+      "id": "background-group",
+      "type": "group",
+      "x": 400,
+      "y": 150,
+      "width": 350,
+      "height": 250,
+      "label": "⚙️ 后台服务 (Background)",
+      "color": "2"
+    },
+    {
+      "id": "background-script",
+      "type": "text",
+      "x": 420,
+      "y": 180,
+      "width": 310,
+      "height": 190,
+      "text": "## background.js\n### 核心职责\n- 🔄 扩展生命周期管理\n- 📨 消息总线处理\n- 🔐 权限管理\n- 📋 剪贴板监控服务\n- 🌐 跨页面通信"
+    },
+    {
+      "id": "content-group",
+      "type": "group",
+      "x": 800,
+      "y": 150,
+      "width": 350,
+      "height": 250,
+      "label": "🌐 内容脚本 (Content)",
+      "color": "3"
+    },
+    {
+      "id": "content-script",
+      "type": "text",
+      "x": 820,
+      "y": 180,
+      "width": 310,
+      "height": 190,
+      "text": "## content.js\n### 核心职责\n- 🎯 页面注入悬浮窗\n- ⌨️ 快捷键监听 (Alt+L)\n- 📋 剪贴板内容捕获\n- 💬 与后台脚本通信\n- 🎨 样式隔离处理"
+    },
+    {
+      "id": "popup-group",
+      "type": "group",
+      "x": 50,
+      "y": 450,
+      "width": 500,
+      "height": 400,
+      "label": "🎨 弹窗界面 (Popup)",
+      "color": "4"
+    },
+    {
+      "id": "popup-html",
+      "type": "text",
+      "x": 70,
+      "y": 480,
+      "width": 200,
+      "height": 120,
+      "text": "## index.html\n- 页面结构\n- 语义化标签\n- 响应式布局"
+    },
+    {
+      "id": "popup-css",
+      "type": "text",
+      "x": 70,
+      "y": 620,
+      "width": 200,
+      "height": 120,
+      "text": "## style.css / new-style.css\n- CSS 变量系统\n- 组件样式\n- 动画效果"
+    },
+    {
+      "id": "popup-js",
+      "type": "text",
+      "x": 300,
+      "y": 480,
+      "width": 220,
+      "height": 260,
+      "text": "## main.js\n### 核心模块\n- 🎯 状态管理 (appState)\n- 🔄 事件处理\n- 📊 UI 渲染\n- 🔗 链接历史集成\n- 📋 剪贴板历史集成\n- ⚙️ 设置管理"
+    },
+    {
+      "id": "settings-group",
+      "type": "group",
+      "x": 600,
+      "y": 450,
+      "width": 300,
+      "height": 200,
+      "label": "⚙️ 设置页面",
+      "color": "6"
+    },
+    {
+      "id": "settings-content",
+      "type": "text",
+      "x": 620,
+      "y": 480,
+      "width": 260,
+      "height": 140,
+      "text": "## settings.html/js\n- 搜索引擎管理\n- 历史记录配置\n- 界面设置\n- 导入导出功能"
+    },
+    {
+      "id": "utils-group",
+      "type": "group",
+      "x": 950,
+      "y": 450,
+      "width": 500,
+      "height": 550,
+      "label": "🛠️ 工具模块 (Utils)",
+      "color": "5"
+    },
+    {
+      "id": "text-processor",
+      "type": "text",
+      "x": 970,
+      "y": 480,
+      "width": 220,
+      "height": 180,
+      "text": "## textProcessor.js\n### 文本处理核心\n- 🔤 智能分词 (11种模式)\n- 🌐 路径转换\n- 🔗 链接生成\n- 📧 邮箱/电话提取\n- 📝 多格式分析"
+    },
+    {
+      "id": "multi-rule",
+      "type": "text",
+      "x": 1210,
+      "y": 480,
+      "width": 220,
+      "height": 180,
+      "text": "## multiRuleAnalyzer.js\n### 多规则分析\n- 🎯 11个独立规则\n- ⚡ 规则冲突检测\n- 🔄 顺序执行引擎\n- 📜 历史记录管理"
+    },
+    {
+      "id": "storage",
+      "type": "text",
+      "x": 970,
+      "y": 680,
+      "width": 220,
+      "height": 140,
+      "text": "## storage.js\n### 存储管理\n- 💾 Chrome Storage API\n- ⚙️ 设置读写\n- 🔒 数据持久化\n- 🔄 配置同步"
+    },
+    {
+      "id": "link-history",
+      "type": "text",
+      "x": 1210,
+      "y": 680,
+      "width": 220,
+      "height": 140,
+      "text": "## linkHistory.js\n### 链接历史\n- 🔗 URL 记录\n- 🔍 搜索查询提取\n- 📊 统计分析\n- 📤 导入导出"
+    },
+    {
+      "id": "clipboard-history",
+      "type": "text",
+      "x": 970,
+      "y": 840,
+      "width": 220,
+      "height": 140,
+      "text": "## clipboardHistory.js\n### 剪贴板历史\n- 📋 内容记录\n- 🏷️ 智能标签\n- 🔍 全文搜索\n- ⚙️ 设置接口"
+    },
+    {
+      "id": "logger",
+      "type": "text",
+      "x": 1210,
+      "y": 840,
+      "width": 220,
+      "height": 140,
+      "text": "## logger.js\n### 日志工具\n- 📝 分级日志\n- 🐛 调试信息\n- ⚠️ 错误追踪"
+    },
+    {
+      "id": "data-flow-group",
+      "type": "group",
+      "x": 50,
+      "y": 900,
+      "width": 850,
+      "height": 300,
+      "label": "🔄 数据流与交互",
+      "color": "3"
+    },
+    {
+      "id": "user-input",
+      "type": "text",
+      "x": 70,
+      "y": 930,
+      "width": 150,
+      "height": 80,
+      "text": "### 👤 用户输入\n- 键盘输入\n- 剪贴板粘贴\n- 快捷键触发"
+    },
+    {
+      "id": "text-processing",
+      "type": "text",
+      "x": 250,
+      "y": 930,
+      "width": 180,
+      "height": 100,
+      "text": "### 🔧 文本处理\n- 内容类型检测\n- 分词/拆分\n- 路径转换\n- 链接生成"
+    },
+    {
+      "id": "storage-layer",
+      "type": "text",
+      "x": 460,
+      "y": 930,
+      "width": 180,
+      "height": 100,
+      "text": "### 💾 存储层\n- Chrome Storage\n- 本地缓存\n- 配置持久化"
+    },
+    {
+      "id": "ui-render",
+      "type": "text",
+      "x": 670,
+      "y": 930,
+      "width": 180,
+      "height": 100,
+      "text": "### 🎨 UI 渲染\n- 结果展示\n- 交互反馈\n- 状态更新"
+    },
+    {
+      "id": "feature-matrix",
+      "type": "group",
+      "x": 950,
+      "y": 1050,
+      "width": 500,
+      "height": 350,
+      "label": "📊 功能特性矩阵",
+      "color": "2"
+    },
+    {
+      "id": "text-split-features",
+      "type": "text",
+      "x": 970,
+      "y": 1080,
+      "width": 220,
+      "height": 140,
+      "text": "### 📝 文本拆分\n| 模式 | 说明 |\n|-----|------|\n| 智能分析 | 自动选择 |\n| 中文分析 | 正向最大匹配 |\n| 英文分析 | 空格分割 |\n| 代码分析 | 语法识别 |\n| AI分析 | 链接补全 |\n| 多规则 | 11规则组合 |"
+    },
+    {
+      "id": "clipboard-features",
+      "type": "text",
+      "x": 1210,
+      "y": 1080,
+      "width": 220,
+      "height": 140,
+      "text": "### 📋 剪贴板管理\n| 功能 | 状态 |\n|-----|------|\n| 实时监控 | ✅ |\n| 智能分类 | ✅ |\n| 历史记录 | ✅ |\n| 标签系统 | ✅ |\n| 导入导出 | ✅ |\n| 全文搜索 | ✅ |"
+    },
+    {
+      "id": "link-features",
+      "type": "text",
+      "x": 970,
+      "y": 1240,
+      "width": 220,
+      "height": 140,
+      "text": "### 🔗 链接管理\n| 功能 | 状态 |\n|-----|------|\n| URL记录 | ✅ |\n| 搜索提取 | ✅ |\n| 统计报表 | ✅ |\n| 多引擎 | 8+ |\n| 导入导出 | ✅ |\n| 持久存储 | ✅ |"
+    },
+    {
+      "id": "tech-stack",
+      "type": "text",
+      "x": 1210,
+      "y": 1240,
+      "width": 220,
+      "height": 140,
+      "text": "### 🛠️ 技术栈\n| 技术 | 用途 |\n|-----|------|\n| Manifest V3 | 扩展标准 |\n| ES6+ | 现代JS |\n| Chrome API | 存储/权限 |\n| CSS3 | 样式系统 |\n| Clipboard API | 剪贴板 |"
+    },
+    {
+      "id": "version-info",
+      "type": "text",
+      "x": 50,
+      "y": 1250,
+      "width": 400,
+      "height": 150,
+      "text": "## 📌 项目信息\n\n| 属性 | 值 |\n|-----|-----|\n| **版本** | v2.2.0 |\n| **许可证** | MIT |\n| **Manifest** | V3 |\n| **浏览器** | Edge/Chrome |\n| **最后更新** | 2026-02-08 |\n| **作者** | SantaChains |",
+      "color": "4"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "fromNode": "root-project",
+      "fromSide": "bottom",
+      "toNode": "manifest-group",
+      "toSide": "top",
+      "label": "配置"
+    },
+    {
+      "id": "e2",
+      "fromNode": "root-project",
+      "fromSide": "bottom",
+      "toNode": "background-group",
+      "toSide": "top",
+      "label": "后台"
+    },
+    {
+      "id": "e3",
+      "fromNode": "root-project",
+      "fromSide": "bottom",
+      "toNode": "content-group",
+      "toSide": "top",
+      "label": "内容"
+    },
+    {
+      "id": "e4",
+      "fromNode": "root-project",
+      "fromSide": "bottom",
+      "toNode": "popup-group",
+      "toSide": "top",
+      "label": "UI"
+    },
+    {
+      "id": "e5",
+      "fromNode": "root-project",
+      "fromSide": "bottom",
+      "toNode": "utils-group",
+      "toSide": "top",
+      "label": "工具"
+    },
+    {
+      "id": "e6",
+      "fromNode": "background-script",
+      "fromSide": "right",
+      "toNode": "content-script",
+      "toSide": "left",
+      "label": "消息通信"
+    },
+    {
+      "id": "e7",
+      "fromNode": "content-script",
+      "fromSide": "bottom",
+      "toNode": "popup-js",
+      "toSide": "top",
+      "label": "事件触发"
+    },
+    {
+      "id": "e8",
+      "fromNode": "popup-js",
+      "fromSide": "right",
+      "toNode": "text-processor",
+      "toSide": "left",
+      "label": "调用"
+    },
+    {
+      "id": "e9",
+      "fromNode": "popup-js",
+      "fromSide": "right",
+      "toNode": "multi-rule",
+      "toSide": "left",
+      "label": "调用"
+    },
+    {
+      "id": "e10",
+      "fromNode": "popup-js",
+      "fromSide": "right",
+      "toNode": "storage",
+      "toSide": "left",
+      "label": "读写"
+    },
+    {
+      "id": "e11",
+      "fromNode": "popup-js",
+      "fromSide": "right",
+      "toNode": "link-history",
+      "toSide": "left",
+      "label": "集成"
+    },
+    {
+      "id": "e12",
+      "fromNode": "popup-js",
+      "fromSide": "right",
+      "toNode": "clipboard-history",
+      "toSide": "left",
+      "label": "集成"
+    },
+    {
+      "id": "e13",
+      "fromNode": "text-processor",
+      "fromSide": "right",
+      "toNode": "multi-rule",
+      "toSide": "left",
+      "label": "依赖"
+    },
+    {
+      "id": "e14",
+      "fromNode": "link-history",
+      "fromSide": "bottom",
+      "toNode": "storage",
+      "toSide": "right",
+      "label": "存储"
+    },
+    {
+      "id": "e15",
+      "fromNode": "clipboard-history",
+      "fromSide": "bottom",
+      "toNode": "storage",
+      "toSide": "right",
+      "label": "存储"
+    },
+    {
+      "id": "e16",
+      "fromNode": "user-input",
+      "fromSide": "right",
+      "toNode": "text-processing",
+      "toSide": "left",
+      "label": "输入"
+    },
+    {
+      "id": "e17",
+      "fromNode": "text-processing",
+      "fromSide": "right",
+      "toNode": "storage-layer",
+      "toSide": "left",
+      "label": "存储"
+    },
+    {
+      "id": "e18",
+      "fromNode": "storage-layer",
+      "fromSide": "right",
+      "toNode": "ui-render",
+      "toSide": "left",
+      "label": "展示"
+    },
+    {
+      "id": "e19",
+      "fromNode": "settings-content",
+      "fromSide": "right",
+      "toNode": "storage",
+      "toSide": "left",
+      "label": "配置"
+    },
+    {
+      "id": "e20",
+      "fromNode": "background-script",
+      "fromSide": "bottom",
+      "toNode": "clipboard-history",
+      "toSide": "left",
+      "label": "监控数据"
+    }
+  ]
+}

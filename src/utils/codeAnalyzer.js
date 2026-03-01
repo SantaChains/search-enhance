@@ -42,7 +42,10 @@ const PAIRS = [
 // ============================================================================
 
 function trimLines(text) {
-  return text.split(/[\r\n]+/).map(line => line.trim()).filter(line => line);
+  return text
+    .split(/[\r\n]+/)
+    .map((line) => line.trim())
+    .filter((line) => line);
 }
 
 function getIndent(line) {
@@ -88,7 +91,7 @@ function extractMaxBracket(text) {
   let maxDepth = 0;
 
   for (let i = 0; i < text.length; i++) {
-    const pair = PAIRS.find(p => text.substring(i).startsWith(p.open));
+    const pair = PAIRS.find((p) => text.substring(i).startsWith(p.open));
     if (!pair) continue;
 
     const openIdx = i;
@@ -127,7 +130,7 @@ function extractMaxBracket(text) {
     return {
       text: text.substring(0, bestStart).trim(),
       bracket: text.substring(bestStart, bestEnd).trim(),
-      rest: text.substring(bestEnd).trim()
+      rest: text.substring(bestEnd).trim(),
     };
   }
 
@@ -157,7 +160,7 @@ function isDeclaration(line) {
     /^\s*[\w]+\s*=\s*\(/,
   ];
 
-  return declPatterns.some(pattern => pattern.test(line));
+  return declPatterns.some((pattern) => pattern.test(line));
 }
 
 // ============================================================================
@@ -166,13 +169,13 @@ function isDeclaration(line) {
 
 function analyzePythonCode(text) {
   const rawLines = text.split(/[\r\n]+/);
-  const lines = rawLines.map(line => line.trimRight()).filter(line => line.trim());
-  
+  const lines = rawLines.map((line) => line.trimRight()).filter((line) => line.trim());
+
   if (lines.length === 0) return [text];
 
   const result = [];
   const indentStack = [0]; // 初始化缩进栈，0 表示顶层
-  let currentBlock = "";
+  let currentBlock = '';
   let currentBlockIndent = 0;
 
   for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
@@ -189,7 +192,7 @@ function analyzePythonCode(text) {
         result.push(currentBlock.trim());
       }
       result.push(trimmedLine);
-      currentBlock = "";
+      currentBlock = '';
       currentBlockIndent = indent;
       continue;
     }
@@ -200,11 +203,11 @@ function analyzePythonCode(text) {
       while (indentStack.length > 1 && indent < indentStack[indentStack.length - 1]) {
         indentStack.pop();
       }
-      
+
       // 如果当前块缩进大于等于新栈顶，输出当前块
       if (currentBlock.trim() && currentBlockIndent >= indentStack[indentStack.length - 1]) {
         result.push(currentBlock.trim());
-        currentBlock = "";
+        currentBlock = '';
       }
       currentBlockIndent = indent;
     } else if (indent > indentStack[indentStack.length - 1]) {
@@ -229,7 +232,7 @@ function analyzePythonCode(text) {
 
     // 组合当前行
     if (currentBlock) {
-      currentBlock += " " + trimmedLine;
+      currentBlock += ' ' + trimmedLine;
     } else {
       currentBlock = trimmedLine;
       currentBlockIndent = indent;
@@ -244,7 +247,7 @@ function analyzePythonCode(text) {
         if (currentBlock.trim()) {
           result.push(currentBlock.trim());
         }
-        currentBlock = "";
+        currentBlock = '';
       }
     }
   }
@@ -266,10 +269,10 @@ function analyzeCppCode(text) {
   if (lines.length === 0) return [text];
 
   const result = [];
-  let currentChunk = "";
+  let currentChunk = '';
   let braceDepth = 0;
   let parenDepth = 0;
-  let inPreprocessor = false;
+  const inPreprocessor = false;
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -280,7 +283,7 @@ function analyzeCppCode(text) {
         result.push(currentChunk.trim());
       }
       result.push(trimmedLine);
-      currentChunk = "";
+      currentChunk = '';
       continue;
     }
 
@@ -290,7 +293,7 @@ function analyzeCppCode(text) {
         result.push(currentChunk.trim());
       }
       result.push(trimmedLine);
-      currentChunk = "";
+      currentChunk = '';
       continue;
     }
 
@@ -306,7 +309,7 @@ function analyzeCppCode(text) {
 
     // 添加当前行
     if (currentChunk) {
-      currentChunk += " " + trimmedLine;
+      currentChunk += ' ' + trimmedLine;
     } else {
       currentChunk = trimmedLine;
     }
@@ -321,7 +324,7 @@ function analyzeCppCode(text) {
       } else if (currentChunk.trim()) {
         result.push(currentChunk.trim());
       }
-      currentChunk = "";
+      currentChunk = '';
     }
   }
 
@@ -344,13 +347,13 @@ function analyzeCppCode(text) {
 // ============================================================================
 
 function detectCodeType(text) {
-  const lines = text.split(/[\r\n]+/).filter(l => l.trim());
+  const lines = text.split(/[\r\n]+/).filter((l) => l.trim());
 
-  if (lines.some(line => line.includes('{') || line.includes('}'))) {
+  if (lines.some((line) => line.includes('{') || line.includes('}'))) {
     return 'cpp_brace';
   }
 
-  if (lines.some(line => line.trim().endsWith(':') && !line.trim().endsWith('::'))) {
+  if (lines.some((line) => line.trim().endsWith(':') && !line.trim().endsWith('::'))) {
     return 'python_indent';
   }
 

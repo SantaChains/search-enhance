@@ -22,13 +22,13 @@
  * - 去除英文：去除所有英文字符
  */
 
-import { getSettings } from "./storage.js";
+import { getSettings } from './storage.js';
 
 // ============================================================================
 // 配置
 // ============================================================================
 
-let CONFIG = {
+const CONFIG = {
   namingRemoveSymbol: true, // 命名分词是否去除符号
 };
 
@@ -47,73 +47,73 @@ export function getConfig() {
 export const RULES = {
   // 分词规则
   symbolSplit: {
-    name: "符号分词",
-    description: "符号放在上词尾，除非是成对符号的前一个",
-    group: "split",
+    name: '符号分词',
+    description: '符号放在上词尾，除非是成对符号的前一个',
+    group: 'split',
     order: 1,
   },
   whitespaceSplit: {
-    name: "空格分词",
-    description: "放前一词词尾",
-    group: "split",
+    name: '空格分词',
+    description: '放前一词词尾',
+    group: 'split',
     order: 2,
   },
   newlineSplit: {
-    name: "换行分词",
-    description: "换行放前一词词尾",
-    group: "split",
+    name: '换行分词',
+    description: '换行放前一词词尾',
+    group: 'split',
     order: 3,
   },
   chineseEnglishSplit: {
-    name: "中英分词",
-    description: "分离中文和英文",
-    group: "split",
+    name: '中英分词',
+    description: '分离中文和英文',
+    group: 'split',
     order: 4,
   },
   uppercaseSplit: {
-    name: "大写分词",
-    description: "将每个大写字母分成一格，与命名分词不同",
-    group: "split",
+    name: '大写分词',
+    description: '将每个大写字母分成一格，与命名分词不同',
+    group: 'split',
     order: 5,
   },
   namingSplit: {
-    name: "命名分词",
-    description: "各类命名法分格（驼峰、蛇形等）",
-    group: "split",
+    name: '命名分词',
+    description: '各类命名法分格（驼峰、蛇形等）',
+    group: 'split',
     order: 6,
-    dependsOn: ["uppercaseSplit"],
+    dependsOn: ['uppercaseSplit'],
   },
   digitSplit: {
-    name: "数字分词",
-    description: "数字单独分出来",
-    group: "split",
+    name: '数字分词',
+    description: '数字单独分出来',
+    group: 'split',
     order: 7,
   },
 
   // 去除规则
   removeWhitespace: {
-    name: "去除空格",
-    description: "去除所有空格",
-    group: "remove",
+    name: '去除空格',
+    description: '去除所有空格',
+    group: 'remove',
     order: 8,
   },
   removeSymbols: {
-    name: "去除符号",
-    description: "去除所有符号",
-    group: "remove",
+    name: '去除符号',
+    description: '去除所有符号',
+    group: 'remove',
     order: 9,
-    conflictsWith: ["symbolSplit"],
+    conflictsWith: ['symbolSplit'],
   },
   removeChinese: {
-    name: "去除中文",
-    description: "去除所有中文字符",
-    group: "remove",
+    name: '去除中文',
+    description: '去除所有中文字符',
+    group: 'remove',
     order: 10,
   },
   removeEnglish: {
-    name: "去除英文",
-    description: "去除所有英文字符",
-    group: "remove",
+    name: '去除英文',
+    description: '去除所有英文字符',
+    group: 'remove',
     order: 11,
   },
 };
@@ -124,12 +124,7 @@ export const RULES = {
 
 const MUTEX_GROUPS = {
   // 去除类规则互斥（可选多个，但通常去留一类）
-  removeGroup: [
-    "removeWhitespace",
-    "removeSymbols",
-    "removeChinese",
-    "removeEnglish",
-  ],
+  removeGroup: ['removeWhitespace', 'removeSymbols', 'removeChinese', 'removeEnglish'],
 };
 
 // ============================================================================
@@ -138,7 +133,7 @@ const MUTEX_GROUPS = {
 
 const DEPENDENCIES = {
   // 命名分词需要大写分词
-  namingSplit: ["uppercaseSplit"],
+  namingSplit: ['uppercaseSplit'],
   // 注意：removeSymbols 不再依赖 symbolSplit，这是错误的逻辑
   // 去除符号和符号分词是互斥的，不应有依赖关系
 };
@@ -148,9 +143,7 @@ const DEPENDENCIES = {
 // ============================================================================
 
 function flattenArray(arr) {
-  return arr
-    .flat(Infinity)
-    .filter((item) => item && typeof item === "string" && item.length > 0);
+  return arr.flat(Infinity).filter((item) => item && typeof item === 'string' && item.length > 0);
 }
 
 // ============================================================================
@@ -165,62 +158,95 @@ function flattenArray(arr) {
  */
 export function applySymbolSplit(input) {
   return input.map((text) => {
-    if (!text || typeof text !== "string") return text;
+    if (!text || typeof text !== 'string') return text;
 
+    // 成对符号定义
     const pairs = [
-      { open: "(", close: ")", nested: true },
-      { open: "[", close: "]", nested: true },
-      { open: "{", close: "}", nested: true },
-      { open: "<", close: ">", nested: true },
-      { open: '"', close: '"', nested: false },
-      { open: "'", close: "'", nested: false },
-      { open: "`", close: "`", nested: false },
-      { open: "«", close: "»", nested: true },
+      { open: '(', close: ')' },
+      { open: '[', close: ']' },
+      { open: '{', close: '}' },
+      { open: '<', close: '>' },
+      { open: '"', close: '"' },
+      { open: "'", close: "'" },
+      { open: '`', close: '`' },
+      { open: '「', close: '」' },
+      { open: '『', close: '』' },
+      { open: '【', close: '】' },
+      { open: '《', close: '》' },
+      { open: '〈', close: '〉' },
+      { open: '«', close: '»' },
     ];
 
+    // 普通标点符号（非成对）
+    const punctuation = /[，。！？；：、,.!?;:\-\—/\\|@#$%^&*+=~]/; // eslint-disable-line no-useless-escape
+
     const result = [];
-    let buffer = "";
+    let buffer = '';
     let i = 0;
 
     while (i < text.length) {
+      const char = text[i];
       let matched = false;
 
+      // 检查是否是成对符号的开符号
       for (const pair of pairs) {
-        if (text.substring(i).startsWith(pair.open)) {
+        if (char === pair.open) {
           if (buffer) {
             result.push(buffer);
-            buffer = "";
+            buffer = '';
           }
-
-          // 检查是否是成对符号的前一个
-          const remaining = text.substring(i + pair.open.length);
-          let isFirstOfPair = true;
-
-          for (const p of pairs) {
-            if (remaining.startsWith(p.open)) {
-              isFirstOfPair = false;
-              break;
-            }
-          }
-
-          if (!isFirstOfPair) {
-            buffer += pair.open;
-          } else {
-            result.push(pair.open);
-          }
-
-          i += pair.open.length;
+          result.push(char);
+          i++;
           matched = true;
           break;
         }
       }
 
-      if (!matched) {
-        buffer += text[i];
-        i++;
+      if (matched) continue;
+
+      // 检查是否是成对符号的闭符号
+      for (const pair of pairs) {
+        if (char === pair.close) {
+          // 闭符号附加到前一个词
+          if (buffer) {
+            buffer += char;
+            result.push(buffer);
+            buffer = '';
+          } else if (result.length > 0) {
+            result[result.length - 1] += char;
+          } else {
+            result.push(char);
+          }
+          i++;
+          matched = true;
+          break;
+        }
       }
+
+      if (matched) continue;
+
+      // 检查是否是普通标点符号
+      if (punctuation.test(char)) {
+        // 标点符号附加到前一个词
+        if (buffer) {
+          buffer += char;
+          result.push(buffer);
+          buffer = '';
+        } else if (result.length > 0) {
+          result[result.length - 1] += char;
+        } else {
+          result.push(char);
+        }
+        i++;
+        continue;
+      }
+
+      // 普通字符加入buffer
+      buffer += char;
+      i++;
     }
 
+    // 处理剩余的buffer
     if (buffer) {
       result.push(buffer);
     }
@@ -237,7 +263,7 @@ export function applySymbolSplit(input) {
  */
 export function applyWhitespaceSplit(input) {
   return input.map((text) => {
-    if (!text || typeof text !== "string") return text;
+    if (!text || typeof text !== 'string') return text;
     return text.split(/(\s+)/).filter(Boolean);
   });
 }
@@ -250,7 +276,7 @@ export function applyWhitespaceSplit(input) {
  */
 export function applyNewlineSplit(input) {
   return input.map((text) => {
-    if (!text || typeof text !== "string") return text;
+    if (!text || typeof text !== 'string') return text;
     return text.split(/(\n|\r\n|\r)/).filter(Boolean);
   });
 }
@@ -263,7 +289,7 @@ export function applyNewlineSplit(input) {
  */
 export function applyChineseEnglishSplit(input) {
   return input.map((text) => {
-    if (!text || typeof text !== "string") return text;
+    if (!text || typeof text !== 'string') return text;
     return text.split(/([a-zA-Z]+|[\u4e00-\u9fa5]+)/).filter(Boolean);
   });
 }
@@ -276,7 +302,7 @@ export function applyChineseEnglishSplit(input) {
  */
 export function applyUppercaseSplit(input) {
   return input.map((text) => {
-    if (!text || typeof text !== "string") return text;
+    if (!text || typeof text !== 'string') return text;
     return text.split(/(?=[A-Z])/).filter((s) => s.length > 0);
   });
 }
@@ -289,12 +315,12 @@ export function applyUppercaseSplit(input) {
  */
 export function applyNamingSplit(input) {
   return input.map((text) => {
-    if (!text || typeof text !== "string") return text;
+    if (!text || typeof text !== 'string') return text;
 
     let processed = text;
 
     if (CONFIG.namingRemoveSymbol) {
-      processed = processed.replace(/[_\-]/g, " ");
+      processed = processed.replace(/[_-]/g, ' ');
     }
 
     const parts = processed.split(/[_\-\s]+/).filter(Boolean);
@@ -303,7 +329,7 @@ export function applyNamingSplit(input) {
       const tokens = [];
 
       // 检测驼峰边界
-      let buffer = "";
+      let buffer = '';
       for (let i = 0; i < part.length; i++) {
         const char = part[i];
         const nextChar = part[i + 1];
@@ -344,7 +370,7 @@ export function applyNamingSplit(input) {
  */
 export function applyDigitSplit(input) {
   return input.map((text) => {
-    if (!text || typeof text !== "string") return text;
+    if (!text || typeof text !== 'string') return text;
     return text.split(/(\d+)/).filter(Boolean);
   });
 }
@@ -360,8 +386,8 @@ export function applyDigitSplit(input) {
  */
 export function applyRemoveWhitespace(input) {
   return input.map((text) => {
-    if (!text || typeof text !== "string") return text;
-    return text.replace(/\s+/g, "");
+    if (!text || typeof text !== 'string') return text;
+    return text.replace(/\s+/g, '');
   });
 }
 
@@ -372,8 +398,8 @@ export function applyRemoveWhitespace(input) {
  */
 export function applyRemoveSymbols(input) {
   return input.map((text) => {
-    if (!text || typeof text !== "string") return text;
-    return text.replace(/[^\w\s\u4e00-\u9fa5]/g, "");
+    if (!text || typeof text !== 'string') return text;
+    return text.replace(/[^\w\s\u4e00-\u9fa5]/g, '');
   });
 }
 
@@ -384,8 +410,8 @@ export function applyRemoveSymbols(input) {
  */
 export function applyRemoveChinese(input) {
   return input.map((text) => {
-    if (!text || typeof text !== "string") return text;
-    return text.replace(/[\u4e00-\u9fa5]/g, "");
+    if (!text || typeof text !== 'string') return text;
+    return text.replace(/[\u4e00-\u9fa5]/g, '');
   });
 }
 
@@ -396,8 +422,8 @@ export function applyRemoveChinese(input) {
  */
 export function applyRemoveEnglish(input) {
   return input.map((text) => {
-    if (!text || typeof text !== "string") return text;
-    return text.replace(/[a-zA-Z]+/g, "");
+    if (!text || typeof text !== 'string') return text;
+    return text.replace(/[a-zA-Z]+/g, '');
   });
 }
 
@@ -412,7 +438,7 @@ export function applyRemoveEnglish(input) {
  * @returns {Array} 处理后的规则列表
  */
 export function resolveDependencies(rules) {
-  let result = [...rules];
+  const result = [...rules];
 
   for (const [rule, deps] of Object.entries(DEPENDENCIES)) {
     if (result.includes(rule)) {
@@ -434,14 +460,14 @@ export function resolveDependencies(rules) {
  * @returns {object} { rules, conflictAction }
  */
 export function checkMutexConflicts(rules) {
-  const hasRemoveSymbols = rules.includes("removeSymbols");
-  const hasSymbolSplit = rules.includes("symbolSplit");
+  const hasRemoveSymbols = rules.includes('removeSymbols');
+  const hasSymbolSplit = rules.includes('symbolSplit');
 
   if (hasRemoveSymbols && hasSymbolSplit) {
     return {
-      rules: rules.filter((r) => r !== "symbolSplit"),
-      conflictAction: "skipSymbolSplit",
-      message: "去除符号与符号分词冲突，跳过符号分词",
+      rules: rules.filter((r) => r !== 'symbolSplit'),
+      conflictAction: 'skipSymbolSplit',
+      message: '去除符号与符号分词冲突，跳过符号分词',
     };
   }
 
@@ -478,8 +504,8 @@ export async function multiRuleAnalyze(text, rules = []) {
   currentRules = mutexResult.rules;
   if (mutexResult.conflictAction) {
     conflicts.push({
-      rule: "symbolSplit",
-      action: "skipped",
+      rule: 'symbolSplit',
+      action: 'skipped',
       reason: mutexResult.message,
     });
   }
@@ -490,30 +516,30 @@ export async function multiRuleAnalyze(text, rules = []) {
   let result = [text];
 
   // 分词规则（按顺序执行）
-  const splitRules = currentRules.filter((r) => RULES[r]?.group === "split");
+  const splitRules = currentRules.filter((r) => RULES[r]?.group === 'split');
   splitRules.sort((a, b) => (RULES[a]?.order || 0) - (RULES[b]?.order || 0));
 
   for (const rule of splitRules) {
     switch (rule) {
-      case "symbolSplit":
+      case 'symbolSplit':
         result = applySymbolSplit(result);
         break;
-      case "whitespaceSplit":
+      case 'whitespaceSplit':
         result = applyWhitespaceSplit(result);
         break;
-      case "newlineSplit":
+      case 'newlineSplit':
         result = applyNewlineSplit(result);
         break;
-      case "chineseEnglishSplit":
+      case 'chineseEnglishSplit':
         result = applyChineseEnglishSplit(result);
         break;
-      case "uppercaseSplit":
+      case 'uppercaseSplit':
         result = applyUppercaseSplit(result);
         break;
-      case "namingSplit":
+      case 'namingSplit':
         result = applyNamingSplit(result);
         break;
-      case "digitSplit":
+      case 'digitSplit':
         result = applyDigitSplit(result);
         break;
     }
@@ -521,30 +547,28 @@ export async function multiRuleAnalyze(text, rules = []) {
   }
 
   // 去除规则（按顺序执行）
-  const removeRules = currentRules.filter((r) => RULES[r]?.group === "remove");
+  const removeRules = currentRules.filter((r) => RULES[r]?.group === 'remove');
   removeRules.sort((a, b) => (RULES[a]?.order || 0) - (RULES[b]?.order || 0));
 
   for (const rule of removeRules) {
     switch (rule) {
-      case "removeWhitespace":
+      case 'removeWhitespace':
         result = applyRemoveWhitespace(result);
         break;
-      case "removeSymbols":
+      case 'removeSymbols':
         result = applyRemoveSymbols(result);
         break;
-      case "removeChinese":
+      case 'removeChinese':
         result = applyRemoveChinese(result);
         break;
-      case "removeEnglish":
+      case 'removeEnglish':
         result = applyRemoveEnglish(result);
         break;
     }
     result = flattenArray(result);
   }
 
-  result = result.filter(
-    (item) => item && typeof item === "string" && item.length > 0,
-  );
+  result = result.filter((item) => item && typeof item === 'string' && item.length > 0);
 
   return {
     result,
@@ -553,8 +577,7 @@ export async function multiRuleAnalyze(text, rules = []) {
     stats: {
       inputLength: text.length,
       outputCount: result.length,
-      avgLength:
-        result.length > 0 ? Math.round(text.length / result.length) : 0,
+      avgLength: result.length > 0 ? Math.round(text.length / result.length) : 0,
     },
   };
 }
@@ -588,52 +611,52 @@ export function applySingleRule(input, rule) {
   let conflictMessage = null;
 
   // 检查矛盾情况
-  if (rule === "symbolSplit") {
+  if (rule === 'symbolSplit') {
     // 检查是否已经去除了符号
     const hasRemoveSymbols = result.some((text) => {
-      if (typeof text !== "string") return false;
+      if (typeof text !== 'string') return false;
       // 如果文本中已经没有符号了，说明已经执行过去除符号
       return !/[^\w\s\u4e00-\u9fa5]/.test(text);
     });
     if (hasRemoveSymbols) {
       hasConflict = true;
-      conflictMessage = "文本已去除符号，符号分词无效果";
+      conflictMessage = '文本已去除符号，符号分词无效果';
     }
   }
 
   // 应用规则
   switch (rule) {
-    case "symbolSplit":
+    case 'symbolSplit':
       result = applySymbolSplit(result);
       break;
-    case "whitespaceSplit":
+    case 'whitespaceSplit':
       result = applyWhitespaceSplit(result);
       break;
-    case "newlineSplit":
+    case 'newlineSplit':
       result = applyNewlineSplit(result);
       break;
-    case "chineseEnglishSplit":
+    case 'chineseEnglishSplit':
       result = applyChineseEnglishSplit(result);
       break;
-    case "uppercaseSplit":
+    case 'uppercaseSplit':
       result = applyUppercaseSplit(result);
       break;
-    case "namingSplit":
+    case 'namingSplit':
       result = applyNamingSplit(result);
       break;
-    case "digitSplit":
+    case 'digitSplit':
       result = applyDigitSplit(result);
       break;
-    case "removeWhitespace":
+    case 'removeWhitespace':
       result = applyRemoveWhitespace(result);
       break;
-    case "removeSymbols":
+    case 'removeSymbols':
       result = applyRemoveSymbols(result);
       break;
-    case "removeChinese":
+    case 'removeChinese':
       result = applyRemoveChinese(result);
       break;
-    case "removeEnglish":
+    case 'removeEnglish':
       result = applyRemoveEnglish(result);
       break;
     default:
@@ -645,9 +668,7 @@ export function applySingleRule(input, rule) {
   }
 
   result = flattenArray(result);
-  result = result.filter(
-    (item) => item && typeof item === "string" && item.length > 0,
-  );
+  result = result.filter((item) => item && typeof item === 'string' && item.length > 0);
 
   return { result, hasConflict, conflictMessage };
 }

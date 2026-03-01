@@ -1,10 +1,48 @@
+# 依赖目录
+node_modules/
+
+# 日志文件
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 临时文件
 *.tmp
+*.temp
+
+# 构建输出
 build/
 dist/
+*.zip
+
+# 环境变量文件
 .env
+.env.local
+.env.*.local
+
+# IDE和编辑器配置
 .history/
 .cursor/
 .superdesign/
-.vscode
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# ESLint和Prettier报告
+eslint-report.html
+
+# 备份文件
+*.bak
+*.bak2
+*.backup
+
+# 其他
 prompt.md
+*.json
