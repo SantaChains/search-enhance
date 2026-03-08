@@ -22,11 +22,14 @@ dist/
 .env.*.local
 
 # IDE和编辑器配置
-.history/
 .cursor/
-.superdesign/
-.vscode/
+.history/
 .idea/
+.out-of-code-insights/
+.superdesign/
+.trae/
+.trunk/
+.vscode/
 *.swp
 *.swo
 *~
@@ -37,6 +40,7 @@ Thumbs.db
 
 # ESLint和Prettier报告
 eslint-report.html
+.prettierignore
 
 # 备份文件
 *.bak
@@ -46,3 +50,5 @@ eslint-report.html
 # 其他
 prompt.md
 *.json
+openmemory.md
+update.md

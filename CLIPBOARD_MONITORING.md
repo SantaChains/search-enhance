@@ -365,9 +365,3 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 - **Web Extension API**：使用最新的Web Extension API
 - **Service Worker**：将监控逻辑迁移到Service Worker
 - **Push API**：支持实时推送剪贴板变化通知
-
-## 📝 总结
-
-剪贴板监控功能是Enhance Search Buddy扩展的重要组成部分，它通过简单而高效的实现方式，为用户提供了便捷的文本处理体验。该功能具有良好的性能、安全性和用户体验，可以根据需要进行进一步的扩展和优化。
-
-通过添加`Alt+K`快捷键支持，用户可以更方便地控制剪贴板监控功能，进一步提升了扩展的易用性。
