@@ -48,7 +48,7 @@ eslint-report.html
 *.backup
 
 # 其他
-prompt.md
-*.json
-openmemory.md
 update.md
+prompt.md
+openmemory.md
+.prettierrc.json

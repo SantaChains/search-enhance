@@ -1,27 +1,52 @@
 <svg width="128" height="128" viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+    <!-- 主渐变 - 青绿色系 -->
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#14B8A6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0D9488;stop-opacity:1" />
     </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.3"/>
+    
+    <!-- 强调色渐变 - 活力橙 -->
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FB923C;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F97316;stop-opacity:1" />
+    </linearGradient>
+    
+    <!-- 柔和阴影 -->
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#0D9488" flood-opacity="0.25"/>
     </filter>
   </defs>
   
-  <!-- 背景圆形 -->
-  <circle cx="64" cy="64" r="58" fill="url(#grad1)" filter="url(#shadow)"/>
+  <!-- 外圆环 -->
+  <circle cx="64" cy="64" r="60" fill="none" stroke="url(#primaryGrad)" stroke-width="3" opacity="0.3"/>
   
-  <!-- 搜索图标 -->
-  <circle cx="52" cy="52" r="20" fill="none" stroke="white" stroke-width="6" stroke-opacity="0.9"/>
-  <line x1="66" y1="66" x2="84" y2="84" stroke="white" stroke-width="6" stroke-linecap="round" stroke-opacity="0.9"/>
+  <!-- 主六边形 - 代表结构与连接 -->
+  <path d="M64 20 L98 38 L98 76 L64 94 L30 76 L30 38 Z" 
+        fill="url(#primaryGrad)" 
+        filter="url(#softShadow)"/>
   
-  <!-- 增强功能符号 -->
-  <circle cx="88" cy="40" r="12" fill="#10b981" filter="url(#shadow)"/>
-  <text x="88" y="45" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">+</text>
+  <!-- 内部几何线条 - 代表文本处理/分词 -->
+  <g stroke="white" stroke-width="3" stroke-linecap="round" opacity="0.9">
+    <!-- 三条横线代表文本行 -->
+    <line x1="45" y1="48" x2="83" y2="48"/>
+    <line x1="45" y1="57" x2="72" y2="57"/>
+    <line x1="45" y1="66" x2="78" y2="66"/>
+  </g>
   
-  <!-- 文本处理线条 -->
-  <rect x="30" y="85" width="35" height="4" fill="white" opacity="0.9" rx="2"/>
-  <rect x="30" y="94" width="50" height="4" fill="white" opacity="0.7" rx="2"/>
-  <rect x="30" y="103" width="40" height="4" fill="white" opacity="0.5" rx="2"/>
+  <!-- 右上角强调圆点 - 代表增强/提升 -->
+  <circle cx="95" cy="35" r="14" fill="url(#accentGrad)" filter="url(#softShadow)"/>
+  
+  <!-- 圆点内的向上箭头 -->
+  <path d="M95 28 L95 42 M89 34 L95 28 L101 34" 
+        stroke="white" 
+        stroke-width="3" 
+        stroke-linecap="round" 
+        stroke-linejoin="round"
+        fill="none"/>
+  
+  <!-- 底部装饰小点 -->
+  <circle cx="40" cy="102" r="4" fill="#14B8A6" opacity="0.6"/>
+  <circle cx="55" cy="108" r="3" fill="#0D9488" opacity="0.4"/>
+  <circle cx="88" cy="105" r="3.5" fill="#F97316" opacity="0.5"/>
 </svg>
