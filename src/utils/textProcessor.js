@@ -20,6 +20,39 @@ import { multiRuleAnalyze as analyzeMultiRules } from './multiRuleAnalyzer.js';
 // 预编译正则表达式
 // ============================================================================
 
+// 检查字符是否是emoji
+function isEmoji(char) {
+  const code = char.codePointAt(0);
+  return (
+    (code >= 0x1f300 && code <= 0x1f9ff) || // 杂项符号和象形文字
+    (code >= 0x1f600 && code <= 0x1f64f) || // 表情符号
+    (code >= 0x1f680 && code <= 0x1f6ff) || // 交通和地图符号
+    (code >= 0x1f1e0 && code <= 0x1f1ff) || // 国旗
+    (code >= 0x2600 && code <= 0x26ff) || // 杂项符号
+    (code >= 0x2700 && code <= 0x27bf) || // 装饰符号
+    (code >= 0x1f900 && code <= 0x1f9ff) // 补充符号和象形文字
+  );
+}
+
+// 检查字符是否是中文（包括CJK统一表意文字）
+function isChinese(char) {
+  const code = char.codePointAt(0);
+  return (
+    (code >= 0x4e00 && code <= 0x9fff) || // CJK统一表意文字
+    (code >= 0x3000 && code <= 0x303f) || // CJK符号和标点
+    (code >= 0xff00 && code <= 0xffef) || // 全角ASCII、半角片假名
+    (code >= 0x3400 && code <= 0x4dbf) || // CJK扩展A
+    (code >= 0x20000 && code <= 0x2a6df) || // CJK扩展B
+    (code >= 0x2a700 && code <= 0x2b73f) || // CJK扩展C
+    (code >= 0x2b740 && code <= 0x2b81f) // CJK扩展D
+  );
+}
+
+// 检查字符是否是中文或emoji
+function isChineseOrEmoji(char) {
+  return isChinese(char) || isEmoji(char);
+}
+
 const REGEX = {
   // 字符类型 - 不使用g标志，避免lastIndex问题
   chineseChar: /[\u4e00-\u9fa5]/,
@@ -256,27 +289,37 @@ export function smartAnalyze(text) {
       continue;
     }
 
-    const char = text[i];
+    // 获取当前码点（处理代理对，如emoji）
+    const codePoint = text.codePointAt(i);
+    const char = String.fromCodePoint(codePoint);
+    const charLength = char.length;
 
     // 跳过空白字符
     if (/\s/.test(char)) {
-      i++;
+      i += charLength;
       continue;
     }
 
     // 标点符号单独成格
     if (REGEX.punctuation.test(char)) {
       result.push(char);
-      i++;
+      i += charLength;
       continue;
     }
 
-    // 中文字符：整句收集直到遇到非中文字符
-    if (REGEX.chineseChar.test(char)) {
+    // 中文字符（包括emoji）：整句收集直到遇到非中文字符
+    if (isChineseOrEmoji(char)) {
       let chineseSegment = '';
-      while (i < text.length && REGEX.chineseChar.test(text[i])) {
-        chineseSegment += text[i];
-        i++;
+      while (i < text.length) {
+        const cp = text.codePointAt(i);
+        const ch = String.fromCodePoint(cp);
+        const len = ch.length;
+        if (isChineseOrEmoji(ch)) {
+          chineseSegment += ch;
+          i += len;
+        } else {
+          break;
+        }
       }
       if (chineseSegment) {
         result.push(chineseSegment);
@@ -312,7 +355,7 @@ export function smartAnalyze(text) {
 
     // 其他字符单独处理
     result.push(char);
-    i++;
+    i += charLength;
   }
 
   return result.filter((w) => w.length > 0);
@@ -337,16 +380,38 @@ export function chineseAnalyze(text) {
 
   const result = [];
 
-  // 中英分离
-  const parts = text.split(/([a-zA-Z]+)/).filter(Boolean);
+  // 中英分离 - 使用辅助函数处理emoji
+  const parts = [];
+  let currentPart = '';
+  let currentType = null; // 'english' | 'other' | null
 
-  for (const part of parts) {
-    if (/^[a-zA-Z]+$/.test(part)) {
+  for (let i = 0; i < text.length; ) {
+    const codePoint = text.codePointAt(i);
+    const char = String.fromCodePoint(codePoint);
+    const charLength = char.length;
+
+    const isEnglish = /[a-zA-Z]/.test(char);
+    const type = isEnglish ? 'english' : 'other';
+
+    if (currentType !== type && currentPart) {
+      parts.push({ type: currentType, content: currentPart });
+      currentPart = '';
+    }
+    currentType = type;
+    currentPart += char;
+    i += charLength;
+  }
+  if (currentPart) {
+    parts.push({ type: currentType, content: currentPart });
+  }
+
+  for (const { type, content: part } of parts) {
+    if (type === 'english') {
       // 英文部分：空格分词，符号空格留在上字词尾
       const words = part.split(/\s+/).filter(Boolean);
       result.push(...words);
     } else {
-      // 中文部分
+      // 中文部分（包含emoji）
       let chinesePart = part;
 
       // 符号分离，符号留在上字词尾
@@ -365,7 +430,7 @@ export function chineseAnalyze(text) {
           // 数字分格
           result.push(word);
         } else if (word.length > 0) {
-          // 剩余中文：先查找字典，再调用算法
+          // 剩余中文（包含emoji）：先查找字典，再调用算法
           const tokens = chineseWordSegmentation(word, {
             useDictionary: CONFIG.useDictionary,
             useAlgorithm: CONFIG.useAlgorithm,
@@ -397,10 +462,15 @@ function chineseWordSegmentation(text, options = {}) {
 
   if (!useDict && useAlgo) {
     const result = [];
-    for (const char of text) {
-      if (char.charCodeAt(0) >= 0x4e00 && char.charCodeAt(0) <= 0x9fff) {
+    for (let i = 0; i < text.length; ) {
+      const codePoint = text.codePointAt(i);
+      const char = String.fromCodePoint(codePoint);
+      const charLength = char.length;
+      // 检查是否是中文或emoji
+      if (isChineseOrEmoji(char)) {
         result.push(char);
       }
+      i += charLength;
     }
     return result;
   }
@@ -435,11 +505,33 @@ export function englishAnalyze(text) {
 
   const result = [];
 
-  // 中英分离
-  const parts = text.split(/([\u4e00-\u9fa5]+)/).filter(Boolean);
+  // 中英分离 - 使用辅助函数处理emoji
+  const parts = [];
+  let currentPart = '';
+  let currentType = null; // 'chinese' | 'english' | null
+
+  for (let i = 0; i < text.length; ) {
+    const codePoint = text.codePointAt(i);
+    const char = String.fromCodePoint(codePoint);
+    const charLength = char.length;
+
+    const isCJK = isChineseOrEmoji(char);
+    const type = isCJK ? 'chinese' : 'english';
+
+    if (currentType !== type && currentPart) {
+      parts.push(currentPart);
+      currentPart = '';
+    }
+    currentType = type;
+    currentPart += char;
+    i += charLength;
+  }
+  if (currentPart) {
+    parts.push(currentPart);
+  }
 
   for (const part of parts) {
-    if (/[\u4e00-\u9fa5]/.test(part)) {
+    if (isChineseOrEmoji(part[0])) {
       // 中文部分：直接保留
       const noSpace = part.replace(/\s+/g, '');
       if (noSpace) result.push(noSpace);
@@ -528,14 +620,32 @@ export function charBreak(text, charLimit = CONFIG.lineCharLimit) {
   let remaining = text;
   const MIN_SEGMENT_LENGTH = 50; // 最小片段长度，小于此值则硬断行
 
-  while (remaining.length > charLimit) {
+  // 辅助函数：将字符串转换为码点数组（正确处理emoji）
+  function toCodePoints(str) {
+    const codePoints = [];
+    for (let i = 0; i < str.length; ) {
+      const codePoint = str.codePointAt(i);
+      codePoints.push(String.fromCodePoint(codePoint));
+      i += codePoint > 0xffff ? 2 : 1;
+    }
+    return codePoints;
+  }
+
+  // 辅助函数：从码点数组重建字符串
+  function fromCodePoints(codePoints, start, end) {
+    return codePoints.slice(start, end).join('');
+  }
+
+  let codePoints = toCodePoints(remaining);
+
+  while (codePoints.length > charLimit) {
     // 在charLimit位置向前查找第一个分隔符（空格、换行、标点）
     let breakPoint = -1;
-    const searchStart = Math.min(charLimit, remaining.length);
+    const searchStart = Math.min(charLimit, codePoints.length);
     const searchEnd = Math.max(0, searchStart - charLimit); // 最多向前搜索charLimit个字符
 
     for (let i = searchStart - 1; i >= searchEnd; i--) {
-      const char = remaining[i];
+      const char = codePoints[i];
       // 检查是否是分隔符：空格、换行、或标点符号
       if (
         /\s/.test(char) ||
@@ -548,17 +658,17 @@ export function charBreak(text, charLimit = CONFIG.lineCharLimit) {
 
     // 如果找到分隔符且片段长度>=最小长度，则在此处断行
     if (breakPoint > 0 && breakPoint >= MIN_SEGMENT_LENGTH) {
-      result.push(remaining.substring(0, breakPoint));
-      remaining = remaining.substring(breakPoint);
+      result.push(fromCodePoints(codePoints, 0, breakPoint));
+      codePoints = codePoints.slice(breakPoint);
     } else {
       // 否则硬断行
-      result.push(remaining.substring(0, charLimit));
-      remaining = remaining.substring(charLimit);
+      result.push(fromCodePoints(codePoints, 0, charLimit));
+      codePoints = codePoints.slice(charLimit);
     }
   }
 
-  if (remaining) {
-    result.push(remaining);
+  if (codePoints.length > 0) {
+    result.push(codePoints.join(''));
   }
 
   return result;
@@ -695,22 +805,80 @@ export function removeSymbolsAnalyze(text) {
 
   const result = [];
 
-  // 按符号分格
-  const parts = text.split(REGEX.punctuation);
+  // 按符号分格 - 手动遍历以正确处理emoji
+  const parts = [];
+  let currentPart = '';
+
+  for (let i = 0; i < text.length; ) {
+    const codePoint = text.codePointAt(i);
+    const char = String.fromCodePoint(codePoint);
+    const charLength = char.length;
+
+    if (REGEX.punctuation.test(char)) {
+      if (currentPart) {
+        parts.push(currentPart);
+        currentPart = '';
+      }
+    } else {
+      currentPart += char;
+    }
+    i += charLength;
+  }
+  if (currentPart) {
+    parts.push(currentPart);
+  }
 
   for (const part of parts) {
     if (!part.trim()) continue;
 
     // 去除符号后，按整句、空格、换行分离
-    const cleaned = part
-      .replace(/[,.!?;:'"()[]{}–—-]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    let cleaned = '';
+    for (let i = 0; i < part.length; ) {
+      const codePoint = part.codePointAt(i);
+      const char = String.fromCodePoint(codePoint);
+      const charLength = char.length;
+      if (!/[,.!?;:'"()[]{}–—-]/.test(char)) {
+        cleaned += char;
+      }
+      i += charLength;
+    }
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
 
     if (!cleaned) continue;
 
-    // 中、英、数字分离
-    const segments = cleaned.split(/([a-zA-Z]+|\d+)/).filter(Boolean);
+    // 中、英、数字分离 - 正确处理emoji
+    const segments = [];
+    let currentSeg = '';
+    let currentSegType = null; // 'english' | 'digit' | 'chinese' | null
+
+    for (let i = 0; i < cleaned.length; ) {
+      const codePoint = cleaned.codePointAt(i);
+      const char = String.fromCodePoint(codePoint);
+      const charLength = char.length;
+
+      let type = null;
+      if (/[a-zA-Z]/.test(char)) type = 'english';
+      else if (/\d/.test(char)) type = 'digit';
+      else if (isChineseOrEmoji(char)) type = 'chinese';
+
+      if (type !== currentSegType && currentSeg) {
+        segments.push(currentSeg);
+        currentSeg = '';
+      }
+      currentSegType = type;
+      if (type) {
+        currentSeg += char;
+      } else if (currentSeg) {
+        segments.push(currentSeg);
+        currentSeg = '';
+        currentSegType = null;
+      }
+      i += charLength;
+    }
+    if (currentSeg) {
+      segments.push(currentSeg);
+    }
+
     for (const seg of segments) {
       if (seg.trim()) {
         result.push(seg.trim());
@@ -1267,7 +1435,18 @@ export function detectContentType(text) {
     hasEmail: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/i.test(text),
     hasPath: /[a-zA-Z]:[\\/]|\/(?:home|Users|usr)[\\/]/i.test(text),
     hasRepo: /[\w-]+\/[\w-]+/.test(text),
-    chineseCount: (text.match(/[\u4e00-\u9fa5]/g) || []).length,
+    chineseCount: (() => {
+      let count = 0;
+      for (let i = 0; i < text.length; ) {
+        const codePoint = text.codePointAt(i);
+        const char = String.fromCodePoint(codePoint);
+        if (isChineseOrEmoji(char)) {
+          count++;
+        }
+        i += char.length;
+      }
+      return count;
+    })(),
     englishCount: (text.match(/[a-zA-Z]+/g) || []).length,
   };
 

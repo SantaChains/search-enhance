@@ -509,10 +509,43 @@ class ClipboardHistoryManager {
   }
 
   /**
-   * 检测是否包含中文
+   * 检测是否包含中文（扩展范围包含emoji）
    */
   hasChinese(text) {
-    return /[\u4e00-\u9fa5]/.test(text);
+    for (let i = 0; i < text.length; ) {
+      const codePoint = text.codePointAt(i);
+      const char = String.fromCodePoint(codePoint);
+      const charLength = char.length;
+      
+      // 检查是否是中文
+      const code = char.codePointAt(0);
+      const isChinese = (
+        (code >= 0x4e00 && code <= 0x9fff) ||   // CJK统一表意文字
+        (code >= 0x3000 && code <= 0x303f) ||   // CJK符号和标点
+        (code >= 0xff00 && code <= 0xffef) ||   // 全角ASCII、半角片假名
+        (code >= 0x3400 && code <= 0x4dbf) ||   // CJK扩展A
+        (code >= 0x20000 && code <= 0x2a6df) || // CJK扩展B
+        (code >= 0x2a700 && code <= 0x2b73f) || // CJK扩展C
+        (code >= 0x2b740 && code <= 0x2b81f)    // CJK扩展D
+      );
+      
+      // 检查是否是emoji
+      const isEmoji = (
+        (code >= 0x1f300 && code <= 0x1f9ff) || // 杂项符号和象形文字
+        (code >= 0x1f600 && code <= 0x1f64f) || // 表情符号
+        (code >= 0x1f680 && code <= 0x1f6ff) || // 交通和地图符号
+        (code >= 0x1f1e0 && code <= 0x1f1ff) || // 国旗
+        (code >= 0x2600 && code <= 0x26ff) ||   // 杂项符号
+        (code >= 0x2700 && code <= 0x27bf) ||   // 装饰符号
+        (code >= 0x1f900 && code <= 0x1f9ff)    // 补充符号和象形文字
+      );
+      
+      if (isChinese || isEmoji) {
+        return true;
+      }
+      i += charLength;
+    }
+    return false;
   }
 
   /**

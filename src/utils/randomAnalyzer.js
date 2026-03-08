@@ -76,7 +76,14 @@ export function randomAnalyze(text, options = {}) {
   const minTokens = options.minTokens ?? CONFIG.chaosMinTokens;
 
   // 保留所有字符（包括空格、换行等），保持原始顺序
-  const chars = text.split('');
+  // 使用 Array.from 正确处理 emoji（代理对）
+  const chars = [];
+  for (let i = 0; i < text.length; ) {
+    const codePoint = text.codePointAt(i);
+    const char = String.fromCodePoint(codePoint);
+    chars.push(char);
+    i += char.length;
+  }
 
   // 随机分词（保持字符原始顺序，只随机决定切割位置）
   const result = [];

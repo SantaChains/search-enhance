@@ -25,6 +25,40 @@
 import { getSettings } from './storage.js';
 
 // ============================================================================
+// 辅助函数：检查字符是否是emoji
+// ============================================================================
+
+function isEmoji(char) {
+  const code = char.codePointAt(0);
+  return (
+    (code >= 0x1f300 && code <= 0x1f9ff) || // 杂项符号和象形文字
+    (code >= 0x1f600 && code <= 0x1f64f) || // 表情符号
+    (code >= 0x1f680 && code <= 0x1f6ff) || // 交通和地图符号
+    (code >= 0x1f1e0 && code <= 0x1f1ff) || // 国旗
+    (code >= 0x2600 && code <= 0x26ff) ||   // 杂项符号
+    (code >= 0x2700 && code <= 0x27bf) ||   // 装饰符号
+    (code >= 0x1f900 && code <= 0x1f9ff)    // 补充符号和象形文字
+  );
+}
+
+function isChinese(char) {
+  const code = char.codePointAt(0);
+  return (
+    (code >= 0x4e00 && code <= 0x9fff) ||   // CJK统一表意文字
+    (code >= 0x3000 && code <= 0x303f) ||   // CJK符号和标点
+    (code >= 0xff00 && code <= 0xffef) ||   // 全角ASCII、半角片假名
+    (code >= 0x3400 && code <= 0x4dbf) ||   // CJK扩展A
+    (code >= 0x20000 && code <= 0x2a6df) || // CJK扩展B
+    (code >= 0x2a700 && code <= 0x2b73f) || // CJK扩展C
+    (code >= 0x2b740 && code <= 0x2b81f)    // CJK扩展D
+  );
+}
+
+function isChineseOrEmoji(char) {
+  return isChinese(char) || isEmoji(char);
+}
+
+// ============================================================================
 // 配置
 // ============================================================================
 
@@ -290,7 +324,40 @@ export function applyNewlineSplit(input) {
 export function applyChineseEnglishSplit(input) {
   return input.map((text) => {
     if (!text || typeof text !== 'string') return text;
-    return text.split(/([a-zA-Z]+|[\u4e00-\u9fa5]+)/).filter(Boolean);
+    // 使用辅助函数处理emoji
+    const parts = [];
+    let currentPart = '';
+    let currentType = null;
+
+    for (let i = 0; i < text.length; ) {
+      const codePoint = text.codePointAt(i);
+      const char = String.fromCodePoint(codePoint);
+      const charLength = char.length;
+
+      const isCJK = isChineseOrEmoji(char);
+      const isEnglish = /[a-zA-Z]/.test(char);
+      let type = null;
+      if (isCJK) type = 'chinese';
+      else if (isEnglish) type = 'english';
+
+      if (type !== currentType && currentPart) {
+        parts.push(currentPart);
+        currentPart = '';
+      }
+      currentType = type;
+      if (type) {
+        currentPart += char;
+      } else if (currentPart) {
+        parts.push(currentPart);
+        currentPart = '';
+        currentType = null;
+      }
+      i += charLength;
+    }
+    if (currentPart) {
+      parts.push(currentPart);
+    }
+    return parts.filter(Boolean);
   });
 }
 
@@ -399,7 +466,18 @@ export function applyRemoveWhitespace(input) {
 export function applyRemoveSymbols(input) {
   return input.map((text) => {
     if (!text || typeof text !== 'string') return text;
-    return text.replace(/[^\w\s\u4e00-\u9fa5]/g, '');
+    // 保留中文、emoji、英文、数字和空格
+    let result = '';
+    for (let i = 0; i < text.length; ) {
+      const codePoint = text.codePointAt(i);
+      const char = String.fromCodePoint(codePoint);
+      const charLength = char.length;
+      if (/[\w\s]/.test(char) || isChineseOrEmoji(char)) {
+        result += char;
+      }
+      i += charLength;
+    }
+    return result;
   });
 }
 
@@ -411,7 +489,18 @@ export function applyRemoveSymbols(input) {
 export function applyRemoveChinese(input) {
   return input.map((text) => {
     if (!text || typeof text !== 'string') return text;
-    return text.replace(/[\u4e00-\u9fa5]/g, '');
+    // 使用辅助函数去除中文和emoji
+    let result = '';
+    for (let i = 0; i < text.length; ) {
+      const codePoint = text.codePointAt(i);
+      const char = String.fromCodePoint(codePoint);
+      const charLength = char.length;
+      if (!isChineseOrEmoji(char)) {
+        result += char;
+      }
+      i += charLength;
+    }
+    return result;
   });
 }
 
@@ -615,8 +704,17 @@ export function applySingleRule(input, rule) {
     // 检查是否已经去除了符号
     const hasRemoveSymbols = result.some((text) => {
       if (typeof text !== 'string') return false;
-      // 如果文本中已经没有符号了，说明已经执行过去除符号
-      return !/[^\w\s\u4e00-\u9fa5]/.test(text);
+      // 如果文本中已经没有符号了，说明已经执行过去除符号（扩展中文范围包含emoji）
+      for (let i = 0; i < text.length; ) {
+        const codePoint = text.codePointAt(i);
+        const char = String.fromCodePoint(codePoint);
+        const charLength = char.length;
+        if (!/[\w\s]/.test(char) && !isChineseOrEmoji(char)) {
+          return false; // 还有符号
+        }
+        i += charLength;
+      }
+      return true; // 没有符号了
     });
     if (hasRemoveSymbols) {
       hasConflict = true;
