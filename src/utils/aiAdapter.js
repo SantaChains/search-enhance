@@ -25,7 +25,7 @@ const DEFAULT_CONFIG = {
     models: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
     headers: {},
     requestFormat: 'openai',
-    responseFormat: 'openai',
+    responseFormat: 'openai'
   },
 
   // Claude (Anthropic)
@@ -36,10 +36,10 @@ const DEFAULT_CONFIG = {
     defaultModel: 'claude-3-5-sonnet-20241022',
     models: ['claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'],
     headers: {
-      'anthropic-version': '2023-06-01',
+      'anthropic-version': '2023-06-01'
     },
     requestFormat: 'claude',
-    responseFormat: 'claude',
+    responseFormat: 'claude'
   },
 
   // Google Gemini
@@ -51,7 +51,7 @@ const DEFAULT_CONFIG = {
     models: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro'],
     headers: {},
     requestFormat: 'gemini',
-    responseFormat: 'gemini',
+    responseFormat: 'gemini'
   },
 
   // Azure OpenAI
@@ -63,7 +63,7 @@ const DEFAULT_CONFIG = {
     models: ['gpt-4', 'gpt-4o', 'gpt-35-turbo'],
     headers: {},
     requestFormat: 'openai',
-    responseFormat: 'openai',
+    responseFormat: 'openai'
   },
 
   // 自定义接口
@@ -75,8 +75,8 @@ const DEFAULT_CONFIG = {
     models: [],
     headers: {},
     requestFormat: 'openai',
-    responseFormat: 'openai',
-  },
+    responseFormat: 'openai'
+  }
 };
 
 // ============================================================================
@@ -88,7 +88,7 @@ const ProviderTemplates = {
     name: 'OpenAI 兼容',
     requestFormat: 'openai',
     responseFormat: 'openai',
-    headers: {},
+    headers: {}
   },
 
   ollama: {
@@ -97,7 +97,7 @@ const ProviderTemplates = {
     requestFormat: 'openai',
     responseFormat: 'openai',
     defaultModel: 'llama2',
-    models: ['llama2', 'mistral', 'codellama', 'qwen'],
+    models: ['llama2', 'mistral', 'codellama', 'qwen']
   },
 
   zhipu: {
@@ -106,7 +106,7 @@ const ProviderTemplates = {
     requestFormat: 'openai',
     responseFormat: 'openai',
     defaultModel: 'glm-4',
-    models: ['glm-4', 'glm-4-plus', 'glm-4-flash'],
+    models: ['glm-4', 'glm-4-plus', 'glm-4-flash']
   },
 
   wenxin: {
@@ -115,7 +115,7 @@ const ProviderTemplates = {
     requestFormat: 'openai',
     responseFormat: 'openai',
     defaultModel: 'ernie-4.0-turbo-8k',
-    models: ['ernie-4.0-turbo-8k', 'ernie-3.5-128k'],
+    models: ['ernie-4.0-turbo-8k', 'ernie-3.5-128k']
   },
 
   qwen: {
@@ -124,7 +124,7 @@ const ProviderTemplates = {
     requestFormat: 'openai',
     responseFormat: 'openai',
     defaultModel: 'qwen-turbo',
-    models: ['qwen-max', 'qwen-plus', 'qwen-turbo'],
+    models: ['qwen-max', 'qwen-plus', 'qwen-turbo']
   },
 
   deepseek: {
@@ -133,7 +133,7 @@ const ProviderTemplates = {
     requestFormat: 'openai',
     responseFormat: 'openai',
     defaultModel: 'deepseek-chat',
-    models: ['deepseek-chat', 'deepseek-coder'],
+    models: ['deepseek-chat', 'deepseek-coder']
   },
 
   siliconflow: {
@@ -142,8 +142,8 @@ const ProviderTemplates = {
     requestFormat: 'openai',
     responseFormat: 'openai',
     defaultModel: 'Qwen/Qwen2.5-7B-Instruct',
-    models: ['Qwen/Qwen2.5-7B-Instruct', 'deepseek-ai/DeepSeek-V2.5'],
-  },
+    models: ['Qwen/Qwen2.5-7B-Instruct', 'deepseek-ai/DeepSeek-V2.5']
+  }
 };
 
 // ============================================================================
@@ -214,7 +214,7 @@ JSON对象：
 
 【示例】
 输入：Check http://test.com and example.net
-输出：{"links": ["http://test.com"], "suspectLinks": ["http://example.net"], "contextProtocol": "http://"}`,
+输出：{"links": ["http://test.com"], "suspectLinks": ["http://example.net"], "contextProtocol": "http://"}`
 };
 
 // ============================================================================
@@ -254,7 +254,7 @@ const DOMAIN_BLACKLIST = new Set([
   'copyright',
   'trademark',
   'trademarked',
-  'registered',
+  'registered'
 ]);
 
 /**
@@ -352,7 +352,7 @@ export async function aiAnalyzePipeline(text, options = {}) {
     provider = 'openai',
     baseURL = '',
     apiKey = '',
-    model = '',
+    model = ''
   } = options;
 
   // 阶段1：链接识别
@@ -427,10 +427,10 @@ export async function aiAnalyzePipeline(text, options = {}) {
             ProviderTemplates[provider]?.responseFormat ||
             DEFAULT_CONFIG[provider]?.responseFormat ||
             'openai',
-          headers: ProviderTemplates[provider]?.headers || DEFAULT_CONFIG[provider]?.headers || {},
-        },
+          headers: ProviderTemplates[provider]?.headers || DEFAULT_CONFIG[provider]?.headers || {}
+        }
       },
-      defaultProvider: provider,
+      defaultProvider: provider
     };
 
     const adapter = new AIAdapter(adapterConfig);
@@ -439,7 +439,7 @@ export async function aiAnalyzePipeline(text, options = {}) {
     const response = await adapter.simpleChat(restructuredText, {
       systemPrompt: tokenizerPrompt,
       temperature: 0.1,
-      maxTokens: 4096,
+      maxTokens: 4096
     });
 
     try {
@@ -457,7 +457,7 @@ export async function aiAnalyzePipeline(text, options = {}) {
   const orderedResults = [
     ...urls,
     ...completedLinks.filter((l) => !urls.includes(l)),
-    ...tokenizedResult.filter((t) => !t.startsWith('{{LINK_')),
+    ...tokenizedResult.filter((t) => !t.startsWith('{{LINK_'))
   ];
 
   return {
@@ -472,8 +472,8 @@ export async function aiAnalyzePipeline(text, options = {}) {
       step3_completed: completedLinks.length,
       step4_restructured: !!restructuredText,
       step5_tokenized: tokenizedResult.length,
-      step6_ordered: orderedResults.length,
-    },
+      step6_ordered: orderedResults.length
+    }
   };
 }
 
@@ -487,7 +487,7 @@ const RequestFormatters = {
       .filter((m) => m && m.role && m.content !== undefined && m.content !== null)
       .map((m) => ({
         role: m.role,
-        content: String(m.content),
+        content: String(m.content)
       }));
 
     return {
@@ -496,7 +496,7 @@ const RequestFormatters = {
       temperature: options.temperature ?? 0.7,
       max_tokens: options.maxTokens ?? 2048,
       stream: options.stream ?? false,
-      ...options.extraParams,
+      ...options.extraParams
     };
   },
 
@@ -511,13 +511,13 @@ const RequestFormatters = {
       model,
       messages: userMessages.map((m) => ({
         role: m.role,
-        content: String(m.content),
+        content: String(m.content)
       })),
       system: systemMessage?.content ? String(systemMessage.content) : undefined,
       temperature: options.temperature ?? 0.7,
       max_tokens: options.maxTokens ?? 2048,
       stream: options.stream ?? false,
-      ...options.extraParams,
+      ...options.extraParams
     };
   },
 
@@ -527,7 +527,7 @@ const RequestFormatters = {
     );
     const contents = validMessages.map((m) => ({
       role: m.role === 'user' ? 'user' : 'model',
-      parts: [{ text: String(m.content) }],
+      parts: [{ text: String(m.content) }]
     }));
 
     return {
@@ -535,10 +535,10 @@ const RequestFormatters = {
       generationConfig: {
         temperature: options.temperature ?? 0.7,
         maxOutputTokens: options.maxTokens ?? 2048,
-        ...options.extraParams,
-      },
+        ...options.extraParams
+      }
     };
-  },
+  }
 };
 
 // ============================================================================
@@ -559,7 +559,7 @@ const ResponseParsers = {
         usage: data.usage,
         model: data.model,
         finishReason: 'stop',
-        raw: data,
+        raw: data
       };
     }
 
@@ -568,7 +568,7 @@ const ResponseParsers = {
       usage: data.usage,
       model: data.model,
       finishReason: data.choices[0]?.finish_reason,
-      raw: data,
+      raw: data
     };
   },
 
@@ -585,7 +585,7 @@ const ResponseParsers = {
         usage: data.usage,
         model: data.model,
         finishReason: data.stop_reason || 'stop',
-        raw: data,
+        raw: data
       };
     }
 
@@ -594,7 +594,7 @@ const ResponseParsers = {
       usage: data.usage,
       model: data.model,
       finishReason: data.stop_reason,
-      raw: data,
+      raw: data
     };
   },
 
@@ -611,7 +611,7 @@ const ResponseParsers = {
         usage: data.usageMetadata,
         model: data.modelVersion,
         finishReason: 'stop',
-        raw: data,
+        raw: data
       };
     }
 
@@ -622,9 +622,9 @@ const ResponseParsers = {
       usage: data.usageMetadata,
       model: data.modelVersion,
       finishReason: candidate?.finishReason,
-      raw: data,
+      raw: data
     };
-  },
+  }
 };
 
 // ============================================================================
@@ -637,7 +637,7 @@ const StreamHandlers = {
     const decoder = new TextDecoder();
     let buffer = '';
 
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -670,7 +670,7 @@ const StreamHandlers = {
     const decoder = new TextDecoder();
     let buffer = '';
 
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -704,7 +704,7 @@ const StreamHandlers = {
     const decoder = new TextDecoder();
     let buffer = '';
 
-    // eslint-disable-next-line no-constant-condition
+     
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -730,7 +730,7 @@ const StreamHandlers = {
         }
       }
     }
-  },
+  }
 };
 
 // ============================================================================
@@ -747,6 +747,7 @@ class AIError extends Error {
 }
 
 // 连接测试错误处理辅助函数
+// eslint-disable-next-line no-unused-vars
 function formatConnectionError(error) {
   let errorMsg = '连接失败';
   if (error.name === 'TypeError' && error.message.includes('fetch')) {
@@ -798,7 +799,7 @@ class AIAdapter {
   addProvider(name, config) {
     this.configs[name] = {
       ...DEFAULT_CONFIG.custom,
-      ...config,
+      ...config
     };
   }
 
@@ -807,7 +808,7 @@ class AIAdapter {
       id: key,
       name: config.name,
       models: config.models,
-      defaultModel: config.defaultModel,
+      defaultModel: config.defaultModel
     }));
   }
 
@@ -815,21 +816,21 @@ class AIAdapter {
     const format = config.requestFormat;
 
     switch (format) {
-      case 'gemini':
-        return `${config.baseURL}/models/${model}:generateContent?key=${config.apiKey}`;
-      case 'openai':
-      default:
-        if (config.baseURL.includes('azure.com') || config.baseURL.includes('deployments')) {
-          return `${config.baseURL}/chat/completions?api-version=2024-02-01`;
-        }
-        return `${config.baseURL}/chat/completions`;
+    case 'gemini':
+      return `${config.baseURL}/models/${model}:generateContent?key=${config.apiKey}`;
+    case 'openai':
+    default:
+      if (config.baseURL.includes('azure.com') || config.baseURL.includes('deployments')) {
+        return `${config.baseURL}/chat/completions?api-version=2024-02-01`;
+      }
+      return `${config.baseURL}/chat/completions`;
     }
   }
 
   buildHeaders(config) {
     const headers = {
       'Content-Type': 'application/json',
-      ...config.headers,
+      ...config.headers
     };
 
     if (config.requestFormat !== 'gemini' && config.apiKey) {
@@ -877,7 +878,7 @@ class AIAdapter {
         const response = await fetch(url, {
           method: 'POST',
           headers,
-          body: JSON.stringify(body),
+          body: JSON.stringify(body)
         });
 
         if (!response.ok) {
@@ -913,7 +914,7 @@ class AIAdapter {
     return this.chat(messages, {
       ...options,
       stream: true,
-      onChunk,
+      onChunk
     });
   }
 
@@ -925,9 +926,9 @@ class AIAdapter {
     const messages = [
       {
         role: 'system',
-        content: options.systemPrompt || '你是一个 helpful 的助手。',
+        content: options.systemPrompt || '你是一个 helpful 的助手。'
       },
-      { role: 'user', content: String(content) },
+      { role: 'user', content: String(content) }
     ];
 
     const response = await this.chat(messages, options);
@@ -950,9 +951,9 @@ export { AIAdapter, aiAdapter, AIError, ProviderTemplates, DEFAULT_CONFIG, Syste
 export default aiAdapter;
 
 // 兼容 CommonJS
-// eslint-disable-next-line no-undef
+ 
 if (typeof module !== 'undefined' && module.exports) {
-  // eslint-disable-next-line no-undef
+   
   module.exports = {
     AIAdapter,
     aiAdapter,
@@ -965,6 +966,6 @@ if (typeof module !== 'undefined' && module.exports) {
     extractSuspectLinks,
     inferProtocolFromContext,
     completeLink,
-    aiAnalyzePipeline,
+    aiAnalyzePipeline
   };
 }

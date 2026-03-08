@@ -1,0 +1,136 @@
+{
+  "$schema": "https://github.com/SantaChains/search-enhance/blob/main/test/sample.schema.json",
+  "metadata": {
+    "appName": "Decide Search",
+    "version": "2.0",
+    "exportType": "full",
+    "exportDate": "2026-03-08T14:30:00.000Z",
+    "exportedBy": "settings"
+  },
+  "data": {
+    "settings": {
+      "searchEngines": [
+        {
+          "name": "Bing",
+          "template": "https://www.bing.com/search?q=%s",
+          "category": "general"
+        },
+        {
+          "name": "Google",
+          "template": "https://www.google.com/search?q=%s",
+          "category": "general"
+        },
+        {
+          "name": "GitHub",
+          "template": "https://github.com/search?q=%s",
+          "category": "code"
+        }
+      ],
+      "defaultEngine": "Bing",
+      "historyLimit": 100,
+      "userPreferences": {
+        "theme": "auto",
+        "language": "zh-CN",
+        "autoClipboard": true,
+        "showNotifications": true,
+        "compactMode": false
+      },
+      "tokenizerSettings": {
+        "cnUseDict": true,
+        "cnUseAlgo": true,
+        "aiEnabled": false,
+        "aiProvider": "openai",
+        "aiApiKey": "",
+        "aiBaseURL": "",
+        "aiModel": "gpt-4o-mini",
+        "aiDefaultProtocol": "https://",
+        "sentenceMode": "sentence",
+        "charBreakLength": 100,
+        "randomMinLen": 1,
+        "randomMaxLen": 10,
+        "namingRemoveSymbol": true,
+        "historyMaxSize": 6
+      }
+    },
+    "linkHistory": {
+      "items": [
+        {
+          "id": "abc123",
+          "url": "https://github.com/microsoft/vscode",
+          "originalUrl": "https://github.com/microsoft/vscode",
+          "title": "microsoft/vscode",
+          "type": "github",
+          "source": "text_processing",
+          "timestamp": 1709904000000,
+          "accessCount": 3,
+          "lastAccessed": 1709990400000,
+          "tags": ["github", "microsoft", "editor"],
+          "metadata": {
+            "domain": "github.com",
+            "protocol": "https:",
+            "pathname": "/microsoft/vscode",
+            "githubUser": "microsoft",
+            "githubRepo": "vscode"
+          },
+          "isSearch": false
+        },
+        {
+          "id": "def456",
+          "url": "search://react%20hooks",
+          "title": "react hooks",
+          "searchQuery": "react hooks",
+          "searchEngine": "Google",
+          "type": "search",
+          "source": "search",
+          "timestamp": 1709817600000,
+          "accessCount": 1,
+          "lastAccessed": 1709817600000,
+          "tags": ["search", "Google"],
+          "metadata": {
+            "isSearch": true,
+            "query": "react hooks",
+            "engine": "Google"
+          },
+          "isSearch": true
+        }
+      ],
+      "settings": {
+        "enabled": true,
+        "maxItems": 100
+      }
+    },
+    "clipboardHistory": {
+      "items": [
+        {
+          "id": "xyz789",
+          "text": "npm install react-router-dom",
+          "preview": "npm install react-router-dom",
+          "length": 28,
+          "source": "clipboard",
+          "timestamp": 1709904000000,
+          "accessCount": 2,
+          "lastAccessed": 1709990400000,
+          "tags": ["code", "english"],
+          "metadata": {}
+        },
+        {
+          "id": "uvw012",
+          "text": "这是一个中文文本示例，用于测试剪贴板历史功能。",
+          "preview": "这是一个中文文本示例...",
+          "length": 32,
+          "source": "clipboard",
+          "timestamp": 1709817600000,
+          "accessCount": 1,
+          "lastAccessed": 1709817600000,
+          "tags": ["chinese"],
+          "metadata": {}
+        }
+      ],
+      "settings": {
+        "enabled": true,
+        "maxItems": 100,
+        "autoSave": true
+      }
+    }
+  }
+}

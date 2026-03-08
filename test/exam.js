@@ -1,10 +1,18 @@
-// exam.js - 分词功能测试页面脚本
+// exam.js - Decide Search 分词功能测试页面脚本
 
 import {
   splitText,
   smartAnalyze,
   chineseAnalyze,
   englishAnalyze,
+  codeAnalyze,
+  aiAnalyze,
+  sentenceAnalyze,
+  halfSentenceAnalyze,
+  charBreak,
+  removeSymbolsAnalyze,
+  randomAnalyze,
+  multiRuleAnalyze,
   detectContentType,
 } from "../src/utils/textProcessor.js";
 
@@ -28,12 +36,17 @@ const handleSubmit = async (formData) => {
 };`,
 };
 
-// 加载示例
+/**
+ * 加载示例文本到输入框
+ * @param {string} type - 示例类型
+ */
 function loadExample(type) {
   document.getElementById("test-text").value = examples[type] || "";
 }
 
-// 测试分词
+/**
+ * 测试分词功能
+ */
 async function testSegmentation() {
   const text = document.getElementById("test-text").value;
   const resultContainer = document.getElementById("segmentation-result");
@@ -62,6 +75,30 @@ async function testSegmentation() {
         results = englishAnalyze(text);
         modeName = "英文分析";
         break;
+      case "code":
+        results = codeAnalyze(text);
+        modeName = "代码分析";
+        break;
+      case "sentence":
+        results = sentenceAnalyze(text);
+        modeName = "整句分析";
+        break;
+      case "halfSentence":
+        results = halfSentenceAnalyze(text);
+        modeName = "半句分析";
+        break;
+      case "removeSymbols":
+        results = removeSymbolsAnalyze(text);
+        modeName = "去除符号";
+        break;
+      case "charBreak":
+        results = charBreak(text);
+        modeName = "字符断行";
+        break;
+      case "random":
+        results = await randomAnalyze(text);
+        modeName = "随机分词";
+        break;
       case "multi":
         const checkboxes = document.querySelectorAll("#multi-rule-checkboxes input:checked");
         const rules = Array.from(checkboxes).map((cb) => cb.value);
@@ -70,7 +107,7 @@ async function testSegmentation() {
           statsContainer.style.display = "none";
           return;
         }
-        results = await splitText(text, "multi", { rules });
+        results = await multiRuleAnalyze(text, rules);
         modeName = "多规则组合";
         break;
       default:
@@ -100,14 +137,20 @@ async function testSegmentation() {
   }
 }
 
-// 清空结果
+/**
+ * 清空结果
+ */
 function clearResult() {
   document.getElementById("segmentation-result").textContent =
     "请点击上方按钮进行测试";
   document.getElementById("stats").style.display = "none";
 }
 
-// 获取模式名称
+/**
+ * 获取模式名称
+ * @param {string} mode - 模式代码
+ * @returns {string} 模式名称
+ */
 function getModeName(mode) {
   const names = {
     code: "代码分析",
@@ -148,4 +191,3 @@ document.addEventListener("DOMContentLoaded", () => {
   // 页面加载后自动测试
   setTimeout(testSegmentation, 500);
 });
-

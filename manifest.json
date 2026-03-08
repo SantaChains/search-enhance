@@ -10,11 +10,9 @@
     "sidePanel",
     "activeTab",
     "scripting",
-    "contextMenus",
     "clipboardRead",
     "clipboardWrite"
   ],
-  "optional_permissions": ["background"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "commands": {
     "_execute_action": {
@@ -24,14 +22,21 @@
         "windows": "Alt+L",
         "linux": "Alt+L"
       },
-      "description": "Open the popup or side panel"
+      "description": "打开/关闭侧边栏"
     },
     "toggle_clipboard_monitoring": {
       "suggested_key": {
         "default": "Alt+K",
         "mac": "Command+Shift+K"
       },
-      "description": "Toggle clipboard monitoring"
+      "description": "切换剪贴板监控"
+    },
+    "open_side_panel_and_read": {
+      "suggested_key": {
+        "default": "Alt+J",
+        "mac": "Command+Shift+J"
+      },
+      "description": "读取剪贴板到输入框（如果侧边栏未打开则先打开）"
     }
   },
   "background": {
@@ -42,14 +47,14 @@
     {
       "matches": ["<all_urls>"],
       "js": ["src/content/index.js"],
-      "run_at": "document_idle"
+      "run_at": "document_start"
     }
   ],
   "side_panel": {
     "default_path": "src/popup/index.html"
   },
   "action": {
-    "default_title": "Enhance Search Buddy",
+    "default_title": "Decide Search",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
@@ -82,5 +87,5 @@
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; style-src 'self' 'unsafe-inline';"
   },
-  "minimum_chrome_version": "88"
+  "minimum_chrome_version": "120"
 }

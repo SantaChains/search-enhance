@@ -116,16 +116,16 @@
 
 ### 基本操作
 
-1. **启动扩展**：按 `Alt+L` 或点击扩展图标打开弹窗
-2. **打开侧边栏**：点击扩展图标右键选择"在侧边栏中打开"，或按 `Alt+J` 直接打开侧边栏并读取剪贴板内容
+1. **启动扩展**：按 `Alt+L` 或点击扩展图标打开侧边栏
+2. **读取剪贴板**：按 `Alt+J` 自动读取剪贴板内容到输入框
 3. **输入文本**：在搜索框中输入或粘贴内容
 4. **选择功能**：通过开关选择所需的处理方式
 5. **查看结果**：在结果区域查看处理后的内容
 6. **一键复制**：点击复制按钮获取结果
 
 **快捷操作提示**：
-- `Alt+L`：打开扩展弹窗
-- `Alt+J`：打开侧边栏并自动读取剪贴板内容
+- `Alt+L`：打开/关闭侧边栏并聚焦输入框
+- `Alt+J`：在侧边栏打开时,全局读取剪贴板内容
 - `Alt+K`：切换剪贴板监控状态
 
 ### 三大核心功能
@@ -209,7 +209,8 @@ search-enhance/
 │       └── logger.js             # 日志工具
 ├── manifest.json           # 扩展配置（Manifest V3）
 ├── package.json
-├── test.html               # 功能测试页面
+├── test/                    # 测试目录
+│   └── test.html           # 功能测试页面
 └── README.md
 ```
 
@@ -264,14 +265,14 @@ AI 适配器，支持多服务商：
 
 ## 🧪 测试
 
-打开 `test.html` 进行功能测试：
+打开 `test/test.html` 进行功能测试：
 
 ```bash
 # 启动本地服务器
 npx serve .
 
 # 访问测试页面
-open http://localhost:3000/test.html
+open http://localhost:3000/test/test.html
 ```
 
 ---
@@ -309,13 +310,9 @@ open http://localhost:3000/test.html
 ### 开发环境设置
 
 ```bash
-# 克隆项目
 git clone https://github.com/SantaChains/search-enhance.git
-
-# 进入项目目录
 cd search-enhance
-
-# 在 Edge/Chrome 中加载扩展进行测试
+npm install
 ```
 
 ### 代码规范

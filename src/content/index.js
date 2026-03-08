@@ -19,7 +19,7 @@ const CLIPBOARD_CONFIG = {
   STORAGE_KEY: 'globalClipboardContent',
   STORAGE_VERSION: 'globalClipboardVersion',
   NOTIFICATION_DURATION: 3000,
-  MAX_CONTENT_LENGTH: 50000,
+  MAX_CONTENT_LENGTH: 50000
 };
 
 // ============================================================================
@@ -35,7 +35,7 @@ const appState = {
   notificationId: null,
   initialized: false,
   permissionDenied: false, // 标记权限是否被拒绝
-  permissionWarningShown: false, // 标记是否已经显示过权限警告
+  permissionWarningShown: false // 标记是否已经显示过权限警告
 };
 
 // ============================================================================
@@ -43,9 +43,9 @@ const appState = {
 // ============================================================================
 
 const logger = {
-  info: (msg, ...args) => console.log(`[SearchBuddy-Global] ${msg}`, ...args),
-  error: (msg, ...args) => console.error(`[SearchBuddy-Global] ${msg}`, ...args),
-  warn: (msg, ...args) => console.warn(`[SearchBuddy-Global] ${msg}`, ...args),
+  info: (msg, ...args) => console.log(`[Decide Search-Global] ${msg}`, ...args),
+  error: (msg, ...args) => console.error(`[Decide Search-Global] ${msg}`, ...args),
+  warn: (msg, ...args) => console.warn(`[Decide Search-Global] ${msg}`, ...args)
 };
 
 // ============================================================================
@@ -62,7 +62,7 @@ async function isClipboardAvailable() {
     // 先检查权限状态（如果浏览器支持）
     if (navigator.permissions && navigator.permissions.query) {
       const result = await navigator.permissions.query({
-        name: 'clipboard-read',
+        name: 'clipboard-read'
       });
       if (result.state === 'denied') {
         return false;
@@ -105,7 +105,7 @@ async function pollClipboard() {
 
     const storageData = await chrome.storage.local.get([
       CLIPBOARD_CONFIG.STORAGE_KEY,
-      CLIPBOARD_CONFIG.STORAGE_VERSION,
+      CLIPBOARD_CONFIG.STORAGE_VERSION
     ]);
 
     const storedContent = storageData[CLIPBOARD_CONFIG.STORAGE_KEY] || '';
@@ -120,7 +120,7 @@ async function pollClipboard() {
 
       await chrome.storage.local.set({
         [CLIPBOARD_CONFIG.STORAGE_KEY]: text,
-        [CLIPBOARD_CONFIG.STORAGE_VERSION]: newVersion,
+        [CLIPBOARD_CONFIG.STORAGE_VERSION]: newVersion
       });
 
       await notifyBackground(text, newVersion);
@@ -156,7 +156,7 @@ async function pollClipboard() {
       try {
         await chrome.runtime.sendMessage({
           action: 'clipboardMonitoringToggled',
-          isActive: false,
+          isActive: false
         });
       } catch (e) {
         // 忽略错误
@@ -167,7 +167,7 @@ async function pollClipboard() {
 }
 
 function generateVersion() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
 async function notifyBackground(content, version) {
@@ -175,7 +175,7 @@ async function notifyBackground(content, version) {
     action: 'clipboardChanged',
     content: content,
     version: version,
-    source: 'content-script',
+    source: 'content-script'
   };
 
   // 优先通过Port发送
@@ -263,7 +263,7 @@ function connectToBackground() {
 
   try {
     appState.port = chrome.runtime.connect({
-      name: `global-clipboard-${Date.now().toString(36)}`,
+      name: `global-clipboard-${Date.now().toString(36)}`
     });
 
     appState.port.onMessage.addListener((message) => {
@@ -291,26 +291,26 @@ function connectToBackground() {
 
 function handlePortMessage(message) {
   switch (message.action) {
-    case 'clipboardMonitoringToggled':
-      handleMonitoringToggle(message.isActive, false);
-      break;
+  case 'clipboardMonitoringToggled':
+    handleMonitoringToggle(message.isActive, false);
+    break;
 
-    case 'syncContent':
-      if (message.content !== appState.lastContent) {
-        appState.lastContent = message.content;
-        appState.lastVersion = message.version;
-      }
-      break;
+  case 'syncContent':
+    if (message.content !== appState.lastContent) {
+      appState.lastContent = message.content;
+      appState.lastVersion = message.version;
+    }
+    break;
 
-    case 'ping':
-      if (appState.port) {
-        try {
-          appState.port.postMessage({ action: 'pong' });
-        } catch (e) {
-          // 忽略发送错误
-        }
+  case 'ping':
+    if (appState.port) {
+      try {
+        appState.port.postMessage({ action: 'pong' });
+      } catch (e) {
+        // 忽略发送错误
       }
-      break;
+    }
+    break;
   }
 }
 
@@ -352,7 +352,6 @@ async function handleMonitoringToggle(isActive, notify = true) {
     }
   }
 
-  logger.info('=== handleMonitoringToggle 结束 ===');
   return true;
 }
 
@@ -360,7 +359,7 @@ async function toggleMonitoring() {
   appState.isMonitoring = !appState.isMonitoring;
 
   await chrome.storage.local.set({
-    globalMonitoringEnabled: appState.isMonitoring,
+    globalMonitoringEnabled: appState.isMonitoring
   });
 
   handleMonitoringToggle(appState.isMonitoring, true);
@@ -375,7 +374,7 @@ async function toggleMonitoring() {
   try {
     await chrome.runtime.sendMessage({
       action: 'toggleGlobalMonitoring',
-      isActive: appState.isMonitoring,
+      isActive: appState.isMonitoring
     });
   } catch (e) {
     logger.warn('同步状态失败:', e.message);
@@ -391,13 +390,9 @@ async function toggleMonitoring() {
 // ============================================================================
 
 function showNotification(message, type = 'info') {
-  logger.info('=== showNotification 开始 ===');
-  logger.info('消息:', message, '类型:', type);
-
   removeNotification();
 
   if (!document.body) {
-    logger.error('document.body 不存在，无法显示通知');
     return;
   }
 
@@ -409,7 +404,7 @@ function showNotification(message, type = 'info') {
     success: '✓',
     error: '✕',
     warning: '⚠',
-    info: 'ℹ',
+    info: 'ℹ'
   };
 
   notification.innerHTML = `
@@ -462,14 +457,12 @@ function showNotification(message, type = 'info') {
   try {
     document.body.appendChild(notification);
     appState.notificationId = notification.id;
-    logger.info('通知元素已添加到DOM');
   } catch (e) {
     logger.error('添加通知到DOM失败:', e);
     return;
   }
 
   setTimeout(removeNotification, CLIPBOARD_CONFIG.NOTIFICATION_DURATION);
-  logger.info('=== showNotification 结束 ===');
 }
 
 function getBgColor(type) {
@@ -477,7 +470,7 @@ function getBgColor(type) {
     success: '#10b981',
     error: '#ef4444',
     warning: '#f59e0b',
-    info: '#3b82f6',
+    info: '#3b82f6'
   };
   return colors[type] || colors.info;
 }
@@ -514,8 +507,9 @@ function removeNotification() {
 }
 
 function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
   const div = document.createElement('div');
-  div.textContent = text;
+  div.textContent = String(text);
   return div.innerHTML;
 }
 
@@ -531,61 +525,61 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   (async () => {
     try {
       switch (request.action) {
-        case 'toggleGlobalMonitoring':
-          // 避免重复切换，因为toggleMonitoring已经会切换状态
-          if (request.isActive !== undefined && request.isActive !== appState.isMonitoring) {
-            await handleMonitoringToggle(request.isActive, true);
-          }
-          sendResponse({ success: true, isActive: appState.isMonitoring });
-          break;
+      case 'toggleGlobalMonitoring':
+        // 避免重复切换，因为toggleMonitoring已经会切换状态
+        if (request.isActive !== undefined && request.isActive !== appState.isMonitoring) {
+          await handleMonitoringToggle(request.isActive, true);
+        }
+        sendResponse({ success: true, isActive: appState.isMonitoring });
+        break;
 
-        case 'forceClipboardCheck':
-          // 强制立即检测剪贴板
-          if (appState.isMonitoring) {
-            await pollClipboard();
-            sendResponse({ success: true });
-          } else {
-            sendResponse({ success: false, error: '监控未开启' });
-          }
-          break;
-
-        case 'getMonitoringState':
-          sendResponse({
-            isActive: appState.isMonitoring,
-            lastContent: appState.lastContent,
-            lastVersion: appState.lastVersion,
-          });
-          break;
-
-        case 'clipboardChanged':
-          if (request.content !== appState.lastContent) {
-            appState.lastContent = request.content;
-            if (appState.initialized) {
-              showNotification('剪贴板内容已更新', 'success');
-            }
-          }
+      case 'forceClipboardCheck':
+        // 强制立即检测剪贴板
+        if (appState.isMonitoring) {
+          await pollClipboard();
           sendResponse({ success: true });
-          break;
+        } else {
+          sendResponse({ success: false, error: '监控未开启' });
+        }
+        break;
 
-        case 'showNotification':
-          showNotification(request.message, request.type);
-          sendResponse({ success: true });
-          break;
+      case 'getMonitoringState':
+        sendResponse({
+          isActive: appState.isMonitoring,
+          lastContent: appState.lastContent,
+          lastVersion: appState.lastVersion
+        });
+        break;
 
-        case 'syncState':
-          if (request.content !== undefined) {
-            appState.lastContent = request.content;
+      case 'clipboardChanged':
+        if (request.content !== appState.lastContent) {
+          appState.lastContent = request.content;
+          if (appState.initialized) {
+            showNotification('剪贴板内容已更新', 'success');
           }
-          if (request.version !== undefined) {
-            appState.lastVersion = request.version;
-          }
-          sendResponse({ success: true });
-          break;
+        }
+        sendResponse({ success: true });
+        break;
 
-        default:
-          // 未知消息类型
-          sendResponse({ success: false, error: '未知消息类型' });
-          break;
+      case 'showNotification':
+        showNotification(request.message, request.type);
+        sendResponse({ success: true });
+        break;
+
+      case 'syncState':
+        if (request.content !== undefined) {
+          appState.lastContent = request.content;
+        }
+        if (request.version !== undefined) {
+          appState.lastVersion = request.version;
+        }
+        sendResponse({ success: true });
+        break;
+
+      default:
+        // 未知消息类型
+        sendResponse({ success: false, error: '未知消息类型' });
+        break;
       }
     } catch (error) {
       logger.error('消息处理失败:', error);
@@ -594,108 +588,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   })();
 
   return true;
-});
-
-// ============================================================================
-// 键盘快捷键
-// ============================================================================
-
-/**
- * 处理键盘快捷键
- * Alt+K: 切换剪贴板监控
- * Alt+L: 打开侧边栏
- */
-document.addEventListener('keydown', async (event) => {
-  // Alt+K: 切换剪贴板监控
-  if (event.altKey && event.key.toLowerCase() === 'k' && !event.ctrlKey) {
-    event.preventDefault();
-    event.stopPropagation();
-
-    try {
-      await toggleMonitoring();
-    } catch (error) {
-      logger.error('切换监控失败:', error);
-    }
-    return;
-  }
-
-  // Alt+L: 打开侧边栏
-  if (event.altKey && event.key.toLowerCase() === 'l' && !event.ctrlKey && !event.shiftKey) {
-    event.preventDefault();
-    try {
-      await chrome.runtime.sendMessage({ action: 'openSidePanel' });
-    } catch (e) {
-      logger.warn('打开侧边栏失败:', e.message);
-    }
-    return;
-  }
-
-  // Alt+J: 读取剪贴板并打开侧边栏
-  if (event.altKey && event.key.toLowerCase() === 'j' && !event.ctrlKey && !event.shiftKey) {
-    event.preventDefault();
-    event.stopPropagation();
-    try {
-      // 先打开侧边栏
-      await chrome.runtime.sendMessage({ action: 'openSidePanel' });
-      // 通知 popup 读取剪贴板
-      await chrome.runtime.sendMessage({ action: 'readClipboardFromShortcut' });
-      showNotification('已读取剪贴板内容', 'info');
-    } catch (e) {
-      logger.warn('读取剪贴板失败:', e.message);
-    }
-    return;
-  }
-
-  // Alt+1: 切换提取和拆解功能
-  if (event.altKey && event.key === '1' && !event.ctrlKey) {
-    event.preventDefault();
-    event.stopPropagation();
-    try {
-      await chrome.runtime.sendMessage({ action: 'openSidePanel' });
-      await chrome.runtime.sendMessage({
-        action: 'toggleFeature',
-        feature: 'extract',
-      });
-      showNotification('提取和拆解功能切换', 'info');
-    } catch (e) {
-      logger.warn('切换提取功能失败:', e.message);
-    }
-    return;
-  }
-
-  // Alt+2: 切换链接生成功能
-  if (event.altKey && event.key === '2' && !event.ctrlKey) {
-    event.preventDefault();
-    event.stopPropagation();
-    try {
-      await chrome.runtime.sendMessage({ action: 'openSidePanel' });
-      await chrome.runtime.sendMessage({
-        action: 'toggleFeature',
-        feature: 'link_gen',
-      });
-      showNotification('链接生成功能切换', 'info');
-    } catch (e) {
-      logger.warn('切换链接生成功能失败:', e.message);
-    }
-    return;
-  }
-
-  // Alt+3: 切换多格式分析功能
-  if (event.altKey && event.key === '3' && !event.ctrlKey) {
-    event.preventDefault();
-    event.stopPropagation();
-    try {
-      await chrome.runtime.sendMessage({ action: 'openSidePanel' });
-      await chrome.runtime.sendMessage({
-        action: 'toggleFeature',
-        feature: 'multi_format',
-      });
-      showNotification('多格式分析功能切换', 'info');
-    } catch (e) {
-      logger.warn('切换多格式分析功能失败:', e.message);
-    }
-    return;
-  }
 });
 
 // ============================================================================
@@ -712,20 +604,42 @@ async function initialize() {
   logger.info('========================================');
 
   try {
-    // 从存储读取监控状态
-    const result = await chrome.storage.local.get('globalMonitoringEnabled');
-    logger.info('从storage读取 globalMonitoringEnabled:', result.globalMonitoringEnabled);
+    // 先尝试从background获取当前状态
+    let isEnabled = true;
+    let lastContent = '';
 
-    const isEnabled = result.globalMonitoringEnabled !== false;
-    logger.info('计算后的启用状态:', isEnabled);
+    try {
+      const response = await chrome.runtime.sendMessage({
+        action: 'getGlobalMonitoringState'
+      });
+      if (response) {
+        isEnabled = response.isActive ?? true;
+        lastContent = response.lastContent || '';
+        logger.info('从background获取状态成功:', { isEnabled, lastContentLen: lastContent.length });
+      }
+    } catch (e) {
+      logger.warn('无法从background获取状态，使用本地存储');
+    }
+
+    // 如果获取失败，回退到本地存储
+    if (!lastContent) {
+      const result = await chrome.storage.local.get('globalMonitoringEnabled');
+      isEnabled = result.globalMonitoringEnabled !== false;
+      logger.info('从storage读取 globalMonitoringEnabled:', isEnabled);
+    }
+
+    // 加载最近的剪贴板内容（如果从background没有获取到）
+    if (!lastContent) {
+      const contentResult = await chrome.storage.local.get(CLIPBOARD_CONFIG.STORAGE_KEY);
+      lastContent = contentResult[CLIPBOARD_CONFIG.STORAGE_KEY] || '';
+    }
 
     // 应用监控状态
     await handleMonitoringToggle(isEnabled, false);
 
-    // 加载最近的剪贴板内容
-    const contentResult = await chrome.storage.local.get(CLIPBOARD_CONFIG.STORAGE_KEY);
-    if (contentResult[CLIPBOARD_CONFIG.STORAGE_KEY]) {
-      appState.lastContent = contentResult[CLIPBOARD_CONFIG.STORAGE_KEY];
+    // 设置最后内容
+    if (lastContent) {
+      appState.lastContent = lastContent;
       logger.info('已加载最近的剪贴板内容，长度:', appState.lastContent.length);
     } else {
       logger.info('storage中没有剪贴板内容');
@@ -750,7 +664,7 @@ async function initialize() {
   try {
     await chrome.runtime.sendMessage({
       action: 'contentScriptReady',
-      hasMonitoring: appState.isMonitoring,
+      hasMonitoring: appState.isMonitoring
     });
   } catch (e) {
     // 忽略错误，background可能未准备好
@@ -797,8 +711,21 @@ window.addEventListener('beforeunload', () => {
 /**
  * 暴露全局接口用于调试
  */
-window.__searchBuddyGlobal = {
+window.__decideSearchGlobal = {
   getState: () => ({ ...appState }),
   toggle: toggleMonitoring,
-  showNotification: showNotification,
+  showNotification: showNotification
 };
+
+// ============================================================================
+// 快捷键处理说明
+// ============================================================================
+// 所有快捷键（Alt+L, Alt+J, Alt+K）由 Background Script 通过 Manifest 统一处理
+// Content Script 不再重复监听，避免冲突和重复执行
+//
+// 快捷键处理流程：
+// 1. 用户按下快捷键
+// 2. Chrome 触发 Background 的 chrome.commands.onCommand
+// 3. Background 执行相应操作（打开侧边栏/切换监控等）
+// 4. 如需 Content Script 配合，Background 通过消息通知
+// ============================================================================

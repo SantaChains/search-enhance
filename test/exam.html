@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>分词功能测试</title>
+    <title>Decide Search - 分词功能测试</title>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -114,22 +114,55 @@ JavaScript是一种广泛使用的编程语言，主要用于Web开发。它可�
         <div class="mode-tab" data-mode="multi">多规则组合</div>
       </div>
 
-      <div id="multi-rule-section" style="display: none; margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 4px;">
+      <div
+        id="multi-rule-section"
+        style="
+          display: none;
+          margin: 10px 0;
+          padding: 10px;
+          background: #f0f0f0;
+          border-radius: 4px;
+        "
+      >
         <p>选择多个规则（分词规则在前，去除规则在后）：</p>
         <div id="multi-rule-checkboxes">
-          <label style="margin-right: 10px;"><input type="checkbox" value="symbolSplit" /> 符号分词</label>
-          <label style="margin-right: 10px;"><input type="checkbox" value="whitespaceSplit" /> 空格分词</label>
-          <label style="margin-right: 10px;"><input type="checkbox" value="newlineSplit" /> 换行分词</label>
-          <label style="margin-right: 10px;"><input type="checkbox" value="chineseEnglishSplit" /> 中英分词</label>
-          <label style="margin-right: 10px;"><input type="checkbox" value="uppercaseSplit" /> 大写分词</label>
-          <label style="margin-right: 10px;"><input type="checkbox" value="namingSplit" /> 命名分词</label>
-          <label style="margin-right: 10px;"><input type="checkbox" value="digitSplit" /> 数字分词</label>
-          <br><br>
-          <label style="margin-right: 10px;"><input type="checkbox" value="removeWhitespace" /> 去除空格</label>
-          <label style="margin-right: 10px;"><input type="checkbox" value="removeSymbols" /> 去除符号</label>
-          <label style="margin-right: 10px;"><input type="checkbox" value="removeChinese" /> 去除中文</label>
-          <label style="margin-right: 10px;"><input type="checkbox" value="removeEnglish" /> 去除英文</label>
-          <label style="margin-right: 10px;"><input type="checkbox" value="removeDigits" /> 去除数字</label>
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="symbolSplit" /> 符号分词</label
+          >
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="whitespaceSplit" /> 空格分词</label
+          >
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="newlineSplit" /> 换行分词</label
+          >
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="chineseEnglishSplit" /> 中英分词</label
+          >
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="uppercaseSplit" /> 大写分词</label
+          >
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="namingSplit" /> 命名分词</label
+          >
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="digitSplit" /> 数字分词</label
+          >
+          <br /><br />
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="removeWhitespace" /> 去除空格</label
+          >
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="removeSymbols" /> 去除符号</label
+          >
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="removeChinese" /> 去除中文</label
+          >
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="removeEnglish" /> 去除英文</label
+          >
+          <label style="margin-right: 10px"
+            ><input type="checkbox" value="removeDigits" /> 去除数字</label
+          >
         </div>
       </div>
 
@@ -143,10 +176,8 @@ JavaScript是一种广泛使用的编程语言，主要用于Web开发。它可�
 
       <div class="result" id="result-container">
         <h3>分词结果</h3>
-        <div id="segmentation-result" class="segmentation-result">
-          请点击上方按钮进行测试
-        </div>
-        <div class="stats" id="stats" style="display: none;"></div>
+        <div id="segmentation-result" class="segmentation-result">请点击上方按钮进行测试</div>
+        <div class="stats" id="stats" style="display: none"></div>
       </div>
     </div>
 

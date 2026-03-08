@@ -14,7 +14,7 @@ export const STORAGE_KEYS = {
   USER_PREFERENCES: 'userPreferences',
   LAST_BACKUP: 'lastBackup',
   // 分词设置
-  TOKENIZER_SETTINGS: 'tokenizerSettings',
+  TOKENIZER_SETTINGS: 'tokenizerSettings'
 };
 
 // Default settings with enhanced search engines
@@ -23,43 +23,43 @@ export const DEFAULTS = {
     {
       name: 'Bing',
       template: 'https://www.bing.com/search?q=%s',
-      category: 'general',
+      category: 'general'
     },
     {
       name: 'Google',
       template: 'https://www.google.com/search?q=%s',
-      category: 'general',
+      category: 'general'
     },
     {
       name: 'Google Scholar',
       template: 'https://scholar.google.com/scholar?q=%s',
-      category: 'academic',
+      category: 'academic'
     },
     {
       name: 'Metaso',
       template: 'https://metaso.cn/search?q=%s',
-      category: 'ai',
+      category: 'ai'
     },
     {
       name: 'Sogou',
       template: 'https://www.sogou.com/web?query=%s',
-      category: 'general',
+      category: 'general'
     },
     {
       name: 'GitHub',
       template: 'https://github.com/search?q=%s',
-      category: 'code',
+      category: 'code'
     },
     {
       name: 'Stack Overflow',
       template: 'https://stackoverflow.com/search?q=%s',
-      category: 'code',
+      category: 'code'
     },
     {
       name: 'MDN',
       template: 'https://developer.mozilla.org/en-US/search?q=%s',
-      category: 'docs',
-    },
+      category: 'docs'
+    }
   ],
   history: [],
   historyLimit: 100,
@@ -69,7 +69,7 @@ export const DEFAULTS = {
     language: 'zh-CN',
     autoClipboard: true,
     showNotifications: true,
-    compactMode: false,
+    compactMode: false
   },
   lastBackup: null,
   // 分词设置
@@ -94,15 +94,15 @@ export const DEFAULTS = {
     // 命名分词
     namingRemoveSymbol: true, // 是否去除符号（默认true）
     // 历史栈
-    historyMaxSize: 6, // 历史栈上限
-  },
+    historyMaxSize: 6 // 历史栈上限
+  }
 };
 
 // Utility functions
 const logger = {
   info: (message, ...args) => console.log(`[Storage] ${message}`, ...args),
   error: (message, ...args) => console.error(`[Storage] ${message}`, ...args),
-  warn: (message, ...args) => console.warn(`[Storage] ${message}`, ...args),
+  warn: (message, ...args) => console.warn(`[Storage] ${message}`, ...args)
 };
 
 /**
@@ -238,7 +238,7 @@ export function createHistoryEntry(url) {
     domain: '',
     title: '',
     isGitHubRepo: false,
-    repoInfo: null,
+    repoInfo: null
   };
 
   try {
@@ -254,7 +254,7 @@ export function createHistoryEntry(url) {
         entry.repoInfo = {
           username: pathParts[0],
           repository: pathParts[1],
-          fullName: `${pathParts[0]}/${pathParts[1]}`,
+          fullName: `${pathParts[0]}/${pathParts[1]}`
         };
         entry.title = entry.repoInfo.fullName;
       }
@@ -267,7 +267,7 @@ export function createHistoryEntry(url) {
         entry.repoInfo = {
           username: pathParts[0],
           repository: pathParts[1],
-          fullName: `${pathParts[0]}/${pathParts[1]}`,
+          fullName: `${pathParts[0]}/${pathParts[1]}`
         };
         entry.title = entry.repoInfo.fullName;
       }
@@ -400,7 +400,7 @@ export async function exportSettings() {
     const exportData = {
       ...settings,
       exportDate: new Date().toISOString(),
-      version: '1.0.0',
+      version: '1.0.0'
     };
 
     logger.info('Settings exported successfully');
@@ -424,6 +424,7 @@ export async function importSettings(importData) {
     }
 
     // Extract settings (exclude metadata)
+    // eslint-disable-next-line no-unused-vars
     const { exportDate, version, ...settings } = importData;
 
     if (!validateSettings(settings)) {
@@ -473,7 +474,7 @@ export async function getStorageInfo() {
       bytesUsed: usage,
       historyCount: settings.history.length,
       engineCount: settings.searchEngines.length,
-      lastBackup: settings.lastBackup,
+      lastBackup: settings.lastBackup
     };
   } catch (error) {
     logger.error('Failed to get storage info:', error);
@@ -481,7 +482,7 @@ export async function getStorageInfo() {
       bytesUsed: 0,
       historyCount: 0,
       engineCount: 0,
-      lastBackup: null,
+      lastBackup: null
     };
   }
 }

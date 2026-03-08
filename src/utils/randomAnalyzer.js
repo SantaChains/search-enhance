@@ -19,7 +19,7 @@
 const CONFIG = {
   randomMinLength: 1,
   randomMaxLength: 10,
-  chaosMinTokens: 3,
+  chaosMinTokens: 3
 };
 
 /**
@@ -42,6 +42,7 @@ export function getRandomConfig() {
 // Fisher-Yates 洗牌算法
 // ============================================================================
 
+// eslint-disable-next-line no-unused-vars
 function shuffleArray(arr) {
   const result = [...arr];
   for (let i = result.length - 1; i > 0; i--) {
@@ -55,6 +56,7 @@ function shuffleArray(arr) {
 // 随机分词核心算法
 // ============================================================================
 
+// eslint-disable-next-line no-unused-vars
 function getRandomLength() {
   return (
     Math.floor(Math.random() * (CONFIG.randomMaxLength - CONFIG.randomMinLength + 1)) +

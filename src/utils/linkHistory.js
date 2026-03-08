@@ -3,6 +3,13 @@
  * 负责记录、存储和管理处理过的链接历史
  */
 
+import {
+  createLinkHistoryExport,
+  parseImportData,
+  extractDataForContext,
+  IMPORT_CONTEXTS
+} from './exportImportSchema.js';
+
 class LinkHistoryManager {
   constructor() {
     this.storageKey = 'linkHistory';
@@ -13,33 +20,33 @@ class LinkHistoryManager {
     this.searchEngines = [
       {
         pattern: /^https?:\/\/www\.google\.com\/search\?.*q=([^&]+)/i,
-        name: 'Google',
+        name: 'Google'
       },
       {
         pattern: /^https?:\/\/www\.bing\.com\/search\?.*q=([^&]+)/i,
-        name: 'Bing',
+        name: 'Bing'
       },
       {
         pattern: /^https?:\/\/duckduckgo\.com\/\?.*q=([^&]+)/i,
-        name: 'DuckDuckGo',
+        name: 'DuckDuckGo'
       },
       {
         pattern: /^https?:\/\/search\.yahoo\.com\/search\?.*p=([^&]+)/i,
-        name: 'Yahoo',
+        name: 'Yahoo'
       },
       {
         pattern: /^https?:\/\/www\.baidu\.com\/s\?.*wd=([^&]+)/i,
-        name: '百度',
+        name: '百度'
       },
       {
         pattern: /^https?:\/\/www\.baidu\.com\/s\?.*word=([^&]+)/i,
-        name: '百度',
+        name: '百度'
       },
       { pattern: /^https?:\/\/www\.so\.com\/s\?.*q=([^&]+)/i, name: '360搜索' },
       {
         pattern: /^https?:\/\/www\.sogou\.com\/web\?.*query=([^&]+)/i,
-        name: '搜狗',
-      },
+        name: '搜狗'
+      }
     ];
   }
 
@@ -96,7 +103,7 @@ class LinkHistoryManager {
         lastAccessed: Date.now(),
         tags: this.generateTags(url, linkType),
         metadata: this.extractMetadata(url),
-        isSearch: false,
+        isSearch: false
       };
 
       if (existingIndex !== -1) {
@@ -105,7 +112,7 @@ class LinkHistoryManager {
           ...history[existingIndex],
           accessCount: history[existingIndex].accessCount + 1,
           lastAccessed: Date.now(),
-          title: title || history[existingIndex].title,
+          title: title || history[existingIndex].title
         };
       } else {
         // 添加新记录
@@ -162,9 +169,9 @@ class LinkHistoryManager {
         metadata: {
           isSearch: true,
           query: trimmedQuery,
-          engine: engine,
+          engine: engine
         },
-        isSearch: true,
+        isSearch: true
       };
 
       if (existingIndex !== -1) {
@@ -173,7 +180,7 @@ class LinkHistoryManager {
           ...history[existingIndex],
           accessCount: history[existingIndex].accessCount + 1,
           lastAccessed: Date.now(),
-          searchUrl: searchUrl || history[existingIndex].searchUrl,
+          searchUrl: searchUrl || history[existingIndex].searchUrl
         };
       } else {
         // 添加新记录
@@ -205,7 +212,7 @@ class LinkHistoryManager {
         if (match && match[1]) {
           return {
             query: decodeURIComponent(match[1].replace(/\+/g, ' ')),
-            engine: engine.name,
+            engine: engine.name
           };
         }
       }
@@ -323,32 +330,36 @@ class LinkHistoryManager {
   async exportHistory(format = 'json', options = {}) {
     try {
       const history = await this.getHistory(options);
+      const settings = await this.getSettings();
 
       let content = '';
       let filename = '';
       let mimeType = '';
 
       switch (format.toLowerCase()) {
-        case 'json':
-          content = JSON.stringify(history, null, 2);
-          filename = `search-buddy-history-${this.formatDate(new Date())}.json`;
-          mimeType = 'application/json';
-          break;
+      case 'json': {
+        // 使用统一 Schema 格式导出
+        const exportData = createLinkHistoryExport(history, settings);
+        content = JSON.stringify(exportData, null, 2);
+        filename = `search-buddy-link-history-${this.formatDate(new Date())}.json`;
+        mimeType = 'application/json';
+        break;
+      }
 
-        case 'csv':
-          content = this.convertToCSV(history);
-          filename = `search-buddy-history-${this.formatDate(new Date())}.csv`;
-          mimeType = 'text/csv';
-          break;
+      case 'csv':
+        content = this.convertToCSV(history);
+        filename = `search-buddy-link-history-${this.formatDate(new Date())}.csv`;
+        mimeType = 'text/csv';
+        break;
 
-        case 'txt':
-          content = this.convertToText(history);
-          filename = `search-buddy-history-${this.formatDate(new Date())}.txt`;
-          mimeType = 'text/plain';
-          break;
+      case 'txt':
+        content = this.convertToText(history);
+        filename = `search-buddy-link-history-${this.formatDate(new Date())}.txt`;
+        mimeType = 'text/plain';
+        break;
 
-        default:
-          throw new Error('不支持的导出格式');
+      default:
+        throw new Error('不支持的导出格式');
       }
 
       // 创建下载链接
@@ -381,35 +392,60 @@ class LinkHistoryManager {
   async importHistory(data, options = {}) {
     try {
       const { merge = true } = options;
-      let importedData = [];
-      let parsedData = null;
 
-      // 解析数据
-      if (typeof data === 'string') {
-        try {
-          parsedData = JSON.parse(data);
-        } catch {
-          // 尝试解析CSV格式
-          importedData = this.parseCSV(data);
+      // 使用统一 Schema 解析数据
+      const parseResult = parseImportData(data, IMPORT_CONTEXTS.LINK_HISTORY);
+
+      if (!parseResult.success) {
+        // 尝试解析CSV格式
+        if (typeof data === 'string' && data.includes(',')) {
+          const csvData = this.parseCSV(data);
+          if (csvData.length > 0) {
+            return this.processImportData(csvData, merge);
+          }
         }
-      } else if (Array.isArray(data)) {
-        importedData = data;
-      } else if (data && typeof data === 'object') {
-        parsedData = data;
+        return {
+          success: false,
+          imported: 0,
+          errors: 1,
+          message: parseResult.error || '无效的数据格式'
+        };
       }
 
-      // 处理包装格式（新版导出格式）
-      if (parsedData && typeof parsedData === 'object') {
-        if (parsedData.history && Array.isArray(parsedData.history)) {
-          // 新版包装格式
-          importedData = parsedData.history;
-        } else if (Array.isArray(parsedData)) {
-          // 旧版数组格式
-          importedData = parsedData;
-        } else {
-          // 单条记录
-          importedData = [parsedData];
+      // 提取链接历史数据
+      const extractResult = extractDataForContext(
+        parseResult.data,
+        IMPORT_CONTEXTS.LINK_HISTORY
+      );
+
+      if (!extractResult.success) {
+        return {
+          success: false,
+          imported: 0,
+          errors: 1,
+          message: extractResult.error
+        };
+      }
+
+      // 获取链接历史项数组
+      let importedData = [];
+      const extractedData = extractResult.data;
+
+      if (extractedData.linkHistory) {
+        // 新格式：{ items: [...], settings: {...} }
+        if (extractedData.linkHistory.items) {
+          importedData = extractedData.linkHistory.items;
+          // 可选：更新设置
+          if (extractedData.linkHistory.settings) {
+            await this.saveSettings(extractedData.linkHistory.settings);
+          }
+        } else if (Array.isArray(extractedData.linkHistory)) {
+          // 兼容旧格式数组
+          importedData = extractedData.linkHistory;
         }
+      } else if (Array.isArray(extractedData)) {
+        // 纯数组格式
+        importedData = extractedData;
       }
 
       if (!Array.isArray(importedData) || importedData.length === 0) {
@@ -417,10 +453,30 @@ class LinkHistoryManager {
           success: false,
           imported: 0,
           errors: 1,
-          message: '无效的数据格式',
+          message: '数据中没有找到链接历史记录'
         };
       }
 
+      return this.processImportData(importedData, merge);
+    } catch (error) {
+      console.error('导入历史记录失败:', error);
+      return {
+        success: false,
+        imported: 0,
+        errors: 1,
+        message: error.message
+      };
+    }
+  }
+
+  /**
+   * 处理导入数据（内部方法）
+   * @param {Array} importedData - 导入的数据数组
+   * @param {boolean} merge - 是否合并
+   * @returns {Object} 导入结果
+   */
+  async processImportData(importedData, merge) {
+    try {
       let currentHistory = merge ? await this.getHistory() : [];
       let imported = 0;
       let errors = 0;
@@ -461,7 +517,7 @@ class LinkHistoryManager {
             lastAccessed: item.lastAccessed || Date.now(),
             tags: Array.isArray(item.tags) ? item.tags : [],
             metadata: item.metadata || {},
-            isSearch: item.isSearch || false,
+            isSearch: item.isSearch || false
           };
 
           currentHistory.push(normalizedItem);
@@ -493,7 +549,7 @@ class LinkHistoryManager {
         imported,
         errors,
         total: currentHistory.length,
-        message: `成功导入 ${imported} 条记录${errors > 0 ? `，${errors} 条失败` : ''}`,
+        message: `成功导入 ${imported} 条记录${errors > 0 ? `，${errors} 条失败` : ''}`
       };
     } catch (error) {
       console.error('导入历史记录失败:', error);
@@ -524,8 +580,8 @@ class LinkHistoryManager {
   readFileContent(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.onerror = (e) => reject(new Error('读取文件失败'));
+      reader.onload = (event) => resolve(event.target.result);
+      reader.onerror = () => reject(new Error('读取文件失败'));
       reader.readAsText(file);
     });
   }
@@ -629,7 +685,7 @@ class LinkHistoryManager {
         linksBySource: this.getLinksBySource(history),
         accessFrequency: this.getAccessFrequency(history),
         topSearchQueries: this.getTopSearchQueries(searchHistory),
-        searchEngines: this.getSearchEngineStats(searchHistory),
+        searchEngines: this.getSearchEngineStats(searchHistory)
       };
 
       return stats;
@@ -792,7 +848,7 @@ class LinkHistoryManager {
    * 生成唯一ID
    */
   generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
   }
 
   /**
@@ -816,7 +872,7 @@ class LinkHistoryManager {
       '访问次数',
       '添加时间',
       '最后访问',
-      '是否搜索',
+      '是否搜索'
     ];
     const rows = history.map((item) => [
       `"${(item.title || '').replace(/"/g, '""')}"`,
@@ -828,7 +884,7 @@ class LinkHistoryManager {
       item.accessCount,
       new Date(item.timestamp).toLocaleString('zh-CN'),
       new Date(item.lastAccessed).toLocaleString('zh-CN'),
-      item.isSearch ? 'true' : 'false',
+      item.isSearch ? 'true' : 'false'
     ]);
 
     return [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
@@ -922,7 +978,7 @@ class LinkHistoryManager {
     return {
       totalAccess,
       averageAccess: Math.round(avgAccess * 100) / 100,
-      mostAccessed: history.sort((a, b) => b.accessCount - a.accessCount).slice(0, 5),
+      mostAccessed: history.sort((a, b) => b.accessCount - a.accessCount).slice(0, 5)
     };
   }
 
@@ -936,7 +992,7 @@ class LinkHistoryManager {
       return {
         enabled: true,
         maxItems: 100,
-        ...result[this.settingsKey],
+        ...result[this.settingsKey]
       };
     } catch (error) {
       console.error('获取链接历史设置失败:', error);

@@ -2,6 +2,12 @@
 import { getSettings, saveSettings, DEFAULTS } from '../utils/storage.js';
 import linkHistoryManager from '../utils/linkHistory.js';
 import clipboardHistoryManager from '../utils/clipboardHistory.js';
+import {
+  createFullExport,
+  parseImportData,
+  extractDataForContext,
+  IMPORT_CONTEXTS
+} from '../utils/exportImportSchema.js';
 
 // XSS防护：HTML转义函数
 function escapeHtml(text) {
@@ -123,13 +129,40 @@ document.addEventListener('DOMContentLoaded', async () => {
   const openExamPageBtn = document.getElementById('open-exam-page-btn');
 
   if (openTestPageBtn) {
-    openTestPageBtn.addEventListener('click', () => openTestPage('test.html'));
+    openTestPageBtn.addEventListener('click', () => openTestPage('test/test.html'));
   }
   if (openDebugPageBtn) {
-    openDebugPageBtn.addEventListener('click', () => openTestPage('debug.html'));
+    openDebugPageBtn.addEventListener('click', () => openTestPage('test/debug.html'));
   }
   if (openExamPageBtn) {
-    openExamPageBtn.addEventListener('click', () => openTestPage('exam.html'));
+    openExamPageBtn.addEventListener('click', () => openTestPage('test/exam.html'));
+  }
+
+  // Schema 调试弹窗事件
+  const openSchemaDebugBtn = document.getElementById('open-schema-debug-btn');
+  const closeSchemaDebugBtn = document.getElementById('close-schema-debug-btn');
+  const schemaDebugModal = document.getElementById('schema-debug-modal');
+
+  if (openSchemaDebugBtn && schemaDebugModal) {
+    openSchemaDebugBtn.addEventListener('click', () => {
+      schemaDebugModal.style.display = 'flex';
+      initSchemaDebug();
+    });
+  }
+
+  if (closeSchemaDebugBtn && schemaDebugModal) {
+    closeSchemaDebugBtn.addEventListener('click', () => {
+      schemaDebugModal.style.display = 'none';
+    });
+  }
+
+  // 点击弹窗外部关闭
+  if (schemaDebugModal) {
+    schemaDebugModal.addEventListener('click', (e) => {
+      if (e.target === schemaDebugModal) {
+        schemaDebugModal.style.display = 'none';
+      }
+    });
   }
 
   // 分词设置事件
@@ -240,7 +273,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!file) return;
 
     const result = await linkHistoryManager.importFromFile(file, {
-      merge: true,
+      merge: true
     });
     if (result.success) {
       renderLinkHistoryList();
@@ -358,7 +391,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!file) return;
 
     const result = await clipboardHistoryManager.importFromFile(file, {
-      merge: true,
+      merge: true
     });
     if (result.success) {
       renderClipboardHistoryList();
@@ -419,16 +452,52 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function handleAddEngine() {
     const name = newEngineNameInput.value.trim();
     const template = newEngineTemplateInput.value.trim();
-    if (name && template && template.includes('%s')) {
-      settings.searchEngines.push({ name, template });
-      await saveSettings(settings);
-      renderEngineList();
-      newEngineNameInput.value = '';
-      newEngineTemplateInput.value = '';
-      showNotification('搜索引擎添加成功！');
-    } else {
-      showNotification('请提供有效的名称和包含 "%s" 的URL模板', false);
+
+    if (!name) {
+      showNotification('请输入搜索引擎名称', false);
+      newEngineNameInput.focus();
+      return;
     }
+
+    if (name.length > 30) {
+      showNotification('名称不能超过30个字符', false);
+      newEngineNameInput.focus();
+      return;
+    }
+
+    if (!template) {
+      showNotification('请输入URL模板', false);
+      newEngineTemplateInput.focus();
+      return;
+    }
+
+    if (template.length > 500) {
+      showNotification('URL模板不能超过500个字符', false);
+      newEngineTemplateInput.focus();
+      return;
+    }
+
+    if (!template.includes('%s')) {
+      showNotification('URL模板必须包含 "%s" 作为搜索词占位符', false);
+      newEngineTemplateInput.focus();
+      return;
+    }
+
+    const nameExists = settings.searchEngines.some(
+      (engine) => engine.name.toLowerCase() === name.toLowerCase()
+    );
+    if (nameExists) {
+      showNotification('该搜索引擎名称已存在', false);
+      newEngineNameInput.focus();
+      return;
+    }
+
+    settings.searchEngines.push({ name, template });
+    await saveSettings(settings);
+    renderEngineList();
+    newEngineNameInput.value = '';
+    newEngineTemplateInput.value = '';
+    showNotification('搜索引擎添加成功！');
   }
 
   async function handleRemoveEngine(index) {
@@ -544,7 +613,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const options = {
           settings: dialog.querySelector('#export-settings').checked,
           linkHistory: dialog.querySelector('#export-link-history').checked,
-          clipboardHistory: dialog.querySelector('#export-clipboard-history').checked,
+          clipboardHistory: dialog.querySelector('#export-clipboard-history').checked
         };
         document.body.removeChild(dialog);
         resolve(options);
@@ -572,25 +641,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
       }
 
-      // 构建导出数据
-      const exportData = {
-        type: 'allData',
-        appName: 'SearchBuddy',
-        version: '2.0',
-        exportDate: new Date().toISOString(),
-        data: {},
+      // 收集数据
+      const dataPromises = [];
+      const exportContent = {
+        settings: null,
+        linkHistory: null,
+        clipboardHistory: null
       };
 
-      const dataPromises = [];
-
       if (options.settings) {
-        exportData.data.settings = settings;
+        exportContent.settings = settings;
       }
 
       if (options.linkHistory) {
         dataPromises.push(
           linkHistoryManager.getHistory().then((history) => {
-            exportData.data.linkHistory = history;
+            exportContent.linkHistory = {
+              items: history,
+              settings: { enabled: true, maxItems: 100 }
+            };
           })
         );
       }
@@ -598,12 +667,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (options.clipboardHistory) {
         dataPromises.push(
           clipboardHistoryManager.getHistory().then((history) => {
-            exportData.data.clipboardHistory = history;
+            exportContent.clipboardHistory = {
+              items: history,
+              settings: { enabled: true, maxItems: 100, autoSave: true }
+            };
           })
         );
       }
 
       await Promise.all(dataPromises);
+
+      // 使用统一 Schema 创建导出数据
+      const exportData = createFullExport(
+        exportContent.settings,
+        exportContent.linkHistory,
+        exportContent.clipboardHistory
+      );
 
       const dataStr = JSON.stringify(exportData, null, 2);
       const blob = new Blob([dataStr], { type: 'application/json' });
@@ -628,6 +707,97 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  /**
+   * 显示导入确认对话框
+   * @param {Object} data 预解析的数据
+   * @returns {Promise<boolean>} 用户是否确认导入
+   */
+  function showImportConfirmDialog(data) {
+    return new Promise((resolve) => {
+      const dialog = document.createElement('div');
+      dialog.className = 'import-confirm-dialog';
+      dialog.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      `;
+
+      const dataTypes = [];
+      if (data.settings) dataTypes.push('设置');
+      if (data.linkHistory) dataTypes.push('链接历史');
+      if (data.clipboardHistory) dataTypes.push('剪贴板历史');
+
+      dialog.innerHTML = `
+        <div style="
+          background: var(--bg-primary, white);
+          padding: 24px;
+          border-radius: 12px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+          min-width: 320px;
+          max-width: 90%;
+          border: 1px solid var(--border-color, #e5e7eb);
+        ">
+          <h3 style="margin: 0 0 16px 0; font-size: 18px; color: var(--text-primary, #1f2937);">确认导入</h3>
+          <p style="margin: 0 0 12px 0; font-size: 14px; color: var(--text-secondary, #374151);">
+            检测到以下数据将被导入，这将<strong>合并</strong>到现有数据中：
+          </p>
+          <ul style="margin: 0 0 20px 0; padding-left: 20px; font-size: 14px; color: var(--text-secondary, #374151);">
+            ${dataTypes.map((t) => `<li>${t}</li>`).join('')}
+          </ul>
+          <p style="margin: 0 0 20px 0; font-size: 13px; color: var(--text-muted, #6b7280);">
+            ⚠️ 导入后可在各功能页面查看合并结果
+          </p>
+          <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <button id="import-cancel" style="
+              padding: 8px 16px;
+              border: 1px solid var(--border-color, #d1d5db);
+              background: var(--bg-secondary, white);
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 14px;
+              color: var(--text-muted, #6b7280);
+            ">取消</button>
+            <button id="import-confirm" style="
+              padding: 8px 16px;
+              border: none;
+              background: var(--primary, #3b82f6);
+              color: white;
+              border-radius: 6px;
+              cursor: pointer;
+              font-size: 14px;
+            ">确认导入</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(dialog);
+
+      dialog.querySelector('#import-cancel').addEventListener('click', () => {
+        document.body.removeChild(dialog);
+        resolve(false);
+      });
+
+      dialog.querySelector('#import-confirm').addEventListener('click', () => {
+        document.body.removeChild(dialog);
+        resolve(true);
+      });
+
+      dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+          document.body.removeChild(dialog);
+          resolve(false);
+        }
+      });
+    });
+  }
+
   async function handleImport(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -635,25 +805,53 @@ document.addEventListener('DOMContentLoaded', async () => {
     const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const importedData = JSON.parse(e.target.result);
+        const parseResult = parseImportData(e.target.result, IMPORT_CONTEXTS.SETTINGS);
 
-        // 检查是否是新格式的完整备份文件 (v2.0格式，数据在data字段中)
-        if (
-          importedData.version === '2.0' &&
-          importedData.type === 'allData' &&
-          importedData.data
-        ) {
-          const data = importedData.data;
+        if (!parseResult.success) {
+          showNotification(parseResult.error || '无效的配置文件', false);
+          event.target.value = '';
+          return;
+        }
 
-          // 导入设置
-          if (data.settings) {
-            settings = { ...settings, ...data.settings };
-            await saveSettings(settings);
-          }
+        const extractResult = extractDataForContext(parseResult.data, IMPORT_CONTEXTS.SETTINGS);
 
-          // 导入链接历史
-          if (data.linkHistory && Array.isArray(data.linkHistory)) {
-            for (const item of data.linkHistory) {
+        if (!extractResult.success) {
+          showNotification(extractResult.error, false);
+          event.target.value = '';
+          return;
+        }
+
+        const extractedData = extractResult.data;
+
+        const hasData =
+          extractedData.settings || extractedData.linkHistory || extractedData.clipboardHistory;
+        if (!hasData) {
+          showNotification('没有可导入的数据', false);
+          event.target.value = '';
+          return;
+        }
+
+        const confirmed = await showImportConfirmDialog(extractedData);
+        if (!confirmed) {
+          showNotification('已取消导入');
+          event.target.value = '';
+          return;
+        }
+
+        let importedSettings = false;
+        let importedLinkHistory = false;
+        let importedClipboardHistory = false;
+
+        if (extractedData.settings) {
+          settings = { ...settings, ...extractedData.settings };
+          await saveSettings(settings);
+          importedSettings = true;
+        }
+
+        if (extractedData.linkHistory) {
+          const linkItems = extractedData.linkHistory.items || extractedData.linkHistory;
+          if (Array.isArray(linkItems)) {
+            for (const item of linkItems) {
               if (item.url) {
                 await linkHistoryManager.addLink(
                   item.url,
@@ -662,45 +860,45 @@ document.addEventListener('DOMContentLoaded', async () => {
                 );
               }
             }
+            importedLinkHistory = true;
           }
+        }
 
-          // 导入剪贴板历史
-          if (data.clipboardHistory && Array.isArray(data.clipboardHistory)) {
-            for (const item of data.clipboardHistory) {
+        if (extractedData.clipboardHistory) {
+          const clipboardItems =
+            extractedData.clipboardHistory.items || extractedData.clipboardHistory;
+          if (Array.isArray(clipboardItems)) {
+            for (const item of clipboardItems) {
               if (item.text) {
                 await clipboardHistoryManager.addItem(item.text, {
-                  source: item.source || 'import',
+                  source: item.source || 'import'
                 });
               }
             }
+            importedClipboardHistory = true;
           }
-
-          renderEngineList();
-          renderLinkHistoryList();
-          renderClipboardHistoryList();
-          initTokenizerSettings();
-
-          const linkCount = data.linkHistory?.length || 0;
-          const clipboardCount = data.clipboardHistory?.length || 0;
-          showNotification(
-            `导入成功！包含 ${linkCount} 条链接历史，${clipboardCount} 条剪贴板历史`
-          );
         }
-        // 兼容旧格式：只包含settings的配置文件
-        else if (importedData.searchEngines) {
-          settings = { ...settings, ...importedData };
-          await saveSettings(settings);
-          renderEngineList();
-          initTokenizerSettings();
-          showNotification('设置导入成功！');
+
+        renderEngineList();
+        renderLinkHistoryList();
+        renderClipboardHistoryList();
+        initTokenizerSettings();
+
+        const importedItems = [];
+        if (importedSettings) importedItems.push('设置');
+        if (importedLinkHistory) importedItems.push('链接历史');
+        if (importedClipboardHistory) importedItems.push('剪贴板历史');
+
+        if (importedItems.length > 0) {
+          showNotification(`${importedItems.join('、')}导入成功！`);
         } else {
-          showNotification('无效的配置文件', false);
+          showNotification('没有可导入的数据', false);
         }
       } catch (error) {
         showNotification('解析配置文件失败', false);
         console.error(error);
       }
-      event.target.value = ''; // 清空输入
+      event.target.value = '';
     };
     reader.readAsText(file);
   }
@@ -729,7 +927,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       'gpt-4o',
       'gpt-4-turbo',
       'claude-3-5-sonnet',
-      'gemini-1.5-flash',
+      'gemini-1.5-flash'
     ];
     const customRow = document.getElementById('ai-model-custom-row');
     if (predefinedModels.includes(savedModel)) {
@@ -806,7 +1004,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const baseURL = aiBaseURLInput.value.trim();
     const apiKey = aiApiKeyInput.value.trim();
     const model = getCurrentModel();
-    const provider = aiProviderInput.value;
 
     if (!baseURL) {
       showTestResult('请输入 Base URL', 'error');
@@ -830,13 +1027,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
+          Authorization: `Bearer ${apiKey}`
         },
         body: JSON.stringify({
           model: model,
           messages: [{ role: 'user', content: 'Hi' }],
-          max_tokens: 5,
-        }),
+          max_tokens: 5
+        })
       });
 
       if (response.ok) {
@@ -893,7 +1090,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       randomMinLen: parseInt(randomMinLenInput.value) || 1,
       randomMaxLen: parseInt(randomMaxLenInput.value) || 10,
       namingRemoveSymbol: namingRemoveSymbolInput.checked,
-      historyMaxSize: parseInt(historyMaxSizeInput.value) || 6,
+      historyMaxSize: parseInt(historyMaxSizeInput.value) || 6
     };
 
     // 验证输入
@@ -943,38 +1140,44 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
+  let notificationStyleInjected = false;
+
   function showNotification(message, isSuccess = true) {
+    if (!notificationStyleInjected) {
+      const style = document.createElement('style');
+      style.id = 'notification-animation-style';
+      style.textContent = `
+        @keyframes slideIn {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+      `;
+      document.head.appendChild(style);
+      notificationStyleInjected = true;
+    }
+
     const notification = document.createElement('div');
     notification.className = 'notification';
     notification.textContent = message;
     notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: ${isSuccess ? 'var(--success)' : 'var(--danger)'};
-            color: white;
-            padding: 12px 20px;
-            border-radius: var(--radius-md);
-            z-index: 10000;
-            font-size: 14px;
-            box-shadow: var(--shadow-md);
-            animation: slideIn 0.3s ease-out;
-        `;
-
-    const style = document.createElement('style');
-    style.textContent = `
-            @keyframes slideIn {
-                from {
-                    transform: translateX(100%);
-                    opacity: 0;
-                }
-                to {
-                    transform: translateX(0);
-                    opacity: 1;
-                }
-            }
-        `;
-    document.head.appendChild(style);
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: ${isSuccess ? 'var(--success)' : 'var(--danger)'};
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius-md);
+      z-index: 10000;
+      font-size: 14px;
+      box-shadow: var(--shadow-md);
+      animation: slideIn 0.3s ease-out;
+    `;
 
     document.body.appendChild(notification);
 
@@ -982,56 +1185,270 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (notification.parentNode) {
         notification.remove();
       }
-      if (style.parentNode) {
-        style.remove();
-      }
     }, 3000);
   }
-});
 
-/**
- * 打开测试页面
- * @param {string} pageName 页面文件名
- */
-function openTestPage(pageName) {
-  const extensionId = chrome.runtime.id;
-  const pageUrl = `chrome-extension://${extensionId}/${pageName}`;
-
-  chrome.tabs.create({ url: pageUrl }, (tab) => {
-    if (chrome.runtime.lastError) {
-      console.error('打开测试页面失败:', chrome.runtime.lastError);
-      // 使用 alert 替代 showNotification，因为 showNotification 在 DOMContentLoaded 内部定义
-      alert('打开测试页面失败');
-    } else {
-      console.log(`已打开测试页面: ${pageName}`);
+  /**
+   * 显示调试结果
+   * @param {string} elementId 元素ID
+   * @param {string} message 消息内容
+   * @param {boolean} isSuccess 是否成功
+   */
+  function showDebugResult(elementId, message, isSuccess) {
+    const el = document.getElementById(elementId);
+    if (el) {
+      el.textContent = message;
+      el.className = `debug-result ${isSuccess ? 'success' : 'error'}`;
     }
-  });
-}
-
-/**
- * 初始化响应式布局
- */
-function initResponsiveLayout() {
-  const resizeObserver = new ResizeObserver((entries) => {
-    for (const entry of entries) {
-      const width = entry.contentRect.width;
-      const container = document.getElementById('resizable-container');
-
-      if (width < 480) {
-        document.body.classList.add('narrow-layout');
-        document.body.classList.remove('medium-layout', 'wide-layout');
-      } else if (width < 768) {
-        document.body.classList.add('medium-layout');
-        document.body.classList.remove('narrow-layout', 'wide-layout');
-      } else {
-        document.body.classList.add('wide-layout');
-        document.body.classList.remove('narrow-layout', 'medium-layout');
-      }
-    }
-  });
-
-  const container = document.getElementById('resizable-container');
-  if (container) {
-    resizeObserver.observe(container);
   }
-}
+
+  /**
+   * 记录调试日志
+   * @param {string} message 日志消息
+   * @param {string} type 日志类型
+   */
+  function debugLog(message, type = 'info') {
+    const logEl = document.getElementById('schema-debug-log');
+    if (logEl) {
+      const timestamp = new Date().toLocaleTimeString();
+      const prefix = type === 'error' ? '❌' : '✅';
+      logEl.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+  }
+
+  /**
+   * Schema 调试功能初始化
+   * 在设置页面弹窗中提供导入导出测试功能
+   */
+  function initSchemaDebug() {
+    const logEl = document.getElementById('schema-debug-log');
+    if (logEl) {
+      logEl.textContent = 'Schema 调试工具已就绪\n等待操作...';
+    }
+
+    // 绑定导入文件按钮
+    const importFileBtn = document.getElementById('schema-debug-import-file-btn');
+    const fileInput = document.getElementById('schema-debug-file-import');
+    if (importFileBtn && fileInput) {
+      importFileBtn.addEventListener('click', async () => {
+        const file = fileInput.files[0];
+        if (!file) {
+          showDebugResult('schema-debug-import-file-result', '请先选择一个 JSON 文件', false);
+          return;
+        }
+
+        try {
+          const text = await file.text();
+          const result = parseImportData(text, IMPORT_CONTEXTS.SETTINGS);
+
+          if (result.success) {
+            const extractResult = extractDataForContext(result.data, IMPORT_CONTEXTS.SETTINGS);
+            if (extractResult.success) {
+              const dataKeys = Object.keys(extractResult.data);
+              showDebugResult(
+                'schema-debug-import-file-result',
+                `✅ 导入成功！\n导出类型: ${result.data.metadata.exportType}\n包含数据: ${dataKeys.join(', ')}\n是否为旧格式: ${result.isLegacy ? '是' : '否'}`,
+                true
+              );
+              debugLog(`成功导入文件: ${file.name}`);
+            } else {
+              showDebugResult(
+                'schema-debug-import-file-result',
+                `❌ ${extractResult.error}`,
+                false
+              );
+              debugLog(`提取数据失败: ${extractResult.error}`, 'error');
+            }
+          } else {
+            showDebugResult('schema-debug-import-file-result', `❌ ${result.error}`, false);
+            debugLog(`解析失败: ${result.error}`, 'error');
+          }
+        } catch (error) {
+          showDebugResult('schema-debug-import-file-result', `❌ ${error.message}`, false);
+          debugLog(`导入错误: ${error.message}`, 'error');
+        }
+      });
+    }
+
+    // 绑定解析文本按钮
+    const importTextBtn = document.getElementById('schema-debug-import-text-btn');
+    const textInput = document.getElementById('schema-debug-text-import');
+    if (importTextBtn && textInput) {
+      importTextBtn.addEventListener('click', () => {
+        const text = textInput.value;
+        if (!text.trim()) {
+          showDebugResult('schema-debug-import-text-result', '请先输入 JSON 数据', false);
+          return;
+        }
+
+        try {
+          const result = parseImportData(text, IMPORT_CONTEXTS.SETTINGS);
+          if (result.success) {
+            showDebugResult(
+              'schema-debug-import-text-result',
+              `✅ 解析成功！\n应用: ${result.data.metadata.appName}\n版本: ${result.data.metadata.version}\n导出类型: ${result.data.metadata.exportType}\n是否为旧格式: ${result.isLegacy ? '是' : '否'}`,
+              true
+            );
+            debugLog('文本解析成功');
+          } else {
+            showDebugResult('schema-debug-import-text-result', `❌ ${result.error}`, false);
+            debugLog(`解析失败: ${result.error}`, 'error');
+          }
+        } catch (error) {
+          showDebugResult('schema-debug-import-text-result', `❌ ${error.message}`, false);
+          debugLog(`解析错误: ${error.message}`, 'error');
+        }
+      });
+    }
+
+    // 绑定加载示例按钮
+    const loadSampleBtn = document.getElementById('schema-debug-load-sample-btn');
+    if (loadSampleBtn && textInput) {
+      loadSampleBtn.addEventListener('click', async () => {
+        try {
+          const response = await fetch('../test/sample.schema.json');
+          const data = await response.json();
+          textInput.value = JSON.stringify(data, null, 2);
+          debugLog('示例数据已加载');
+        } catch (error) {
+          debugLog(`加载示例失败: ${error.message}`, 'error');
+        }
+      });
+    }
+
+    // 绑定清空按钮
+    const clearTextBtn = document.getElementById('schema-debug-clear-text-btn');
+    if (clearTextBtn && textInput) {
+      clearTextBtn.addEventListener('click', () => {
+        textInput.value = '';
+        debugLog('文本已清空');
+      });
+    }
+
+    // 绑定导出测试按钮
+    const exportFullBtn = document.getElementById('schema-debug-export-full-btn');
+    if (exportFullBtn) {
+      exportFullBtn.addEventListener('click', async () => {
+        try {
+          const linkHistory = await linkHistoryManager.getHistory();
+          const clipboardHistory = await clipboardHistoryManager.getHistory();
+
+          const exportData = createFullExport(
+            settings,
+            { items: linkHistory, settings: { enabled: true, maxItems: 100 } },
+            { items: clipboardHistory, settings: { enabled: true, maxItems: 100, autoSave: true } }
+          );
+
+          showDebugResult(
+            'schema-debug-export-result',
+            `✅ 导出成功！\n导出类型: ${exportData.metadata.exportType}\n数据分区: ${Object.keys(exportData.data).join(', ')}`,
+            true
+          );
+          debugLog('完整备份导出测试通过');
+        } catch (error) {
+          showDebugResult('schema-debug-export-result', `❌ ${error.message}`, false);
+          debugLog(`导出失败: ${error.message}`, 'error');
+        }
+      });
+    }
+
+    // 绑定旧格式测试按钮
+    const testLegacySettingsBtn = document.getElementById('schema-debug-test-legacy-settings-btn');
+    if (testLegacySettingsBtn) {
+      testLegacySettingsBtn.addEventListener('click', () => {
+        const legacyData = {
+          searchEngines: [{ name: 'Bing', template: 'https://www.bing.com/search?q=%s' }],
+          defaultEngine: 'Bing'
+        };
+
+        import('../utils/exportImportSchema.js').then(
+          ({ detectLegacyFormat, convertLegacyToNew, validateSchema, IMPORT_CONTEXTS }) => {
+            const legacyType = detectLegacyFormat(legacyData);
+            const converted = convertLegacyToNew(legacyData, legacyType, IMPORT_CONTEXTS.SETTINGS);
+            const validation = validateSchema(converted);
+
+            showDebugResult(
+              'schema-debug-legacy-result',
+              `✅ 旧格式转换成功！\n检测到的格式: ${legacyType}\n转换后类型: ${converted.metadata.exportType}\n验证结果: ${validation.valid ? '有效' : '无效'}`,
+              true
+            );
+            debugLog('旧格式设置兼容测试通过');
+          }
+        );
+      });
+    }
+
+    const testLegacyLinkBtn = document.getElementById('schema-debug-test-legacy-link-btn');
+    if (testLegacyLinkBtn) {
+      testLegacyLinkBtn.addEventListener('click', () => {
+        const legacyData = [{ id: '1', url: 'https://example.com', title: 'Example' }];
+
+        import('../utils/exportImportSchema.js').then(
+          ({ detectLegacyFormat, convertLegacyToNew, validateSchema, IMPORT_CONTEXTS }) => {
+            const legacyType = detectLegacyFormat(legacyData);
+            const converted = convertLegacyToNew(
+              legacyData,
+              legacyType,
+              IMPORT_CONTEXTS.LINK_HISTORY
+            );
+            const validation = validateSchema(converted);
+
+            showDebugResult(
+              'schema-debug-legacy-result',
+              `✅ 旧格式转换成功！\n检测到的格式: ${legacyType}\n转换后类型: ${converted.metadata.exportType}\n记录数: ${converted.data.linkHistory.items.length}\n验证结果: ${validation.valid ? '有效' : '无效'}`,
+              true
+            );
+            debugLog('旧格式链接历史兼容测试通过');
+          }
+        );
+      });
+    }
+  }
+
+  /**
+   * 打开测试页面
+   * @param {string} pageName 页面文件名
+   */
+  function openTestPage(pageName) {
+    const extensionId = chrome.runtime.id;
+    const pageUrl = `chrome-extension://${extensionId}/${pageName}`;
+
+    chrome.tabs.create({ url: pageUrl }, (_tab) => {
+      if (chrome.runtime.lastError) {
+        console.error('打开测试页面失败:', chrome.runtime.lastError);
+        // 使用 alert 替代 showNotification，因为 showNotification 在 DOMContentLoaded 内部定义
+        alert('打开测试页面失败');
+      } else {
+        console.log(`已打开测试页面: ${pageName}`);
+      }
+    });
+  }
+
+  /**
+   * 初始化响应式布局
+   */
+  function initResponsiveLayout() {
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+
+        if (width < 480) {
+          document.body.classList.add('narrow-layout');
+          document.body.classList.remove('medium-layout', 'wide-layout');
+        } else if (width < 768) {
+          document.body.classList.add('medium-layout');
+          document.body.classList.remove('narrow-layout', 'wide-layout');
+        } else {
+          document.body.classList.add('wide-layout');
+          document.body.classList.remove('narrow-layout', 'medium-layout');
+        }
+      }
+    });
+
+    const container = document.getElementById('resizable-container');
+    if (container) {
+      resizeObserver.observe(container);
+    }
+  }
+});

@@ -1,4 +1,4 @@
-// debug.js - 调试测试页面脚本
+// debug.js - Decide Search 调试测试页面脚本
 
 import {
   splitText,
@@ -6,6 +6,15 @@ import {
   smartAnalyze,
   chineseAnalyze,
   englishAnalyze,
+  codeAnalyze,
+  aiAnalyze,
+  sentenceAnalyze,
+  halfSentenceAnalyze,
+  charBreak,
+  removeSymbolsAnalyze,
+  randomAnalyze,
+  multiRuleAnalyze,
+  analyzeTextForMultipleFormats,
 } from "../src/utils/textProcessor.js";
 import { getSettings, saveSettings } from "../src/utils/storage.js";
 
@@ -13,6 +22,11 @@ const results = [];
 let passCount = 0;
 let failCount = 0;
 
+/**
+ * 记录日志到页面
+ * @param {string} message - 日志消息
+ * @param {string} type - 日志类型 (info/error/warn)
+ */
 function log(message, type = "info") {
   const container = document.getElementById("logContainer");
   const entry = document.createElement("div");
@@ -23,6 +37,12 @@ function log(message, type = "info") {
   container.scrollTop = container.scrollHeight;
 }
 
+/**
+ * 添加测试结果到页面
+ * @param {string} name - 测试名称
+ * @param {boolean} passed - 是否通过
+ * @param {string} message - 附加消息
+ */
 function addResult(name, passed, message = "") {
   results.push({ name, passed, message });
   const div = document.createElement("div");
@@ -39,7 +59,9 @@ function addResult(name, passed, message = "") {
   }
 }
 
-// 测试1: 检查Chrome API可用性
+/**
+ * 测试1: 检查Chrome API可用性
+ */
 async function testChromeAPI() {
   log("检查Chrome API可用性...", "info");
 
@@ -98,7 +120,9 @@ async function testChromeAPI() {
   return allPassed;
 }
 
-// 测试2: 检查剪贴板API
+/**
+ * 测试2: 检查剪贴板API
+ */
 async function testClipboardAPI() {
   log("检查剪贴板API...", "info");
 
@@ -153,7 +177,9 @@ async function testClipboardAPI() {
   return allPassed;
 }
 
-// 测试3: 检查Storage数据
+/**
+ * 测试3: 检查Storage数据
+ */
 async function testStorage() {
   log("检查Storage数据...", "info");
 
@@ -180,7 +206,9 @@ async function testStorage() {
   }
 }
 
-// 测试4: 发送消息到Background
+/**
+ * 测试4: 发送消息到Background
+ */
 async function testMessaging() {
   log("测试消息传递...", "info");
 
@@ -198,14 +226,16 @@ async function testMessaging() {
   }
 }
 
-// 测试5: 检查Content Script状态
+/**
+ * 测试5: 检查Content Script状态
+ */
 function testContentScript() {
   log("检查Content Script状态...", "info");
 
   // 在独立测试页面中，Content Script不会自动注入
-  // 所以__searchBuddyGlobal会是undefined，这是预期的行为
-  if (window.__searchBuddyGlobal) {
-    const state = window.__searchBuddyGlobal.getState();
+  // 所以__decideSearchGlobal会是undefined，这是预期的行为
+  if (window.__decideSearchGlobal) {
+    const state = window.__decideSearchGlobal.getState();
     log(`监控状态: ${state.isMonitoring}`, "info");
     log(`最后内容长度: ${state.lastContent?.length || 0}`, "info");
     addResult(
@@ -226,7 +256,9 @@ function testContentScript() {
   }
 }
 
-// 测试6: 测试文本处理器
+/**
+ * 测试6: 测试文本处理器
+ */
 async function testTextProcessor() {
   log("测试文本处理器...", "info");
 
@@ -249,6 +281,36 @@ async function testTextProcessor() {
       input: "getUserInfo handleSubmit",
       expectMin: 4,
     },
+    {
+      name: "代码分析",
+      fn: codeAnalyze,
+      input: "function test() { return 1; }",
+      expectMin: 1,
+    },
+    {
+      name: "整句分析",
+      fn: sentenceAnalyze,
+      input: "Hello. World! 你好。世界！",
+      expectMin: 2,
+    },
+    {
+      name: "半句分析",
+      fn: halfSentenceAnalyze,
+      input: "Hello; World; 你好；世界",
+      expectMin: 2,
+    },
+    {
+      name: "字符断行",
+      fn: charBreak,
+      input: "a".repeat(200),
+      expectMin: 2,
+    },
+    {
+      name: "去除符号",
+      fn: removeSymbolsAnalyze,
+      input: "Hello, World! 你好，世界！",
+      expectMin: 4,
+    },
   ];
 
   let allPassed = true;
@@ -267,6 +329,35 @@ async function testTextProcessor() {
     }
   }
 
+  // 测试异步分析模式
+  try {
+    const randomResult = await randomAnalyze("Hello World 你好世界", { minLength: 2, maxLength: 5 });
+    const passed = randomResult.length >= 2;
+    log(
+      `${passed ? "✓" : "✗"} 随机分词: ${randomResult.length} 项`,
+      passed ? "info" : "error",
+    );
+    if (!passed) allPassed = false;
+  } catch (e) {
+    log(`✗ 随机分词失败: ${e.message}`, "error");
+    allPassed = false;
+  }
+
+  // 测试多规则组合
+  try {
+    const multiResult = await multiRuleAnalyze("Hello World 你好世界", ["chineseEnglishSplit", "whitespaceSplit"]);
+    const passed = multiResult.length >= 4;
+    log(
+      `${passed ? "✓" : "✗"} 多规则组合: ${multiResult.length} 项`,
+      passed ? "info" : "error",
+    );
+    if (!passed) allPassed = false;
+  } catch (e) {
+    log(`✗ 多规则组合失败: ${e.message}`, "error");
+    allPassed = false;
+  }
+
+  // 测试内容类型检测
   try {
     const detection = detectContentType("https://github.com/user/repo");
     const passed = detection.type === "url_collection";
@@ -280,6 +371,21 @@ async function testTextProcessor() {
     allPassed = false;
   }
 
+  // 测试多格式分析
+  try {
+    const formats = analyzeTextForMultipleFormats("test@example.com https://github.com/user/repo");
+    const passed = formats.length >= 2;
+    log(
+      `${passed ? "✓" : "✗"} 多格式分析: ${formats.length} 种格式`,
+      passed ? "info" : "error",
+    );
+    if (!passed) allPassed = false;
+  } catch (e) {
+    log(`✗ 多格式分析失败: ${e.message}`, "error");
+    allPassed = false;
+  }
+
+  // 测试splitText主函数
   try {
     const result = await splitText("Hello 你好 123", "smart");
     const passed = result.length >= 3;
@@ -301,7 +407,9 @@ async function testTextProcessor() {
   return allPassed;
 }
 
-// 测试7: 测试存储模块
+/**
+ * 测试7: 测试存储模块
+ */
 async function testStorageModule() {
   log("测试存储模块...", "info");
 
@@ -338,7 +446,9 @@ async function testStorageModule() {
   }
 }
 
-// 运行所有测试
+/**
+ * 运行所有测试
+ */
 async function runTests() {
   log("=".repeat(50), "info");
   log("开始测试...", "info");
@@ -360,10 +470,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // 手动测试按钮
   document.getElementById("testNotification").addEventListener("click", () => {
     if (
-      window.__searchBuddyGlobal &&
-      window.__searchBuddyGlobal.showNotification
+      window.__decideSearchGlobal &&
+      window.__decideSearchGlobal.showNotification
     ) {
-      window.__searchBuddyGlobal.showNotification(
+      window.__decideSearchGlobal.showNotification(
         "测试通知 " + new Date().toLocaleTimeString(),
         "success",
       );
@@ -384,10 +494,10 @@ document.addEventListener("DOMContentLoaded", () => {
           "info",
         );
         if (
-          window.__searchBuddyGlobal &&
-          window.__searchBuddyGlobal.showNotification
+          window.__decideSearchGlobal &&
+          window.__decideSearchGlobal.showNotification
         ) {
-          window.__searchBuddyGlobal.showNotification(
+          window.__decideSearchGlobal.showNotification(
             "读取成功: " + text.substring(0, 20) + "...",
             "info",
           );
@@ -406,10 +516,10 @@ document.addEventListener("DOMContentLoaded", () => {
         });
         log(`切换监控: ${response.isActive}`, "info");
         if (
-          window.__searchBuddyGlobal &&
-          window.__searchBuddyGlobal.showNotification
+          window.__decideSearchGlobal &&
+          window.__decideSearchGlobal.showNotification
         ) {
-          window.__searchBuddyGlobal.showNotification(
+          window.__decideSearchGlobal.showNotification(
             `监控已${response.isActive ? "开启" : "关闭"}`,
             response.isActive ? "success" : "info",
           );

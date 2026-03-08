@@ -2,6 +2,7 @@
   "name": "Decide_Search",
   "version": "2.0.0",
   "description": "A powerful browser extension to enhance search experience with intelligent text processing",
+  "type": "module",
   "main": "manifest.json",
   "scripts": {
     "build": "echo 'Building extension...'",
@@ -34,8 +35,9 @@
   },
   "homepage": "https://github.com/SantaChains/search-enhance#readme",
   "devDependencies": {
-    "eslint": "^8.57.0",
-    "prettier": "^3.2.5"
+    "eslint": "^10.0.3",
+    "globals": "^17.4.0",
+    "prettier": "^3.8.1"
   },
   "engines": {
     "node": ">=14.0.0"

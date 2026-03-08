@@ -568,6 +568,26 @@
             </svg>
             分词测试
           </button>
+          <button id="open-schema-debug-btn" class="secondary">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-file-json"
+            >
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="M10 12a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1" />
+              <path d="M14 12a1 1 0 0 1 1 1v3a1 1 0 0 0 1 1" />
+            </svg>
+            Schema 调试
+          </button>
         </div>
       </section>
 
@@ -783,6 +803,100 @@
           </div>
         </div>
       </section>
+    </div>
+
+    <!-- Schema 调试弹窗 -->
+    <div id="schema-debug-modal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+              <polyline points="14 2 14 8 20 8" />
+              <path d="M10 12a1 1 0 0 0-1 1v3a1 1 0 0 1-1 1" />
+              <path d="M14 12a1 1 0 0 1 1 1v3a1 1 0 0 0 1 1" />
+            </svg>
+            Schema 导入导出调试
+          </h2>
+          <button class="modal-close" id="close-schema-debug-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="schema-debug-section">
+            <h3>📥 导入测试</h3>
+            <div class="test-case">
+              <label>从文件导入：</label>
+              <input type="file" id="schema-debug-file-import" accept=".json" class="file-input" />
+              <button class="btn-secondary" id="schema-debug-import-file-btn">导入文件</button>
+              <div id="schema-debug-import-file-result" class="debug-result"></div>
+            </div>
+            <div class="test-case">
+              <label>从文本导入：</label>
+              <textarea
+                id="schema-debug-text-import"
+                placeholder="在此粘贴 JSON 数据..."
+                rows="6"
+              ></textarea>
+              <div class="btn-group">
+                <button class="btn-secondary" id="schema-debug-import-text-btn">解析文本</button>
+                <button class="btn-secondary" id="schema-debug-load-sample-btn">加载示例</button>
+                <button class="btn-secondary" id="schema-debug-clear-text-btn">清空</button>
+              </div>
+              <div id="schema-debug-import-text-result" class="debug-result"></div>
+            </div>
+          </div>
+
+          <div class="schema-debug-section">
+            <h3>📤 导出测试</h3>
+            <div class="test-case">
+              <div class="btn-group">
+                <button class="btn-secondary" id="schema-debug-export-full-btn">
+                  导出完整备份
+                </button>
+                <button class="btn-secondary" id="schema-debug-export-settings-btn">
+                  导出设置
+                </button>
+                <button class="btn-secondary" id="schema-debug-export-link-btn">
+                  导出链接历史
+                </button>
+                <button class="btn-secondary" id="schema-debug-export-clipboard-btn">
+                  导出剪贴板历史
+                </button>
+              </div>
+              <div id="schema-debug-export-result" class="debug-result"></div>
+            </div>
+          </div>
+
+          <div class="schema-debug-section">
+            <h3>🔄 兼容性测试</h3>
+            <div class="test-case">
+              <div class="btn-group">
+                <button class="btn-secondary" id="schema-debug-test-legacy-settings-btn">
+                  测试旧格式设置
+                </button>
+                <button class="btn-secondary" id="schema-debug-test-legacy-link-btn">
+                  测试旧格式链接历史
+                </button>
+              </div>
+              <div id="schema-debug-legacy-result" class="debug-result"></div>
+            </div>
+          </div>
+
+          <div class="schema-debug-section">
+            <h3>📊 验证日志</h3>
+            <div id="schema-debug-log" class="debug-log">等待测试...</div>
+          </div>
+        </div>
+      </div>
     </div>
   </body>
 </html>

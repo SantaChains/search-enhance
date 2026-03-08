@@ -166,7 +166,7 @@ const DEFAULT_DICT = {
     '浏览器',
     '字符串',
     '正则',
-    '表达式',
+    '表达式'
   ]),
 
   // 3字词
@@ -314,7 +314,7 @@ const DEFAULT_DICT = {
     '服务器',
     '数据库',
     '缓存',
-    '消息',
+    '消息'
   ]),
 
   // 4字词
@@ -453,8 +453,8 @@ const DEFAULT_DICT = {
     '服务器端',
     '数据库表',
     '缓存策略',
-    '消息队列',
-  ]),
+    '消息队列'
+  ])
 };
 
 // 停用词表
@@ -490,7 +490,7 @@ const STOP_WORDS = new Set([
   '没有',
   '我们',
   '你们',
-  '他们',
+  '他们'
 ]);
 
 // ============================================================================
@@ -539,9 +539,9 @@ class DoubleArrayTrie {
     // 从最大长度开始匹配（正向最大匹配）
     const maxCheckLen = Math.min(this.maxLen, text.length - pos);
     for (let len = maxCheckLen; len >= this.minLen; len--) {
-      const substr = text.substr(pos, len);
-      if (this.wordSet.has(substr)) {
-        return { word: substr, len };
+      const word = text.slice(pos, pos + len);
+      if (this.wordSet.has(word)) {
+        return { word, len };
       }
     }
     return null;
@@ -557,7 +557,7 @@ class FastCWS {
     this.dict = {
       w2: new Set(),
       w3: new Set(),
-      w4: new Set(),
+      w4: new Set()
     };
     this.stopWords = new Set(STOP_WORDS);
     this.trie = new DoubleArrayTrie();
@@ -581,7 +581,7 @@ class FastCWS {
     const allWords = [
       ...Array.from(this.dict.w4),
       ...Array.from(this.dict.w3),
-      ...Array.from(this.dict.w2),
+      ...Array.from(this.dict.w2)
     ];
 
     this.trie.build(allWords);
@@ -607,7 +607,7 @@ class FastCWS {
       const allWords = [
         ...Array.from(this.dict.w4),
         ...Array.from(this.dict.w3),
-        ...Array.from(this.dict.w2),
+        ...Array.from(this.dict.w2)
       ];
       this.trie.build(allWords);
     }
@@ -630,7 +630,7 @@ class FastCWS {
       removeStopWords = true, // 是否移除停用词
       keepEnglish = true, // 是否保留英文单词
       keepNumber = true, // 是否保留数字
-      minLength = 1, // 最小词长度
+      minLength = 1 // 最小词长度
     } = options;
 
     const result = [];
@@ -680,13 +680,12 @@ class FastCWS {
         // 按长度从大到小匹配（4->3->2）
         for (let len = 4; len >= 2; len--) {
           if (i + len <= text.length) {
-            const substr = text.substr(i, len);
+            const word = text.slice(i, i + len);
             const dictKey = `w${len}`;
 
-            if (this.dict[dictKey] && this.dict[dictKey].has(substr)) {
-              // 检查是否是停用词
-              if (!removeStopWords || !this.stopWords.has(substr)) {
-                result.push(substr);
+            if (this.dict[dictKey] && this.dict[dictKey].has(word)) {
+              if (!removeStopWords || !this.stopWords.has(word)) {
+                result.push(word);
               }
               i += len;
               matched = true;
@@ -784,7 +783,7 @@ class FastCWS {
     const allWords = [
       ...Array.from(this.dict.w4),
       ...Array.from(this.dict.w3),
-      ...Array.from(this.dict.w2),
+      ...Array.from(this.dict.w2)
     ];
 
     // 按长度降序排序，避免短词覆盖长词
@@ -819,8 +818,8 @@ export { FastCWS, fastCWS };
 export default fastCWS;
 
 // 兼容CommonJS
-// eslint-disable-next-line no-undef
+ 
 if (typeof module !== 'undefined' && module.exports) {
-  // eslint-disable-next-line no-undef
+   
   module.exports = { FastCWS, fastCWS };
 }

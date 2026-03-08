@@ -63,7 +63,7 @@ function isChineseOrEmoji(char) {
 // ============================================================================
 
 const CONFIG = {
-  namingRemoveSymbol: true, // 命名分词是否去除符号
+  namingRemoveSymbol: true // 命名分词是否去除符号
 };
 
 export function updateConfig(newConfig) {
@@ -84,44 +84,44 @@ export const RULES = {
     name: '符号分词',
     description: '符号放在上词尾，除非是成对符号的前一个',
     group: 'split',
-    order: 1,
+    order: 1
   },
   whitespaceSplit: {
     name: '空格分词',
     description: '放前一词词尾',
     group: 'split',
-    order: 2,
+    order: 2
   },
   newlineSplit: {
     name: '换行分词',
     description: '换行放前一词词尾',
     group: 'split',
-    order: 3,
+    order: 3
   },
   chineseEnglishSplit: {
     name: '中英分词',
     description: '分离中文和英文',
     group: 'split',
-    order: 4,
+    order: 4
   },
   uppercaseSplit: {
     name: '大写分词',
     description: '将每个大写字母分成一格，与命名分词不同',
     group: 'split',
-    order: 5,
+    order: 5
   },
   namingSplit: {
     name: '命名分词',
     description: '各类命名法分格（驼峰、蛇形等）',
     group: 'split',
     order: 6,
-    dependsOn: ['uppercaseSplit'],
+    dependsOn: ['uppercaseSplit']
   },
   digitSplit: {
     name: '数字分词',
     description: '数字单独分出来',
     group: 'split',
-    order: 7,
+    order: 7
   },
 
   // 去除规则
@@ -129,36 +129,37 @@ export const RULES = {
     name: '去除空格',
     description: '去除所有空格',
     group: 'remove',
-    order: 8,
+    order: 8
   },
   removeSymbols: {
     name: '去除符号',
     description: '去除所有符号',
     group: 'remove',
     order: 9,
-    conflictsWith: ['symbolSplit'],
+    conflictsWith: ['symbolSplit']
   },
   removeChinese: {
     name: '去除中文',
     description: '去除所有中文字符',
     group: 'remove',
-    order: 10,
+    order: 10
   },
   removeEnglish: {
     name: '去除英文',
     description: '去除所有英文字符',
     group: 'remove',
-    order: 11,
-  },
+    order: 11
+  }
 };
 
 // ============================================================================
 // 互斥组定义
 // ============================================================================
 
+// eslint-disable-next-line no-unused-vars
 const MUTEX_GROUPS = {
   // 去除类规则互斥（可选多个，但通常去留一类）
-  removeGroup: ['removeWhitespace', 'removeSymbols', 'removeChinese', 'removeEnglish'],
+  removeGroup: ['removeWhitespace', 'removeSymbols', 'removeChinese', 'removeEnglish']
 };
 
 // ============================================================================
@@ -167,7 +168,7 @@ const MUTEX_GROUPS = {
 
 const DEPENDENCIES = {
   // 命名分词需要大写分词
-  namingSplit: ['uppercaseSplit'],
+  namingSplit: ['uppercaseSplit']
   // 注意：removeSymbols 不再依赖 symbolSplit，这是错误的逻辑
   // 去除符号和符号分词是互斥的，不应有依赖关系
 };
@@ -201,18 +202,18 @@ export function applySymbolSplit(input) {
       { open: '{', close: '}' },
       { open: '<', close: '>' },
       { open: '"', close: '"' },
-      { open: "'", close: "'" },
+      { open: '\'', close: '\'' },
       { open: '`', close: '`' },
       { open: '「', close: '」' },
       { open: '『', close: '』' },
       { open: '【', close: '】' },
       { open: '《', close: '》' },
       { open: '〈', close: '〉' },
-      { open: '«', close: '»' },
+      { open: '«', close: '»' }
     ];
 
     // 普通标点符号（非成对）
-    const punctuation = /[，。！？；：、,.!?;:\-\—/\\|@#$%^&*+=~]/; // eslint-disable-line no-useless-escape
+    const punctuation = /[，。！？；：、,.!?;:\-\—/\\|@#$%^&*+=~]/;  
 
     const result = [];
     let buffer = '';
@@ -556,7 +557,7 @@ export function checkMutexConflicts(rules) {
     return {
       rules: rules.filter((r) => r !== 'symbolSplit'),
       conflictAction: 'skipSymbolSplit',
-      message: '去除符号与符号分词冲突，跳过符号分词',
+      message: '去除符号与符号分词冲突，跳过符号分词'
     };
   }
 
@@ -595,7 +596,7 @@ export async function multiRuleAnalyze(text, rules = []) {
     conflicts.push({
       rule: 'symbolSplit',
       action: 'skipped',
-      reason: mutexResult.message,
+      reason: mutexResult.message
     });
   }
 
@@ -610,27 +611,27 @@ export async function multiRuleAnalyze(text, rules = []) {
 
   for (const rule of splitRules) {
     switch (rule) {
-      case 'symbolSplit':
-        result = applySymbolSplit(result);
-        break;
-      case 'whitespaceSplit':
-        result = applyWhitespaceSplit(result);
-        break;
-      case 'newlineSplit':
-        result = applyNewlineSplit(result);
-        break;
-      case 'chineseEnglishSplit':
-        result = applyChineseEnglishSplit(result);
-        break;
-      case 'uppercaseSplit':
-        result = applyUppercaseSplit(result);
-        break;
-      case 'namingSplit':
-        result = applyNamingSplit(result);
-        break;
-      case 'digitSplit':
-        result = applyDigitSplit(result);
-        break;
+    case 'symbolSplit':
+      result = applySymbolSplit(result);
+      break;
+    case 'whitespaceSplit':
+      result = applyWhitespaceSplit(result);
+      break;
+    case 'newlineSplit':
+      result = applyNewlineSplit(result);
+      break;
+    case 'chineseEnglishSplit':
+      result = applyChineseEnglishSplit(result);
+      break;
+    case 'uppercaseSplit':
+      result = applyUppercaseSplit(result);
+      break;
+    case 'namingSplit':
+      result = applyNamingSplit(result);
+      break;
+    case 'digitSplit':
+      result = applyDigitSplit(result);
+      break;
     }
     result = flattenArray(result);
   }
@@ -641,18 +642,18 @@ export async function multiRuleAnalyze(text, rules = []) {
 
   for (const rule of removeRules) {
     switch (rule) {
-      case 'removeWhitespace':
-        result = applyRemoveWhitespace(result);
-        break;
-      case 'removeSymbols':
-        result = applyRemoveSymbols(result);
-        break;
-      case 'removeChinese':
-        result = applyRemoveChinese(result);
-        break;
-      case 'removeEnglish':
-        result = applyRemoveEnglish(result);
-        break;
+    case 'removeWhitespace':
+      result = applyRemoveWhitespace(result);
+      break;
+    case 'removeSymbols':
+      result = applyRemoveSymbols(result);
+      break;
+    case 'removeChinese':
+      result = applyRemoveChinese(result);
+      break;
+    case 'removeEnglish':
+      result = applyRemoveEnglish(result);
+      break;
     }
     result = flattenArray(result);
   }
@@ -666,8 +667,8 @@ export async function multiRuleAnalyze(text, rules = []) {
     stats: {
       inputLength: text.length,
       outputCount: result.length,
-      avgLength: result.length > 0 ? Math.round(text.length / result.length) : 0,
-    },
+      avgLength: result.length > 0 ? Math.round(text.length / result.length) : 0
+    }
   };
 }
 
@@ -724,45 +725,45 @@ export function applySingleRule(input, rule) {
 
   // 应用规则
   switch (rule) {
-    case 'symbolSplit':
-      result = applySymbolSplit(result);
-      break;
-    case 'whitespaceSplit':
-      result = applyWhitespaceSplit(result);
-      break;
-    case 'newlineSplit':
-      result = applyNewlineSplit(result);
-      break;
-    case 'chineseEnglishSplit':
-      result = applyChineseEnglishSplit(result);
-      break;
-    case 'uppercaseSplit':
-      result = applyUppercaseSplit(result);
-      break;
-    case 'namingSplit':
-      result = applyNamingSplit(result);
-      break;
-    case 'digitSplit':
-      result = applyDigitSplit(result);
-      break;
-    case 'removeWhitespace':
-      result = applyRemoveWhitespace(result);
-      break;
-    case 'removeSymbols':
-      result = applyRemoveSymbols(result);
-      break;
-    case 'removeChinese':
-      result = applyRemoveChinese(result);
-      break;
-    case 'removeEnglish':
-      result = applyRemoveEnglish(result);
-      break;
-    default:
-      return {
-        result,
-        hasConflict: false,
-        conflictMessage: `未知规则: ${rule}`,
-      };
+  case 'symbolSplit':
+    result = applySymbolSplit(result);
+    break;
+  case 'whitespaceSplit':
+    result = applyWhitespaceSplit(result);
+    break;
+  case 'newlineSplit':
+    result = applyNewlineSplit(result);
+    break;
+  case 'chineseEnglishSplit':
+    result = applyChineseEnglishSplit(result);
+    break;
+  case 'uppercaseSplit':
+    result = applyUppercaseSplit(result);
+    break;
+  case 'namingSplit':
+    result = applyNamingSplit(result);
+    break;
+  case 'digitSplit':
+    result = applyDigitSplit(result);
+    break;
+  case 'removeWhitespace':
+    result = applyRemoveWhitespace(result);
+    break;
+  case 'removeSymbols':
+    result = applyRemoveSymbols(result);
+    break;
+  case 'removeChinese':
+    result = applyRemoveChinese(result);
+    break;
+  case 'removeEnglish':
+    result = applyRemoveEnglish(result);
+    break;
+  default:
+    return {
+      result,
+      hasConflict: false,
+      conflictMessage: `未知规则: ${rule}`
+    };
   }
 
   result = flattenArray(result);

@@ -29,12 +29,12 @@
 const PAIRS = [
   { open: '(', close: ')', nested: true },
   { open: '"', close: '"', nested: false },
-  { open: "'", close: "'", nested: false },
+  { open: '\'', close: '\'', nested: false },
   { open: '{', close: '}', nested: true },
   { open: '[', close: ']', nested: true },
   { open: '<', close: '>', nested: true },
   { open: '`', close: '`', nested: false },
-  { open: '«', close: '»', nested: true },
+  { open: '«', close: '»', nested: true }
 ];
 
 // ============================================================================
@@ -58,6 +58,7 @@ function isCompleteBracketPair(text) {
   let i = 0;
 
   while (i < text.length) {
+    // eslint-disable-next-line no-unused-vars
     const char = text[i];
 
     for (let j = PAIRS.length - 1; j >= 0; j--) {
@@ -130,7 +131,7 @@ function extractMaxBracket(text) {
     return {
       text: text.substring(0, bestStart).trim(),
       bracket: text.substring(bestStart, bestEnd).trim(),
-      rest: text.substring(bestEnd).trim(),
+      rest: text.substring(bestEnd).trim()
     };
   }
 
@@ -157,7 +158,7 @@ function isDeclaration(line) {
     /^\s*(virtual\s+)?[\w:*&\s]+\s+\w+\s*\([^)]*\)\s*(const)?\s*\{?\s*$/,
     /^\s*(def|function|func)\s+[\w]+\s*\([^)]*\)\s*:\s*$/,
     /^\s*[\w]+\s*=\s*function\s*\(/,
-    /^\s*[\w]+\s*=\s*\(/,
+    /^\s*[\w]+\s*=\s*\(/
   ];
 
   return declPatterns.some((pattern) => pattern.test(line));
@@ -272,7 +273,6 @@ function analyzeCppCode(text) {
   let currentChunk = '';
   let braceDepth = 0;
   let parenDepth = 0;
-  const inPreprocessor = false;
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -371,12 +371,12 @@ export function codeAnalyze(text) {
   const codeType = detectCodeType(text);
 
   switch (codeType) {
-    case 'cpp_brace':
-      return analyzeCppCode(text);
-    case 'python_indent':
-      return analyzePythonCode(text);
-    default:
-      return trimLines(text);
+  case 'cpp_brace':
+    return analyzeCppCode(text);
+  case 'python_indent':
+    return analyzePythonCode(text);
+  default:
+    return trimLines(text);
   }
 }
 
@@ -390,7 +390,7 @@ export {
   detectCodeType,
   isCppPreprocessor,
   isImportStatement,
-  isDeclaration,
+  isDeclaration
 };
 
 export default codeAnalyze;

@@ -3,6 +3,13 @@
  * 负责记录、存储和管理剪贴板内容历史
  */
 
+import {
+  createClipboardHistoryExport,
+  parseImportData,
+  extractDataForContext,
+  IMPORT_CONTEXTS
+} from './exportImportSchema.js';
+
 class ClipboardHistoryManager {
   constructor() {
     this.storageKey = 'clipboardHistory';
@@ -21,7 +28,7 @@ class ClipboardHistoryManager {
         maxItems: 100,
         enabled: true,
         autoSave: true,
-        ...result[this.settingsKey],
+        ...result[this.settingsKey]
       };
     } catch (error) {
       console.error('获取剪贴板历史设置失败:', error);
@@ -36,7 +43,7 @@ class ClipboardHistoryManager {
   async saveSettings(settings) {
     try {
       await chrome.storage.local.set({
-        [this.settingsKey]: settings,
+        [this.settingsKey]: settings
       });
       this.maxHistoryItems = settings.maxItems || 100;
       return true;
@@ -80,7 +87,7 @@ class ClipboardHistoryManager {
         accessCount: 1,
         lastAccessed: Date.now(),
         metadata: options.metadata || {},
-        tags: this.generateTags(trimmedText),
+        tags: this.generateTags(trimmedText)
       };
 
       if (existingIndex !== -1) {
@@ -89,7 +96,7 @@ class ClipboardHistoryManager {
           ...history[existingIndex],
           accessCount: history[existingIndex].accessCount + 1,
           lastAccessed: Date.now(),
-          timestamp: Date.now(), // 更新时间戳使其排到前面
+          timestamp: Date.now() // 更新时间戳使其排到前面
         };
         // 移到最前面
         const item = history.splice(existingIndex, 1)[0];
@@ -213,7 +220,7 @@ class ClipboardHistoryManager {
       history[index] = {
         ...history[index],
         ...updates,
-        lastAccessed: Date.now(),
+        lastAccessed: Date.now()
       };
 
       await this.saveHistory(history);
@@ -232,40 +239,36 @@ class ClipboardHistoryManager {
   async exportHistory(format = 'json', options = {}) {
     try {
       const history = await this.getHistory(options);
+      const settings = await this.getSettings();
 
       let content = '';
       let filename = '';
       let mimeType = '';
 
       switch (format.toLowerCase()) {
-        case 'json': {
-          const exportData = {
-            type: 'clipboardHistory',
-            history,
-            exportDate: new Date().toISOString(),
-            version: '1.0',
-            appName: 'SearchBuddy',
-          };
-          content = JSON.stringify(exportData, null, 2);
-          filename = `search-buddy-clipboard-history-${this.formatDate(new Date())}.json`;
-          mimeType = 'application/json';
-          break;
-        }
+      case 'json': {
+        // 使用统一 Schema 格式导出
+        const exportData = createClipboardHistoryExport(history, settings);
+        content = JSON.stringify(exportData, null, 2);
+        filename = `search-buddy-clipboard-history-${this.formatDate(new Date())}.json`;
+        mimeType = 'application/json';
+        break;
+      }
 
-        case 'csv':
-          content = this.convertToCSV(history);
-          filename = `clipboard-history-${this.formatDate(new Date())}.csv`;
-          mimeType = 'text/csv';
-          break;
+      case 'csv':
+        content = this.convertToCSV(history);
+        filename = `search-buddy-clipboard-history-${this.formatDate(new Date())}.csv`;
+        mimeType = 'text/csv';
+        break;
 
-        case 'txt':
-          content = this.convertToText(history);
-          filename = `clipboard-history-${this.formatDate(new Date())}.txt`;
-          mimeType = 'text/plain';
-          break;
+      case 'txt':
+        content = this.convertToText(history);
+        filename = `search-buddy-clipboard-history-${this.formatDate(new Date())}.txt`;
+        mimeType = 'text/plain';
+        break;
 
-        default:
-          throw new Error('不支持的导出格式');
+      default:
+        throw new Error('不支持的导出格式');
       }
 
       // 创建下载链接
@@ -297,40 +300,86 @@ class ClipboardHistoryManager {
   async importHistory(data, options = {}) {
     try {
       const { merge = true } = options;
-      let importedData = [];
-      let parsedData = null;
 
-      // 解析数据
-      if (typeof data === 'string') {
-        try {
-          parsedData = JSON.parse(data);
-        } catch {
-          importedData = this.parseCSV(data);
+      // 使用统一 Schema 解析数据
+      const parseResult = parseImportData(data, IMPORT_CONTEXTS.CLIPBOARD_HISTORY);
+
+      if (!parseResult.success) {
+        // 尝试解析CSV格式
+        if (typeof data === 'string' && data.includes(',')) {
+          const csvData = this.parseCSV(data);
+          if (csvData.length > 0) {
+            return this.processImportData(csvData, merge);
+          }
         }
-      } else if (Array.isArray(data)) {
-        importedData = data;
-      } else if (data && typeof data === 'object') {
-        parsedData = data;
+        return {
+          success: false,
+          imported: 0,
+          errors: 1,
+          message: parseResult.error || '无效的数据格式'
+        };
       }
 
-      // 处理包装格式（新版导出格式）
-      if (parsedData && typeof parsedData === 'object') {
-        if (parsedData.history && Array.isArray(parsedData.history)) {
-          // 新版包装格式
-          importedData = parsedData.history;
-        } else if (Array.isArray(parsedData)) {
-          // 旧版数组格式
-          importedData = parsedData;
-        } else {
-          // 单条记录
-          importedData = [parsedData];
+      // 提取剪贴板历史数据
+      const extractResult = extractDataForContext(
+        parseResult.data,
+        IMPORT_CONTEXTS.CLIPBOARD_HISTORY
+      );
+
+      if (!extractResult.success) {
+        return {
+          success: false,
+          imported: 0,
+          errors: 1,
+          message: extractResult.error
+        };
+      }
+
+      // 获取剪贴板历史项数组
+      let importedData = [];
+      const extractedData = extractResult.data;
+
+      if (extractedData.clipboardHistory) {
+        // 新格式：{ items: [...], settings: {...} }
+        if (extractedData.clipboardHistory.items) {
+          importedData = extractedData.clipboardHistory.items;
+          // 可选：更新设置
+          if (extractedData.clipboardHistory.settings) {
+            await this.saveSettings(extractedData.clipboardHistory.settings);
+          }
+        } else if (Array.isArray(extractedData.clipboardHistory)) {
+          // 兼容旧格式数组
+          importedData = extractedData.clipboardHistory;
         }
+      } else if (Array.isArray(extractedData)) {
+        // 纯数组格式
+        importedData = extractedData;
       }
 
       if (!Array.isArray(importedData) || importedData.length === 0) {
-        return { success: false, imported: 0, errors: 1, message: '无效的数据格式' };
+        return {
+          success: false,
+          imported: 0,
+          errors: 1,
+          message: '数据中没有找到剪贴板历史记录'
+        };
       }
 
+      return this.processImportData(importedData, merge);
+    } catch (error) {
+      console.error('导入剪贴板历史失败:', error);
+      return { success: false, imported: 0, errors: 1, message: error.message };
+    }
+  }
+
+  /**
+   * 处理导入数据（内部方法）
+   * @param {Array} importedData - 导入的数据数组
+   * @param {boolean} merge - 是否合并
+   * @returns {Object} 导入结果
+   */
+  async processImportData(importedData, merge) {
+    try {
       let currentHistory = merge ? await this.getHistory() : [];
       let imported = 0;
       let errors = 0;
@@ -364,7 +413,7 @@ class ClipboardHistoryManager {
             accessCount: item.accessCount || 1,
             lastAccessed: item.lastAccessed || Date.now(),
             tags: Array.isArray(item.tags) ? item.tags : this.generateTags(trimmedText),
-            metadata: item.metadata || {},
+            metadata: item.metadata || {}
           };
 
           currentHistory.push(normalizedItem);
@@ -388,10 +437,10 @@ class ClipboardHistoryManager {
         imported,
         errors,
         total: currentHistory.length,
-        message: `成功导入 ${imported} 条记录${errors > 0 ? `，${errors} 条失败` : ''}`,
+        message: `成功导入 ${imported} 条记录${errors > 0 ? `，${errors} 条失败` : ''}`
       };
     } catch (error) {
-      console.error('导入剪贴板历史失败:', error);
+      console.error('处理导入数据失败:', error);
       return { success: false, imported: 0, errors: 1, message: error.message };
     }
   }
@@ -427,11 +476,11 @@ class ClipboardHistoryManager {
         averageLength:
           history.length > 0
             ? Math.round(
-                history.reduce((sum, item) => sum + (item.length || 0), 0) / history.length
-              )
+              history.reduce((sum, item) => sum + (item.length || 0), 0) / history.length
+            )
             : 0,
         topTags: this.getTopTags(history),
-        accessFrequency: this.getAccessFrequency(history),
+        accessFrequency: this.getAccessFrequency(history)
       };
 
       return stats;
@@ -503,7 +552,7 @@ class ClipboardHistoryManager {
       /^(def|class|import|from)\s/m,
       /[{;}]\s*\n/,
       /\(\s*\)\s*=>/,
-      /^(if|for|while|switch)\s*\(/m,
+      /^(if|for|while|switch)\s*\(/m
     ];
     return codePatterns.some((pattern) => pattern.test(text));
   }
@@ -587,7 +636,7 @@ class ClipboardHistoryManager {
       item.accessCount || 1,
       new Date(item.timestamp).toLocaleString('zh-CN'),
       new Date(item.lastAccessed).toLocaleString('zh-CN'),
-      `"${(item.tags || []).join(';')}"`,
+      `"${(item.tags || []).join(';')}"`
     ]);
 
     return [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
@@ -696,7 +745,7 @@ class ClipboardHistoryManager {
     return {
       totalAccess,
       averageAccess: Math.round(avgAccess * 100) / 100,
-      mostAccessed: history.sort((a, b) => (b.accessCount || 1) - (a.accessCount || 1)).slice(0, 5),
+      mostAccessed: history.sort((a, b) => (b.accessCount || 1) - (a.accessCount || 1)).slice(0, 5)
     };
   }
 
@@ -738,7 +787,7 @@ class ClipboardHistoryManager {
    * 生成唯一ID
    */
   generateId() {
-    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
   }
 }
 
