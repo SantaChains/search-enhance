@@ -6,8 +6,8 @@ import {
   smartAnalyze,
   chineseAnalyze,
   englishAnalyze,
-} from "./src/utils/textProcessor.js";
-import { getSettings, saveSettings } from "./src/utils/storage.js";
+} from "../src/utils/textProcessor.js";
+import { getSettings, saveSettings } from "../src/utils/storage.js";
 
 const results = [];
 let passCount = 0;

@@ -6,7 +6,7 @@ import {
   chineseAnalyze,
   englishAnalyze,
   detectContentType,
-} from "./src/utils/textProcessor.js";
+} from "../src/utils/textProcessor.js";
 
 let currentMode = "smart";
 

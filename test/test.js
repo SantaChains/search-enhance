@@ -4,7 +4,7 @@ import {
   splitText,
   detectContentType,
   analyzeTextForMultipleFormats,
-} from "./src/utils/textProcessor.js";
+} from "../src/utils/textProcessor.js";
 
 // 测试用例数据
 const testCases = {
