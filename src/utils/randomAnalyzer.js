@@ -39,30 +39,8 @@ export function getRandomConfig() {
 }
 
 // ============================================================================
-// Fisher-Yates 洗牌算法
-// ============================================================================
-
-// eslint-disable-next-line no-unused-vars
-function shuffleArray(arr) {
-  const result = [...arr];
-  for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [result[i], result[j]] = [result[j], result[i]];
-  }
-  return result;
-}
-
-// ============================================================================
 // 随机分词核心算法
 // ============================================================================
-
-// eslint-disable-next-line no-unused-vars
-function getRandomLength() {
-  return (
-    Math.floor(Math.random() * (CONFIG.randomMaxLength - CONFIG.randomMinLength + 1)) +
-    CONFIG.randomMinLength
-  );
-}
 
 /**
  * 随机分词主函数

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Decide search",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "一款强大的浏览器扩展，通过智能文本处理、多格式分析和高级剪贴板监控增强您的搜索体验",
   "author": "SantaChains",
   "homepage_url": "https://github.com/SantaChains/search-enhance",
@@ -74,9 +74,9 @@
       "resources": [
         "src/popup/index.html",
         "src/settings/index.html",
-        "test.html",
-        "debug.html",
-        "exam.html",
+        "test/test.html",
+        "test/debug.html",
+        "test/exam.html",
         "src/utils/*.js",
         "icons/*"
       ],

@@ -44,7 +44,7 @@ export {
 export { tokenize } from './fastCWS.js';
 
 // 代码分析
-export { analyzeCode } from './codeAnalyzer.js';
+export { codeAnalyze as analyzeCode } from './codeAnalyzer.js';
 
 // 导入导出
 export { exportImportSchema } from './exportImportSchema.js';

@@ -193,42 +193,61 @@ search-enhance/
 │   │   └── index.js        # 页面注入脚本
 │   ├── popup/              # 弹窗界面
 │   │   ├── index.html      # 弹窗 HTML
-│   │   ├── main.js         # 主逻辑（模块化后约 1100 行）
+│   │   ├── main.js         # 主逻辑
 │   │   ├── new-style.css   # 样式文件
 │   │   └── modules/        # 功能模块
+│   │       ├── index.js          # 模块统一导出
 │   │       ├── clipboardHistoryModule.js
 │   │       ├── linkHistoryModule.js
 │   │       ├── textProcessorModule.js
 │   │       ├── tokenHistoryModule.js
 │   │       ├── uiModule.js
-│   │       └── index.js
+│   │       ├── elementCache.js       # DOM 元素缓存
+│   │       └── featureProcessors.js  # 功能处理器
 │   ├── settings/           # 设置页面
-│   │   ├── settings.html
+│   │   ├── index.html      # 设置页面 HTML
 │   │   ├── main.js
+│   │   ├── new-style.css   # 设置页样式
 │   │   └── modules/        # 设置模块
+│   │       ├── index.js          # 模块统一导出
 │   │       ├── aiSettings.js
 │   │       ├── dataManagement.js
 │   │       ├── generalSettings.js
 │   │       ├── historySettings.js
 │   │       └── tokenizerSettings.js
 │   └── utils/              # 工具模块
+│       ├── index.js              # 模块统一导出
 │       ├── textProcessor.js      # 文本处理核心
 │       ├── multiRuleAnalyzer.js  # 多规则分析器
 │       ├── aiAdapter.js          # AI 适配器
 │       ├── analyzers/            # 分析器集合
 │       │   ├── index.js
 │       │   ├── smartAnalyzer.js
+│       │   ├── chineseAnalyzer.js
+│       │   ├── englishAnalyzer.js
+│       │   ├── sentenceAnalyzer.js
+│       │   ├── charBreakAnalyzer.js
+│       │   ├── removeSymbolsAnalyzer.js
 │       │   └── utils.js
+│       ├── codeAnalyzer.js       # 代码分析器
+│       ├── randomAnalyzer.js     # 随机分词器
 │       ├── storage.js            # 存储管理
 │       ├── linkHistory.js        # 链接历史管理
 │       ├── clipboardHistory.js   # 剪贴板历史管理
+│       ├── tokenHistory.js       # Token 历史管理
 │       ├── fastCWS.js            # 中文分词
 │       ├── exportImportSchema.js # 导入导出
-│       └── logger.js             # 日志工具
+│       ├── commonUtils.js        # 通用工具函数
+│       ├── logger.js             # 日志工具
+│       ├── performanceMonitor.js # 性能监控
+│       └── errorReporter.js      # 错误上报
+├── test/                   # 测试目录
+│   ├── test.html           # 功能测试页面
+│   ├── debug.html          # 调试测试页面
+│   ├── exam.html           # 分词功能测试
+│   └── schema-test.html    # 导入导出测试
 ├── manifest.json           # 扩展配置（Manifest V3）
 ├── package.json
-├── test/                   # 测试目录
-│   └── test.html           # 功能测试页面
 └── README.md
 ```
 

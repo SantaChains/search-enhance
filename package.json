@@ -1,6 +1,6 @@
 {
   "name": "Decide_Search",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "A powerful browser extension to enhance search experience with intelligent text processing",
   "type": "module",
   "main": "manifest.json",
@@ -15,7 +15,7 @@
     "check": "npm run lint && npm run format:check",
     "fix": "npm run lint:fix && npm run format",
     "dev": "echo 'Starting development server...'",
-    "package": "zip -r enhance-search-buddy.zip . -x '*.git*' 'node_modules/*' '*.bak*' 'debug.html' 'test.html'"
+    "package": "zip -r enhance-search-buddy.zip . -x '*.git*' 'node_modules/*' '*.bak*' 'test/*'"
   },
   "keywords": [
     "browser-extension",

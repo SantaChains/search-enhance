@@ -2,19 +2,21 @@
 
 import {
   splitText,
+  codeAnalyze,
+  aiAnalyze,
+  detectContentType,
+} from "../src/utils/textProcessor.js";
+import {
   smartAnalyze,
   chineseAnalyze,
   englishAnalyze,
-  codeAnalyze,
-  aiAnalyze,
   sentenceAnalyze,
   halfSentenceAnalyze,
   charBreak,
   removeSymbolsAnalyze,
-  randomAnalyze,
-  multiRuleAnalyze,
-  detectContentType,
-} from "../src/utils/textProcessor.js";
+} from "../src/utils/analyzers/index.js";
+import { randomAnalyze } from "../src/utils/randomAnalyzer.js";
+import { multiRuleAnalyze } from "../src/utils/multiRuleAnalyzer.js";
 
 let currentMode = "smart";
 

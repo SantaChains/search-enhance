@@ -71,8 +71,8 @@ export function captureError(error, context, metadata = {}) {
     severity: classifySeverity(error),
     context,
     metadata: {
-      userAgent: navigator.userAgent,
-      url: window?.location?.href || 'extension',
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+      url: typeof window !== 'undefined' ? window?.location?.href || 'extension' : 'extension',
       ...metadata
     },
     reported: false

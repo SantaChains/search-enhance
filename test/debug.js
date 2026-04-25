@@ -3,19 +3,21 @@
 import {
   splitText,
   detectContentType,
+  codeAnalyze,
+  aiAnalyze,
+  analyzeTextForMultipleFormats,
+} from "../src/utils/textProcessor.js";
+import {
   smartAnalyze,
   chineseAnalyze,
   englishAnalyze,
-  codeAnalyze,
-  aiAnalyze,
   sentenceAnalyze,
   halfSentenceAnalyze,
   charBreak,
   removeSymbolsAnalyze,
-  randomAnalyze,
-  multiRuleAnalyze,
-  analyzeTextForMultipleFormats,
-} from "../src/utils/textProcessor.js";
+} from "../src/utils/analyzers/index.js";
+import { randomAnalyze } from "../src/utils/randomAnalyzer.js";
+import { multiRuleAnalyze } from "../src/utils/multiRuleAnalyzer.js";
 import { getSettings, saveSettings } from "../src/utils/storage.js";
 
 const results = [];
