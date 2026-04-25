@@ -1,7 +1,6 @@
 // src/background/index.js
 
 import clipboardHistoryManager from '../utils/clipboardHistory.js';
-import { isBrowserHomePage } from '../utils/commonUtils.js';
 
 /**
  * Decide Search Background Script
@@ -135,10 +134,9 @@ async function handleClipboardChange(content, version, source = 'background') {
  */
 async function broadcastToAllTabs(message) {
   // 通过Port发送给已连接的content scripts
-  const ports = Array.from(appState.activeTabs.values());
   const disconnectedTabs = [];
 
-  ports.forEach(({ port }, tabId) => {
+  appState.activeTabs.forEach(({ port }, tabId) => {
     try {
       port.postMessage(message);
     } catch (e) {
@@ -155,7 +153,7 @@ async function broadcastToAllTabs(message) {
   // 同时通过sendMessage广播给所有监听器（包括popup）
   try {
     await chrome.runtime.sendMessage(message);
-  } catch (e) {
+  } catch {
     // 可能没有接收者，忽略错误
   }
 }
@@ -187,9 +185,28 @@ chrome.runtime.onConnect.addListener((port) => {
   if (port.name.startsWith('global-clipboard-') || port.name.startsWith('popup-')) {
     const tabId = port.name.replace(/^(global-clipboard-|popup-)/, '');
 
+    // 如果已存在相同 tabId 的连接，先断开旧的
+    const existing = appState.activeTabs.get(tabId);
+    if (existing?.port) {
+      try {
+        existing.port.disconnect();
+      } catch {}
+      appState.activeTabs.delete(tabId);
+    }
+
     appState.activeTabs.set(tabId, { port, monitoring: appState.isMonitoring });
 
     logger.info(`Port连接: ${port.name}, 当前连接数: ${appState.activeTabs.size}`);
+
+    // 发送当前状态给新连接的 content script
+    try {
+      port.postMessage({
+        action: 'clipboardMonitoringToggled',
+        isActive: appState.isMonitoring
+      });
+    } catch (e) {
+      logger.warn('发送初始状态失败:', e.message);
+    }
 
     port.onMessage.addListener((message) => {
       handlePortMessage(message, port, tabId);
@@ -202,24 +219,24 @@ chrome.runtime.onConnect.addListener((port) => {
   }
 });
 
-function handlePortMessage(message, port, _tabId) {
+async function handlePortMessage(message, port) {
   switch (message.action) {
-  case 'clipboardChanged':
-    handleClipboardChange(message.content, message.version, 'content-script');
-    break;
+    case 'clipboardChanged':
+      await handleClipboardChange(message.content, message.version, 'content-script');
+      break;
 
-  case 'getState':
-    port.postMessage({
-      action: 'stateResponse',
-      isActive: appState.isMonitoring,
-      lastContent: appState.lastContent,
-      lastVersion: appState.lastBroadcastVersion
-    });
-    break;
+    case 'getState':
+      port.postMessage({
+        action: 'stateResponse',
+        isActive: appState.isMonitoring,
+        lastContent: appState.lastContent,
+        lastVersion: appState.lastBroadcastVersion
+      });
+      break;
 
-  case 'pong':
-    // 心跳响应
-    break;
+    case 'pong':
+      // 心跳响应
+      break;
   }
 }
 
@@ -228,75 +245,78 @@ function handlePortMessage(message, port, _tabId) {
 // ============================================================================
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-  (async () => {
+  const handleMessage = async () => {
     switch (request.action) {
-    case 'toggleGlobalMonitoring': {
-      const newState = await toggleMonitoring();
-      sendResponse({ success: true, isActive: newState });
-      break;
-    }
-
-    case 'getGlobalMonitoringState':
-      sendResponse({
-        isActive: appState.isMonitoring,
-        lastContent: appState.lastContent
-      });
-      break;
-
-    case 'clipboardChanged': {
-      const result = await handleClipboardChange(request.content, request.version, 'message');
-      sendResponse(result);
-      break;
-    }
-
-    case 'contentScriptReady':
-      // Content script准备就绪，发送当前状态
-      sendResponse({
-        success: true,
-        isMonitoring: appState.isMonitoring,
-        lastContent: appState.lastContent
-      });
-      break;
-
-    case 'openSidePanel': {
-      if (!sender.tab?.windowId) {
-        logger.warn('openSidePanel: 缺少 windowId');
-        sendResponse({ success: false, error: 'Missing windowId' });
+      case 'toggleGlobalMonitoring': {
+        const newState = await toggleMonitoring();
+        sendResponse({ success: true, isActive: newState });
         break;
       }
-      try {
-        await chrome.sidePanel.open({ windowId: sender.tab.windowId });
-        sendResponse({ success: true });
-      } catch (e) {
-        logger.error('打开侧边栏失败:', e.message);
-        sendResponse({ success: false, error: e.message });
-      }
-      break;
-    }
 
-    case 'showNotification':
-      // 转发到content script显示通知
-      if (sender.tab?.id) {
-        try {
-          await chrome.tabs.sendMessage(sender.tab.id, {
-            action: 'showNotification',
-            message: request.message,
-            type: request.type
-          });
-          logger.info('通知已转发到content script');
-        } catch (e) {
-          logger.warn('转发通知失败:', e.message);
+      case 'getGlobalMonitoringState':
+        sendResponse({
+          isActive: appState.isMonitoring,
+          lastContent: appState.lastContent
+        });
+        break;
+
+      case 'clipboardChanged': {
+        const result = await handleClipboardChange(request.content, request.version, 'message');
+        sendResponse(result);
+        break;
+      }
+
+      case 'contentScriptReady':
+        sendResponse({
+          success: true,
+          isMonitoring: appState.isMonitoring,
+          lastContent: appState.lastContent
+        });
+        break;
+
+      case 'openSidePanel': {
+        if (!sender.tab?.windowId) {
+          logger.warn('openSidePanel: 缺少 windowId');
+          sendResponse({ success: false, error: 'Missing windowId' });
+          break;
         }
-      } else {
-        logger.warn('无法转发通知：sender.tab.id 不存在');
+        try {
+          await chrome.sidePanel.open({ windowId: sender.tab.windowId });
+          sendResponse({ success: true });
+        } catch (e) {
+          logger.error('打开侧边栏失败:', e.message);
+          sendResponse({ success: false, error: e.message });
+        }
+        break;
       }
-      sendResponse({ success: true });
-      break;
 
-    default:
-      sendResponse({ success: false, error: 'Unknown action' });
+      case 'showNotification':
+        if (sender.tab?.id) {
+          try {
+            await chrome.tabs.sendMessage(sender.tab.id, {
+              action: 'showNotification',
+              message: request.message,
+              type: request.type
+            });
+            logger.info('通知已转发到content script');
+          } catch (e) {
+            logger.warn('转发通知失败:', e.message);
+          }
+        } else {
+          logger.warn('无法转发通知：sender.tab.id 不存在');
+        }
+        sendResponse({ success: true });
+        break;
+
+      default:
+        sendResponse({ success: false, error: 'Unknown action' });
     }
-  })();
+  };
+
+  handleMessage().catch((error) => {
+    logger.error('消息处理失败:', error);
+    sendResponse({ success: false, error: error.message });
+  });
 
   return true;
 });
@@ -304,32 +324,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 // ============================================================================
 // 快捷键处理
 // ============================================================================
-
-/**
- * 检测当前标签页是否为浏览器主页
- * @param {Object} tab - Chrome标签页对象
- * @returns {boolean} 是否为浏览器主页
- */
-function isTabBrowserHomePage(tab) {
-  if (!tab || !tab.url) return false;
-
-  // 检查是否为浏览器内部页面
-  const internalProtocols = ['chrome:', 'chrome-extension:', 'about:', 'edge:', 'file:'];
-  const url = tab.url.toLowerCase();
-
-  for (const protocol of internalProtocols) {
-    if (url.startsWith(protocol)) {
-      return true;
-    }
-  }
-
-  // 检查是否为新标签页（空白页）
-  if (url === 'about:blank' || url === '') {
-    return true;
-  }
-
-  return false;
-}
 
 /**
  * 检查侧边栏是否打开
@@ -416,7 +410,6 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
   logger.info('========================================');
   logger.info(`收到快捷键命令: "${command}"`);
 
-  // 检查 tab 对象是否存在
   if (!tab) {
     logger.error('Tab对象为null，无法执行快捷键');
     return;
@@ -424,90 +417,113 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
 
   logger.info(`Tab信息: ID=${tab.id}, URL=${tab.url}, WindowID=${tab.windowId}`);
 
-  // 检查是否为浏览器内部页面
-  if (isTabBrowserHomePage(tab)) {
-    logger.info(`在浏览器内部页面 (${tab.url})，快捷键不执行`);
-    return;
-  }
-
   try {
     logger.info('开始执行快捷键处理...');
 
     switch (command) {
-    case 'toggle_clipboard_monitoring': {
-      logger.info('执行: toggle_clipboard_monitoring (Alt+K)');
-      const newState = await toggleMonitoring();
+      case 'toggle_clipboard_monitoring': {
+        logger.info('执行: toggle_clipboard_monitoring (Alt+C)');
+        const newState = await toggleMonitoring();
 
-      // 发送通知到当前标签页
-      if (tab.id) {
-        try {
-          await chrome.tabs.sendMessage(tab.id, {
-            action: 'showNotification',
-            message: `全局剪贴板监控已${newState ? '开启' : '关闭'}`,
-            type: newState ? 'success' : 'info'
-          });
-        } catch (e) {
-          logger.warn('无法发送通知到标签页:', e.message);
-        }
+        if (tab.id) {
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              action: 'showNotification',
+              message: `剪贴板监控已${newState ? '开启' : '关闭'}`,
+              type: newState ? 'success' : 'info'
+            });
+          } catch (e) {
+            logger.warn('无法发送通知到标签页:', e.message);
+          }
 
-        // 如果开启监控，立即检测剪贴板
-        if (newState) {
-          setTimeout(async () => {
-            try {
-              await chrome.tabs.sendMessage(tab.id, {
-                action: 'forceClipboardCheck'
-              });
-            } catch (e) {
-              // 忽略错误
-            }
-          }, 200);
+          if (newState) {
+            setTimeout(async () => {
+              try {
+                await chrome.tabs.sendMessage(tab.id, {
+                  action: 'forceClipboardCheck'
+                });
+              } catch {}
+            }, 200);
+          }
         }
+        break;
       }
-      break;
-    }
 
-    case '_execute_action': {
-      logger.info('执行: _execute_action (Alt+L)');
-      const isOpen = await openSidePanelWithAction(tab.windowId);
-      logger.info(`侧边栏状态: ${isOpen ? '打开' : '关闭'}`);
+      case '_execute_action': {
+        logger.info('执行: _execute_action (Alt+D)');
+        const isOpen = await openSidePanelWithAction(tab.windowId);
+        logger.info(`侧边栏状态: ${isOpen ? '打开' : '关闭'}`);
 
-      if (tab.id) {
-        try {
-          await chrome.tabs.sendMessage(tab.id, {
-            action: 'showNotification',
-            message: `侧边栏已${isOpen ? '打开' : '关闭'}`,
-            type: isOpen ? 'success' : 'info'
-          });
-        } catch (e) {
-          logger.warn('无法发送通知到标签页:', e.message);
+        if (tab.id) {
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              action: 'showNotification',
+              message: `侧边栏已${isOpen ? '打开' : '关闭'}`,
+              type: isOpen ? 'success' : 'info'
+            });
+          } catch (e) {
+            logger.warn('无法发送通知到标签页:', e.message);
+          }
         }
+        break;
       }
-      break;
-    }
 
-    case 'open_side_panel_and_read': {
-      logger.info('执行: open_side_panel_and_read (Alt+J)');
-      await readClipboardToSidePanel(tab.windowId);
-      logger.info('已设置读取剪贴板标记');
+      case 'open_side_panel_and_read': {
+        logger.info('执行: open_side_panel_and_read (Alt+V)');
+        await readClipboardToSidePanel(tab.windowId);
+        logger.info('已设置读取剪贴板标记');
 
-      if (tab.id) {
-        try {
-          await chrome.tabs.sendMessage(tab.id, {
-            action: 'showNotification',
-            message: '已读取剪贴板',
-            type: 'success'
-          });
-        } catch (e) {
-          logger.warn('无法发送通知到标签页:', e.message);
+        if (tab.id) {
+          try {
+            await chrome.tabs.sendMessage(tab.id, {
+              action: 'showNotification',
+              message: '已读取剪贴板',
+              type: 'success'
+            });
+          } catch (e) {
+            logger.warn('无法发送通知到标签页:', e.message);
+          }
         }
+        break;
       }
-      break;
-    }
 
-    default: {
-      logger.warn(`未知的快捷键命令: "${command}"`);
-      break;
-    }
+      case 'quick_search': {
+        logger.info('执行: quick_search (Alt+S)');
+        if (tab.id) {
+          try {
+            await chrome.tabs.sendMessage(
+              tab.id,
+              {
+                action: 'getSelectedText'
+              },
+              async (response) => {
+                const selectedText = response?.text || '';
+                if (selectedText) {
+                  await chrome.storage.local.set({
+                    quickSearchText: selectedText,
+                    openSidePanel: true
+                  });
+                  await chrome.sidePanel.open({ windowId: tab.windowId });
+                } else {
+                  await chrome.tabs.sendMessage(tab.id, {
+                    action: 'showNotification',
+                    message: '请先选中文本',
+                    type: 'warning'
+                  });
+                }
+              }
+            );
+          } catch (e) {
+            logger.warn('快速搜索失败:', e.message);
+          }
+        }
+        break;
+      }
+
+      default: {
+        logger.warn(`未知的快捷键命令: "${command}"`);
+        break;
+      }
     }
   } catch (error) {
     logger.error(`处理快捷键命令失败: ${error.message}`);
@@ -565,7 +581,7 @@ function startCleanupInterval() {
           if (value.port && value.port.sender) {
             validTabs.set(key, value);
           }
-        } catch (e) {
+        } catch {
           // 连接无效，不保留
         }
       });
@@ -585,4 +601,11 @@ chrome.runtime.onSuspend.addListener(() => {
   }
 });
 
-logger.info('Background script加载完成');
+// 立即加载状态
+loadState()
+  .then(() => {
+    logger.info('Background script加载完成');
+  })
+  .catch((err) => {
+    logger.error('Background script加载失败:', err);
+  });

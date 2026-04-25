@@ -29,7 +29,7 @@
 const PAIRS = [
   { open: '(', close: ')', nested: true },
   { open: '"', close: '"', nested: false },
-  { open: '\'', close: '\'', nested: false },
+  { open: "'", close: "'", nested: false },
   { open: '{', close: '}', nested: true },
   { open: '[', close: ']', nested: true },
   { open: '<', close: '>', nested: true },
@@ -371,12 +371,12 @@ export function codeAnalyze(text) {
   const codeType = detectCodeType(text);
 
   switch (codeType) {
-  case 'cpp_brace':
-    return analyzeCppCode(text);
-  case 'python_indent':
-    return analyzePythonCode(text);
-  default:
-    return trimLines(text);
+    case 'cpp_brace':
+      return analyzeCppCode(text);
+    case 'python_indent':
+      return analyzePythonCode(text);
+    default:
+      return trimLines(text);
   }
 }
 

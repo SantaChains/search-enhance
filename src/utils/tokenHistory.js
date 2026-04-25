@@ -1,20 +1,20 @@
 /**
- * 剪贴板历史管理模块
- * 负责记录、存储和管理剪贴板内容历史
+ * Token历史管理模块
+ * 负责记录、存储和管理分词结果历史
  */
 
 import {
-  createClipboardHistoryExport,
+  createTokenHistoryExport,
   parseImportData,
   extractDataForContext,
   IMPORT_CONTEXTS
 } from './exportImportSchema.js';
 
-class ClipboardHistoryManager {
+class TokenHistoryManager {
   constructor() {
-    this.storageKey = 'clipboardHistory';
-    this.maxHistoryItems = 100; // 默认最大条数
-    this.settingsKey = 'clipboardHistorySettings';
+    this.storageKey = 'tokenHistory';
+    this.maxHistoryItems = 100;
+    this.settingsKey = 'tokenHistorySettings';
   }
 
   /**
@@ -27,12 +27,11 @@ class ClipboardHistoryManager {
       return {
         maxItems: 100,
         enabled: true,
-        autoSave: true,
         ...result[this.settingsKey]
       };
     } catch (error) {
-      console.error('获取剪贴板历史设置失败:', error);
-      return { maxItems: 100, enabled: true, autoSave: true };
+      console.error('获取Token历史设置失败:', error);
+      return { maxItems: 100, enabled: true };
     }
   }
 
@@ -48,64 +47,55 @@ class ClipboardHistoryManager {
       this.maxHistoryItems = settings.maxItems || 100;
       return true;
     } catch (error) {
-      console.error('保存剪贴板历史设置失败:', error);
+      console.error('保存Token历史设置失败:', error);
       return false;
     }
   }
 
   /**
-   * 添加剪贴板内容到历史记录
-   * @param {string} text - 剪贴板内容
-   * @param {Object} options - 选项
-   * @param {string} options.source - 来源
-   * @param {Object} options.metadata - 元数据
+   * 添加Token到历史记录
+   * @param {string} token - Token内容
+   * @param {Object} metadata - 元数据
    */
-  async addItem(text, options = {}) {
+  async addItem(token, metadata = {}) {
     try {
       const settings = await this.getSettings();
       if (!settings.enabled) {
         return false;
       }
 
-      if (!text || text.trim() === '') {
+      if (!token || token.trim() === '') {
         return false;
       }
 
-      const trimmedText = text.trim();
+      const trimmedToken = token.trim();
       const history = await this.getHistory();
 
       // 检查是否已存在相同内容
-      const existingIndex = history.findIndex((item) => item.text === trimmedText);
+      const existingIndex = history.findIndex((item) => item.token === trimmedToken);
 
       const historyItem = {
         id: this.generateId(),
-        text: trimmedText,
-        preview: this.generatePreview(trimmedText),
-        length: trimmedText.length,
-        source: options.source || 'clipboard',
+        token: trimmedToken,
+        length: trimmedToken.length,
+        source: metadata.source || 'unknown',
         timestamp: Date.now(),
         accessCount: 1,
         lastAccessed: Date.now(),
-        metadata: options.metadata || {},
-        tags: this.generateTags(trimmedText)
+        metadata: metadata || {}
       };
 
       if (existingIndex !== -1) {
-        // 更新现有记录
         history[existingIndex] = {
           ...history[existingIndex],
           accessCount: history[existingIndex].accessCount + 1,
           lastAccessed: Date.now(),
-          timestamp: Date.now() // 更新时间戳使其排到前面
+          timestamp: Date.now()
         };
-        // 移到最前面
         const item = history.splice(existingIndex, 1)[0];
         history.unshift(item);
       } else {
-        // 添加新记录
         history.unshift(historyItem);
-
-        // 限制历史记录数量
         const maxItems = settings.maxItems || this.maxHistoryItems;
         if (history.length > maxItems) {
           history.splice(maxItems);
@@ -115,7 +105,7 @@ class ClipboardHistoryManager {
       await this.saveHistory(history);
       return true;
     } catch (error) {
-      console.error('添加剪贴板历史失败:', error);
+      console.error('添加Token历史失败:', error);
       return false;
     }
   }
@@ -130,18 +120,11 @@ class ClipboardHistoryManager {
       const result = await chrome.storage.local.get(this.storageKey);
       let history = result[this.storageKey] || [];
 
-      // 应用搜索过滤
       if (options.search) {
         const searchTerm = options.search.toLowerCase();
-        history = history.filter(
-          (item) =>
-            item.text.toLowerCase().includes(searchTerm) ||
-            item.preview.toLowerCase().includes(searchTerm) ||
-            item.tags.some((tag) => tag.toLowerCase().includes(searchTerm))
-        );
+        history = history.filter((item) => item.token.toLowerCase().includes(searchTerm));
       }
 
-      // 应用排序
       const sortBy = options.sortBy || 'timestamp';
       const sortOrder = options.sortOrder || 'desc';
 
@@ -161,7 +144,6 @@ class ClipboardHistoryManager {
         }
       });
 
-      // 应用分页
       if (options.limit) {
         const offset = options.offset || 0;
         history = history.slice(offset, offset + options.limit);
@@ -169,7 +151,7 @@ class ClipboardHistoryManager {
 
       return history;
     } catch (error) {
-      console.error('获取剪贴板历史失败:', error);
+      console.error('获取Token历史失败:', error);
       return [];
     }
   }
@@ -185,7 +167,7 @@ class ClipboardHistoryManager {
       await this.saveHistory(filteredHistory);
       return true;
     } catch (error) {
-      console.error('删除剪贴板历史失败:', error);
+      console.error('删除Token历史失败:', error);
       return false;
     }
   }
@@ -198,35 +180,7 @@ class ClipboardHistoryManager {
       await chrome.storage.local.remove(this.storageKey);
       return true;
     } catch (error) {
-      console.error('清空剪贴板历史失败:', error);
-      return false;
-    }
-  }
-
-  /**
-   * 更新历史记录项
-   * @param {string} id - 记录ID
-   * @param {Object} updates - 更新内容
-   */
-  async updateItem(id, updates) {
-    try {
-      const history = await this.getHistory();
-      const index = history.findIndex((item) => item.id === id);
-
-      if (index === -1) {
-        return false;
-      }
-
-      history[index] = {
-        ...history[index],
-        ...updates,
-        lastAccessed: Date.now()
-      };
-
-      await this.saveHistory(history);
-      return true;
-    } catch (error) {
-      console.error('更新剪贴板历史失败:', error);
+      console.error('清空Token历史失败:', error);
       return false;
     }
   }
@@ -247,23 +201,22 @@ class ClipboardHistoryManager {
 
       switch (format.toLowerCase()) {
         case 'json': {
-          // 使用统一 Schema 格式导出
-          const exportData = createClipboardHistoryExport(history, settings);
+          const exportData = createTokenHistoryExport(history, settings);
           content = JSON.stringify(exportData, null, 2);
-          filename = `search-buddy-clipboard-history-${this.formatDate(new Date())}.json`;
+          filename = `search-buddy-token-history-${this.formatDate(new Date())}.json`;
           mimeType = 'application/json';
           break;
         }
 
         case 'csv':
           content = this.convertToCSV(history);
-          filename = `search-buddy-clipboard-history-${this.formatDate(new Date())}.csv`;
+          filename = `search-buddy-token-history-${this.formatDate(new Date())}.csv`;
           mimeType = 'text/csv';
           break;
 
         case 'txt':
           content = this.convertToText(history);
-          filename = `search-buddy-clipboard-history-${this.formatDate(new Date())}.txt`;
+          filename = `search-buddy-token-history-${this.formatDate(new Date())}.txt`;
           mimeType = 'text/plain';
           break;
 
@@ -271,11 +224,8 @@ class ClipboardHistoryManager {
           throw new Error('不支持的导出格式');
       }
 
-      // 创建下载链接
       const blob = new Blob([content], { type: mimeType });
       const url = URL.createObjectURL(blob);
-
-      // 触发下载
       const a = document.createElement('a');
       a.href = url;
       a.download = filename;
@@ -286,7 +236,7 @@ class ClipboardHistoryManager {
 
       return { success: true, filename, count: history.length };
     } catch (error) {
-      console.error('导出剪贴板历史失败:', error);
+      console.error('导出Token历史失败:', error);
       return { success: false, error: error.message };
     }
   }
@@ -300,18 +250,9 @@ class ClipboardHistoryManager {
   async importHistory(data, options = {}) {
     try {
       const { merge = true } = options;
-
-      // 使用统一 Schema 解析数据
-      const parseResult = parseImportData(data, IMPORT_CONTEXTS.CLIPBOARD_HISTORY);
+      const parseResult = parseImportData(data, IMPORT_CONTEXTS.TOKEN_HISTORY);
 
       if (!parseResult.success) {
-        // 尝试解析CSV格式
-        if (typeof data === 'string' && data.includes(',')) {
-          const csvData = this.parseCSV(data);
-          if (csvData.length > 0) {
-            return this.processImportData(csvData, merge);
-          }
-        }
         return {
           success: false,
           imported: 0,
@@ -320,11 +261,7 @@ class ClipboardHistoryManager {
         };
       }
 
-      // 提取剪贴板历史数据
-      const extractResult = extractDataForContext(
-        parseResult.data,
-        IMPORT_CONTEXTS.CLIPBOARD_HISTORY
-      );
+      const extractResult = extractDataForContext(parseResult.data, IMPORT_CONTEXTS.TOKEN_HISTORY);
 
       if (!extractResult.success) {
         return {
@@ -335,24 +272,19 @@ class ClipboardHistoryManager {
         };
       }
 
-      // 获取剪贴板历史项数组
       let importedData = [];
       const extractedData = extractResult.data;
 
-      if (extractedData.clipboardHistory) {
-        // 新格式：{ items: [...], settings: {...} }
-        if (extractedData.clipboardHistory.items) {
-          importedData = extractedData.clipboardHistory.items;
-          // 可选：更新设置
-          if (extractedData.clipboardHistory.settings) {
-            await this.saveSettings(extractedData.clipboardHistory.settings);
+      if (extractedData.tokenHistory) {
+        if (extractedData.tokenHistory.items) {
+          importedData = extractedData.tokenHistory.items;
+          if (extractedData.tokenHistory.settings) {
+            await this.saveSettings(extractedData.tokenHistory.settings);
           }
-        } else if (Array.isArray(extractedData.clipboardHistory)) {
-          // 兼容旧格式数组
-          importedData = extractedData.clipboardHistory;
+        } else if (Array.isArray(extractedData.tokenHistory)) {
+          importedData = extractedData.tokenHistory;
         }
       } else if (Array.isArray(extractedData)) {
-        // 纯数组格式
         importedData = extractedData;
       }
 
@@ -361,13 +293,13 @@ class ClipboardHistoryManager {
           success: false,
           imported: 0,
           errors: 1,
-          message: '数据中没有找到剪贴板历史记录'
+          message: '数据中没有找到Token历史记录'
         };
       }
 
       return this.processImportData(importedData, merge);
     } catch (error) {
-      console.error('导入剪贴板历史失败:', error);
+      console.error('导入Token历史失败:', error);
       return { success: false, imported: 0, errors: 1, message: error.message };
     }
   }
@@ -383,41 +315,37 @@ class ClipboardHistoryManager {
       let currentHistory = merge ? await this.getHistory() : [];
       let imported = 0;
       let errors = 0;
-      const existingTexts = new Set(currentHistory.map((item) => item.text));
+      const existingTokens = new Set(currentHistory.map((item) => item.token));
 
       const settings = await this.getSettings();
       const maxItems = settings.maxItems || this.maxHistoryItems;
 
       for (const item of importedData) {
         try {
-          if (!item.text || item.text.trim() === '') {
+          if (!item.token || item.token.trim() === '') {
             errors++;
             continue;
           }
 
-          const trimmedText = item.text.trim();
+          const trimmedToken = item.token.trim();
 
-          // 检查是否已存在
-          if (existingTexts.has(trimmedText)) {
+          if (existingTokens.has(trimmedToken)) {
             continue;
           }
 
-          // 规范化导入的数据
           const normalizedItem = {
             id: item.id || this.generateId(),
-            text: trimmedText,
-            preview: item.preview || this.generatePreview(trimmedText),
-            length: trimmedText.length,
+            token: trimmedToken,
+            length: trimmedToken.length,
             source: item.source || 'import',
             timestamp: item.timestamp || Date.now(),
             accessCount: item.accessCount || 1,
             lastAccessed: item.lastAccessed || Date.now(),
-            tags: Array.isArray(item.tags) ? item.tags : this.generateTags(trimmedText),
             metadata: item.metadata || {}
           };
 
           currentHistory.push(normalizedItem);
-          existingTexts.add(trimmedText);
+          existingTokens.add(trimmedToken);
           imported++;
         } catch (itemError) {
           console.error('导入单项失败:', itemError);
@@ -425,7 +353,6 @@ class ClipboardHistoryManager {
         }
       }
 
-      // 限制历史记录数量
       if (currentHistory.length > maxItems) {
         currentHistory = currentHistory.slice(0, maxItems);
       }
@@ -461,6 +388,20 @@ class ClipboardHistoryManager {
   }
 
   /**
+   * 读取文件内容
+   * @param {File} file - 文件对象
+   * @returns {Promise<string>}
+   */
+  readFileContent(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => reject(new Error('读取文件失败'));
+      reader.readAsText(file);
+    });
+  }
+
+  /**
    * 获取统计信息
    */
   async getStatistics() {
@@ -479,7 +420,6 @@ class ClipboardHistoryManager {
                 history.reduce((sum, item) => sum + (item.length || 0), 0) / history.length
               )
             : 0,
-        topTags: this.getTopTags(history),
         accessFrequency: this.getAccessFrequency(history)
       };
 
@@ -493,118 +433,6 @@ class ClipboardHistoryManager {
   // 私有方法
 
   /**
-   * 生成预览文本
-   */
-  generatePreview(text, maxLength = 100) {
-    if (!text) return '';
-    const lines = text.split(/\r?\n/);
-    let preview = lines[0] || '';
-    if (preview.length > maxLength) {
-      preview = preview.substring(0, maxLength) + '...';
-    }
-    return preview;
-  }
-
-  /**
-   * 生成标签
-   */
-  generateTags(text) {
-    const tags = [];
-
-    // 检测内容类型
-    if (this.isUrl(text)) {
-      tags.push('url');
-    }
-    if (this.isCode(text)) {
-      tags.push('code');
-    }
-    if (this.hasChinese(text)) {
-      tags.push('chinese');
-    }
-    if (this.hasEnglish(text)) {
-      tags.push('english');
-    }
-    if (text.includes('\n')) {
-      tags.push('multiline');
-    }
-
-    return tags;
-  }
-
-  /**
-   * 检测是否为URL
-   */
-  isUrl(text) {
-    try {
-      new URL(text);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * 检测是否为代码
-   */
-  isCode(text) {
-    const codePatterns = [
-      /^(function|const|let|var|class|import|export)\s/m,
-      /^(def|class|import|from)\s/m,
-      /[{;}]\s*\n/,
-      /\(\s*\)\s*=>/,
-      /^(if|for|while|switch)\s*\(/m
-    ];
-    return codePatterns.some((pattern) => pattern.test(text));
-  }
-
-  /**
-   * 检测是否包含中文（扩展范围包含emoji）
-   */
-  hasChinese(text) {
-    if (!text) return false;
-    for (let i = 0; i < text.length; ) {
-      const codePoint = text.codePointAt(i);
-      if (codePoint === undefined) break;
-      const char = String.fromCodePoint(codePoint);
-      const charLength = char.length;
-
-      // 检查是否是中文
-      const code = char.codePointAt(0);
-      const isChinese =
-        (code >= 0x4e00 && code <= 0x9fff) || // CJK统一表意文字
-        (code >= 0x3000 && code <= 0x303f) || // CJK符号和标点
-        (code >= 0xff00 && code <= 0xffef) || // 全角ASCII、半角片假名
-        (code >= 0x3400 && code <= 0x4dbf) || // CJK扩展A
-        (code >= 0x20000 && code <= 0x2a6df) || // CJK扩展B
-        (code >= 0x2a700 && code <= 0x2b73f) || // CJK扩展C
-        (code >= 0x2b740 && code <= 0x2b81f); // CJK扩展D
-
-      // 检查是否是emoji
-      const isEmoji =
-        (code >= 0x1f300 && code <= 0x1f9ff) || // 杂项符号和象形文字
-        (code >= 0x1f600 && code <= 0x1f64f) || // 表情符号
-        (code >= 0x1f680 && code <= 0x1f6ff) || // 交通和地图符号
-        (code >= 0x1f1e0 && code <= 0x1f1ff) || // 国旗
-        (code >= 0x2600 && code <= 0x26ff) || // 杂项符号
-        (code >= 0x2700 && code <= 0x27bf) || // 装饰符号
-        (code >= 0x1f900 && code <= 0x1f9ff); // 补充符号和象形文字
-
-      if (isChinese || isEmoji) {
-        return true;
-      }
-      i += charLength;
-    }
-    return false;
-  }
-
-  /**
-   * 检测是否包含英文
-   */
-  hasEnglish(text) {
-    return /[a-zA-Z]/.test(text);
-  }
-
-  /**
    * 保存历史记录
    */
   async saveHistory(history) {
@@ -612,31 +440,17 @@ class ClipboardHistoryManager {
   }
 
   /**
-   * 读取文件内容
-   */
-  readFileContent(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.onerror = () => reject(new Error('读取文件失败'));
-      reader.readAsText(file);
-    });
-  }
-
-  /**
    * 转换为CSV格式
    */
   convertToCSV(history) {
-    const headers = ['内容', '预览', '长度', '来源', '访问次数', '添加时间', '最后访问', '标签'];
+    const headers = ['Token', '长度', '来源', '访问次数', '添加时间', '最后访问'];
     const rows = history.map((item) => [
-      `"${(item.text || '').replace(/"/g, '""')}"`,
-      `"${(item.preview || '').replace(/"/g, '""')}"`,
+      `"${(item.token || '').replace(/"/g, '""')}"`,
       item.length || 0,
       item.source || '',
       item.accessCount || 1,
       new Date(item.timestamp).toLocaleString('zh-CN'),
-      new Date(item.lastAccessed).toLocaleString('zh-CN'),
-      `"${(item.tags || []).join(';')}"`
+      new Date(item.lastAccessed).toLocaleString('zh-CN')
     ]);
 
     return [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
@@ -648,91 +462,9 @@ class ClipboardHistoryManager {
   convertToText(history) {
     return history
       .map((item) => {
-        return `内容: ${item.text}\n预览: ${item.preview}\n长度: ${item.length}\n来源: ${item.source}\n访问次数: ${item.accessCount}\n添加时间: ${new Date(item.timestamp).toLocaleString('zh-CN')}\n最后访问: ${new Date(item.lastAccessed).toLocaleString('zh-CN')}\n标签: ${(item.tags || []).join(', ')}\n${'='.repeat(50)}\n`;
+        return `Token: ${item.token}\n长度: ${item.length}\n来源: ${item.source}\n访问次数: ${item.accessCount}\n添加时间: ${new Date(item.timestamp).toLocaleString('zh-CN')}\n最后访问: ${new Date(item.lastAccessed).toLocaleString('zh-CN')}\n${'='.repeat(50)}\n`;
       })
       .join('\n');
-  }
-
-  /**
-   * 解析CSV
-   */
-  parseCSV(csv) {
-    const lines = csv.trim().split('\n');
-    if (lines.length < 2) return [];
-
-    const headers = lines[0].split(',').map((h) => h.trim().replace(/^"|"$/g, ''));
-    const result = [];
-
-    for (let i = 1; i < lines.length; i++) {
-      const values = this.parseCSVLine(lines[i]);
-      const item = {};
-
-      headers.forEach((header, index) => {
-        let value = values[index] || '';
-        value = value.replace(/^"|"$/g, '').replace(/""/g, '"');
-
-        if (['timestamp', 'lastAccessed', 'accessCount', 'length'].includes(header)) {
-          value = ['accessCount', 'length'].includes(header)
-            ? parseInt(value) || 0
-            : parseInt(value) || Date.now();
-        } else if (header === 'tags') {
-          value = value ? value.split(';').filter(Boolean) : [];
-        }
-
-        item[header] = value;
-      });
-
-      result.push(item);
-    }
-
-    return result;
-  }
-
-  /**
-   * 解析CSV行
-   */
-  parseCSVLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-
-    for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-
-      if (char === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          current += '"';
-          i++;
-        } else {
-          inQuotes = !inQuotes;
-        }
-      } else if (char === ',' && !inQuotes) {
-        result.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-
-    result.push(current.trim());
-    return result;
-  }
-
-  /**
-   * 获取热门标签
-   */
-  getTopTags(history) {
-    const tagCount = {};
-    history.forEach((item) => {
-      (item.tags || []).forEach((tag) => {
-        tagCount[tag] = (tagCount[tag] || 0) + 1;
-      });
-    });
-
-    return Object.entries(tagCount)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 10)
-      .map(([tag, count]) => ({ tag, count }));
   }
 
   /**
@@ -792,5 +524,5 @@ class ClipboardHistoryManager {
 }
 
 // 导出单例实例
-const clipboardHistoryManager = new ClipboardHistoryManager();
-export default clipboardHistoryManager;
+const tokenHistoryManager = new TokenHistoryManager();
+export default tokenHistoryManager;

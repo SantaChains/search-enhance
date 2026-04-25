@@ -336,7 +336,6 @@ body {
   accent-color: var(--primary);
   cursor: pointer;
   border-radius: 3px;
-  pointer-events: none; /* 让点击事件由父容器处理 */
 }
 
 .switch-container label {
@@ -347,7 +346,6 @@ body {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  pointer-events: none; /* 让点击事件由父容器处理 */
 }
 
 /* 剪贴板监控单独区域 */
@@ -2127,24 +2125,41 @@ button:disabled:hover {
   width: 100%;
 }
 
-/* 历史项容器 */
+/* 历史项容器 - UX优化版 */
 .history-item {
   width: 100%;
-  margin: var(--space-3) 0;
+  margin: var(--space-2) 0;
   display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--bg-card);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-fast);
+}
+
+.history-item:hover {
+  border-color: var(--primary-light);
+  box-shadow: var(--shadow-sm);
+}
+
+/* 内容类型图标 */
+.content-type-icon {
+  font-size: 14px;
+  margin-right: var(--space-1);
+  flex-shrink: 0;
 }
 
 .clipboard-item-content {
-  padding: var(--space-4);
-  background: var(--bg-lighter);
-  border-radius: var(--radius-md);
-  border: 1px dashed var(--warning);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  border: none;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-1);
   flex: 1;
-  width: 100%;
-  box-sizing: border-box;
   min-width: 0;
 }
 
@@ -2154,58 +2169,68 @@ button:disabled:hover {
   flex-wrap: nowrap;
 }
 
-/* 元信息区域 */
+/* 元信息区域 - UX优化 */
 .clipboard-meta {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  min-height: 20px;
-}
-
-.clipboard-meta .timestamp {
-  font-size: 12px;
+  gap: var(--space-2);
+  font-size: 11px;
   color: var(--text-light);
 }
 
-/* 操作按钮组 */
-.item-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex-shrink: 0;
-  align-self: stretch;
-  justify-content: center;
-  width: 32px;
-  min-width: 32px;
+.clipboard-meta .timestamp {
+  color: var(--text-light);
 }
 
-.item-actions .btn-sm {
-  width: 32px;
-  height: 32px;
+.clipboard-meta .char-count {
+  color: var(--text-lighter);
+  font-size: 10px;
+}
+
+/* 操作按钮组 - UX优化：水平图标按钮 */
+.item-actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-1);
+  flex-shrink: 0;
+  align-items: center;
+  opacity: 0.6;
+  transition: opacity var(--transition-fast);
+}
+
+.history-item:hover .item-actions {
+  opacity: 1;
+}
+
+.item-actions .action-btn {
+  width: 28px;
+  height: 28px;
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--primary);
-  border: none;
+  background: var(--bg-lighter);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  color: white;
+  color: var(--text-medium);
   cursor: pointer;
   transition: all var(--transition-fast);
-  flex-shrink: 0;
 }
 
-.item-actions .btn-sm:hover {
-  background: var(--primary-dark);
+.item-actions .action-btn:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
   transform: translateY(-1px);
 }
 
-.item-actions .edit-btn {
-  background: var(--warning);
+.item-actions .action-btn:active {
+  transform: translateY(0);
 }
 
-.item-actions .edit-btn:hover {
-  background: #d4a854;
+.item-actions .delete-btn:hover {
+  background: var(--danger);
+  border-color: var(--danger);
 }
 
 .clipboard-item-content.selected {
@@ -2277,25 +2302,27 @@ button:disabled:hover {
   flex: 0 0 16px;
 }
 
-/* 文本内容 */
+/* 文本内容 - UX优化 */
 .clipboard-text-content {
   flex: 1 1 auto;
   min-width: 0;
   margin: 0;
-  background: var(--bg-card);
-  font-family:
-    'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
   color: var(--text-dark);
   white-space: pre-wrap;
   word-break: break-all;
-  line-height: 1.4;
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-color);
-  min-height: 68px;
-  display: block;
+  line-height: 1.5;
+  padding: var(--space-1) 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
+  cursor: pointer;
+}
+
+.clipboard-text-content:hover {
+  color: var(--primary);
 }
 
 /* 编辑文本框 */

@@ -375,7 +375,7 @@ export function isBrowserHomePage(url) {
   ];
 
   // 检查是否以浏览器内部协议开头
-  return browserProtocols.some(protocol => url.toLowerCase().startsWith(protocol));
+  return browserProtocols.some((protocol) => url.toLowerCase().startsWith(protocol));
 }
 
 export default {

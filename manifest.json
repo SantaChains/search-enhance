@@ -17,26 +17,27 @@
   "commands": {
     "_execute_action": {
       "suggested_key": {
-        "default": "Alt+L",
-        "mac": "Command+Shift+L",
-        "windows": "Alt+L",
-        "linux": "Alt+L"
+        "windows": "Alt+D"
       },
       "description": "打开/关闭侧边栏"
     },
     "toggle_clipboard_monitoring": {
       "suggested_key": {
-        "default": "Alt+K",
-        "mac": "Command+Shift+K"
+        "windows": "Alt+C"
       },
       "description": "切换剪贴板监控"
     },
     "open_side_panel_and_read": {
       "suggested_key": {
-        "default": "Alt+J",
-        "mac": "Command+Shift+J"
+        "windows": "Alt+V"
       },
-      "description": "读取剪贴板到输入框（如果侧边栏未打开则先打开）"
+      "description": "读取剪贴板到输入框"
+    },
+    "quick_search": {
+      "suggested_key": {
+        "windows": "Alt+S"
+      },
+      "description": "快速搜索选中文本"
     }
   },
   "background": {

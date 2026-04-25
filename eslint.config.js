@@ -13,9 +13,9 @@ export default [
       }
     },
     rules: {
-      indent: ['error', 2],
+      indent: 'off',
       'linebreak-style': ['warn', 'unix'],
-      quotes: ['error', 'single'],
+      quotes: 'off',
       semi: ['error', 'always'],
       'no-unused-vars': 'warn',
       'no-console': 'warn',

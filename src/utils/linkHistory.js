@@ -337,29 +337,29 @@ class LinkHistoryManager {
       let mimeType = '';
 
       switch (format.toLowerCase()) {
-      case 'json': {
-        // 使用统一 Schema 格式导出
-        const exportData = createLinkHistoryExport(history, settings);
-        content = JSON.stringify(exportData, null, 2);
-        filename = `search-buddy-link-history-${this.formatDate(new Date())}.json`;
-        mimeType = 'application/json';
-        break;
-      }
+        case 'json': {
+          // 使用统一 Schema 格式导出
+          const exportData = createLinkHistoryExport(history, settings);
+          content = JSON.stringify(exportData, null, 2);
+          filename = `search-buddy-link-history-${this.formatDate(new Date())}.json`;
+          mimeType = 'application/json';
+          break;
+        }
 
-      case 'csv':
-        content = this.convertToCSV(history);
-        filename = `search-buddy-link-history-${this.formatDate(new Date())}.csv`;
-        mimeType = 'text/csv';
-        break;
+        case 'csv':
+          content = this.convertToCSV(history);
+          filename = `search-buddy-link-history-${this.formatDate(new Date())}.csv`;
+          mimeType = 'text/csv';
+          break;
 
-      case 'txt':
-        content = this.convertToText(history);
-        filename = `search-buddy-link-history-${this.formatDate(new Date())}.txt`;
-        mimeType = 'text/plain';
-        break;
+        case 'txt':
+          content = this.convertToText(history);
+          filename = `search-buddy-link-history-${this.formatDate(new Date())}.txt`;
+          mimeType = 'text/plain';
+          break;
 
-      default:
-        throw new Error('不支持的导出格式');
+        default:
+          throw new Error('不支持的导出格式');
       }
 
       // 创建下载链接
@@ -413,10 +413,7 @@ class LinkHistoryManager {
       }
 
       // 提取链接历史数据
-      const extractResult = extractDataForContext(
-        parseResult.data,
-        IMPORT_CONTEXTS.LINK_HISTORY
-      );
+      const extractResult = extractDataForContext(parseResult.data, IMPORT_CONTEXTS.LINK_HISTORY);
 
       if (!extractResult.success) {
         return {

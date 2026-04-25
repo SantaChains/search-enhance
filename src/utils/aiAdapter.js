@@ -218,14 +218,14 @@ JSON对象：
 };
 
 // ============================================================================
-// URL与链接处理工具
+// URL 与链接处理工具
 // ============================================================================
 
 /**
- * URL模式正则 - 识别完整URL
+ * URL 模式正则 - 识别完整 URL
  * 支持：http://, https://, ftp:// 等协议
  */
-const URL_PATTERN = /https?:\/\/[^\s<>"{}|\\^`[]]+|ftp:\/\/[^\s<>"{}|\\^`[]]+/gi;
+const URL_PATTERN = /https?:\/\/[^\s<>"{}|\\^`\[\]]+|ftp:\/\/[^\s<>"{}|\\^`\[\]]+/gi;
 
 /**
  * 域名模式正则 - 识别疑似链接
@@ -256,6 +256,76 @@ const DOMAIN_BLACKLIST = new Set([
   'trademarked',
   'registered'
 ]);
+
+/**
+ * AI Base URL 白名单 - 安全性增强
+ * 允许的 API 服务商域名
+ */
+const AI_BASE_URL_WHITELIST = [
+  // OpenAI
+  'api.openai.com',
+  // Anthropic (Claude)
+  'api.anthropic.com',
+  // Google Gemini
+  'generativelanguage.googleapis.com',
+  // Azure
+  '.azure.com',
+  // 国内服务商
+  'open.bigmodel.cn', // 智谱 AI
+  'qianfan.baidubce.com', // 百度文心
+  'dashscope.aliyuncs.com', // 阿里通义
+  'api.deepseek.com', // DeepSeek
+  'api.siliconflow.cn', // SiliconFlow
+  // 本地部署
+  'localhost',
+  '127.0.0.1'
+];
+
+/**
+ * 验证 Base URL 是否安全
+ * @param {string} baseURL - 待验证的 Base URL
+ * @returns {object} 验证结果
+ */
+export function validateBaseURL(baseURL) {
+  if (!baseURL || typeof baseURL !== 'string') {
+    return { valid: false, reason: 'Base URL 为空' };
+  }
+
+  try {
+    const url = new URL(baseURL);
+
+    // 检查协议
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+      return { valid: false, reason: '仅支持 HTTP/HTTPS 协议' };
+    }
+
+    // 本地地址直接允许
+    if (url.hostname === 'localhost' || url.hostname === '127.0.0.1') {
+      return { valid: true, warning: '使用本地 API 地址' };
+    }
+
+    // 检查是否在白名单内
+    const isAllowed = AI_BASE_URL_WHITELIST.some((allowed) => {
+      if (allowed.startsWith('.')) {
+        // 子域名匹配（如 .azure.com）
+        return url.hostname.endsWith(allowed);
+      }
+      return url.hostname === allowed || url.hostname.endsWith('.' + allowed);
+    });
+
+    if (!isAllowed) {
+      return {
+        valid: false,
+        reason: `Base URL 域名 (${url.hostname}) 不在白名单内`,
+        suggestion: '请确认使用的是官方 AI 服务商地址'
+      };
+    }
+
+    return { valid: true };
+  } catch (error) {
+    return { valid: false, reason: 'Base URL 格式无效' };
+  }
+}
 
 /**
  * 检测文本中的完整URL
@@ -637,7 +707,6 @@ const StreamHandlers = {
     const decoder = new TextDecoder();
     let buffer = '';
 
-     
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -670,7 +739,6 @@ const StreamHandlers = {
     const decoder = new TextDecoder();
     let buffer = '';
 
-     
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -704,7 +772,6 @@ const StreamHandlers = {
     const decoder = new TextDecoder();
     let buffer = '';
 
-     
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
@@ -816,14 +883,14 @@ class AIAdapter {
     const format = config.requestFormat;
 
     switch (format) {
-    case 'gemini':
-      return `${config.baseURL}/models/${model}:generateContent?key=${config.apiKey}`;
-    case 'openai':
-    default:
-      if (config.baseURL.includes('azure.com') || config.baseURL.includes('deployments')) {
-        return `${config.baseURL}/chat/completions?api-version=2024-02-01`;
-      }
-      return `${config.baseURL}/chat/completions`;
+      case 'gemini':
+        return `${config.baseURL}/models/${model}:generateContent?key=${config.apiKey}`;
+      case 'openai':
+      default:
+        if (config.baseURL.includes('azure.com') || config.baseURL.includes('deployments')) {
+          return `${config.baseURL}/chat/completions?api-version=2024-02-01`;
+        }
+        return `${config.baseURL}/chat/completions`;
     }
   }
 
@@ -862,6 +929,19 @@ class AIAdapter {
 
     if (!config.apiKey) {
       throw new AIError('未配置 API Key');
+    }
+
+    // 安全性验证：检查 Base URL 是否在白名单内
+    const urlValidation = validateBaseURL(config.baseURL);
+    if (!urlValidation.valid) {
+      const errorMsg = `Base URL 安全验证失败：${urlValidation.reason}`;
+      if (urlValidation.suggestion) {
+        logger.warn(`${errorMsg} - ${urlValidation.suggestion}`);
+      }
+      throw new AIError(errorMsg);
+    }
+    if (urlValidation.warning) {
+      logger.warn(urlValidation.warning);
     }
 
     const url = this.buildURL(config, model);
@@ -951,9 +1031,8 @@ export { AIAdapter, aiAdapter, AIError, ProviderTemplates, DEFAULT_CONFIG, Syste
 export default aiAdapter;
 
 // 兼容 CommonJS
- 
+
 if (typeof module !== 'undefined' && module.exports) {
-   
   module.exports = {
     AIAdapter,
     aiAdapter,

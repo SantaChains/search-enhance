@@ -11,17 +11,19 @@ export const SCHEMA_URL =
 
 // 导出类型枚举
 export const EXPORT_TYPES = {
-  FULL: 'full', // 完整备份
-  SETTINGS: 'settings', // 仅设置
-  LINK_HISTORY: 'linkHistory', // 仅链接历史
-  CLIPBOARD_HISTORY: 'clipboardHistory' // 仅剪贴板历史
+  FULL: 'full',
+  SETTINGS: 'settings',
+  LINK_HISTORY: 'linkHistory',
+  CLIPBOARD_HISTORY: 'clipboardHistory',
+  TOKEN_HISTORY: 'tokenHistory'
 };
 
 // 导入上下文枚举
 export const IMPORT_CONTEXTS = {
-  SETTINGS: 'settings', // 在设置页面导入
-  LINK_HISTORY: 'linkHistory', // 在链接历史页面导入
-  CLIPBOARD_HISTORY: 'clipboardHistory' // 在剪贴板历史页面导入
+  SETTINGS: 'settings',
+  LINK_HISTORY: 'linkHistory',
+  CLIPBOARD_HISTORY: 'clipboardHistory',
+  TOKEN_HISTORY: 'tokenHistory'
 };
 
 // 旧格式类型检测标识
@@ -165,40 +167,95 @@ export function convertLegacyToNew(legacyData, legacyType, targetContext) {
   const exportDate = new Date().toISOString();
 
   switch (legacyType) {
-  case LEGACY_FORMATS.OLD_SETTINGS:
-    // 旧版设置格式转换
-    if (legacyData.type === 'allData' && legacyData.data) {
-      // v2.0 之前的中间格式
+    case LEGACY_FORMATS.OLD_SETTINGS:
+      // 旧版设置格式转换
+      if (legacyData.type === 'allData' && legacyData.data) {
+        // v2.0 之前的中间格式
+        return {
+          $schema: SCHEMA_URL,
+          metadata: {
+            appName: APP_NAME,
+            version: SCHEMA_VERSION,
+            exportType: EXPORT_TYPES.FULL,
+            exportDate,
+            exportedBy: IMPORT_CONTEXTS.SETTINGS
+          },
+          data: legacyData.data
+        };
+      }
+      // 纯设置格式
       return {
         $schema: SCHEMA_URL,
         metadata: {
           appName: APP_NAME,
           version: SCHEMA_VERSION,
-          exportType: EXPORT_TYPES.FULL,
+          exportType: EXPORT_TYPES.SETTINGS,
           exportDate,
           exportedBy: IMPORT_CONTEXTS.SETTINGS
         },
-        data: legacyData.data
+        data: {
+          settings: legacyData
+        }
+      };
+
+    case LEGACY_FORMATS.OLD_LINK_HISTORY: {
+      // 旧版链接历史格式转换
+      if (legacyData.type === 'allData' && legacyData.data?.linkHistory) {
+        return {
+          $schema: SCHEMA_URL,
+          metadata: {
+            appName: APP_NAME,
+            version: SCHEMA_VERSION,
+            exportType: EXPORT_TYPES.FULL,
+            exportDate,
+            exportedBy: IMPORT_CONTEXTS.LINK_HISTORY
+          },
+          data: legacyData.data
+        };
+      }
+      // 纯数组格式
+      const linkItems = Array.isArray(legacyData) ? legacyData : legacyData.history || [];
+      return {
+        $schema: SCHEMA_URL,
+        metadata: {
+          appName: APP_NAME,
+          version: SCHEMA_VERSION,
+          exportType: EXPORT_TYPES.LINK_HISTORY,
+          exportDate,
+          exportedBy: IMPORT_CONTEXTS.LINK_HISTORY
+        },
+        data: {
+          linkHistory: {
+            items: linkItems,
+            settings: legacyData.settings || { enabled: true, maxItems: 100 }
+          }
+        }
       };
     }
-    // 纯设置格式
-    return {
-      $schema: SCHEMA_URL,
-      metadata: {
-        appName: APP_NAME,
-        version: SCHEMA_VERSION,
-        exportType: EXPORT_TYPES.SETTINGS,
-        exportDate,
-        exportedBy: IMPORT_CONTEXTS.SETTINGS
-      },
-      data: {
-        settings: legacyData
-      }
-    };
 
-  case LEGACY_FORMATS.OLD_LINK_HISTORY: {
-    // 旧版链接历史格式转换
-    if (legacyData.type === 'allData' && legacyData.data?.linkHistory) {
+    case LEGACY_FORMATS.OLD_CLIPBOARD_HISTORY: {
+      // 旧版剪贴板历史格式转换
+      const clipboardItems = legacyData.history || (Array.isArray(legacyData) ? legacyData : []);
+      return {
+        $schema: SCHEMA_URL,
+        metadata: {
+          appName: APP_NAME,
+          version: SCHEMA_VERSION,
+          exportType: EXPORT_TYPES.CLIPBOARD_HISTORY,
+          exportDate,
+          exportedBy: IMPORT_CONTEXTS.CLIPBOARD_HISTORY
+        },
+        data: {
+          clipboardHistory: {
+            items: clipboardItems,
+            settings: legacyData.settings || { enabled: true, maxItems: 100, autoSave: true }
+          }
+        }
+      };
+    }
+
+    default:
+      // 未知格式，尝试智能推断
       return {
         $schema: SCHEMA_URL,
         metadata: {
@@ -206,67 +263,12 @@ export function convertLegacyToNew(legacyData, legacyType, targetContext) {
           version: SCHEMA_VERSION,
           exportType: EXPORT_TYPES.FULL,
           exportDate,
-          exportedBy: IMPORT_CONTEXTS.LINK_HISTORY
+          exportedBy: targetContext || IMPORT_CONTEXTS.SETTINGS
         },
-        data: legacyData.data
+        data: {
+          settings: legacyData.settings || legacyData
+        }
       };
-    }
-    // 纯数组格式
-    const linkItems = Array.isArray(legacyData) ? legacyData : legacyData.history || [];
-    return {
-      $schema: SCHEMA_URL,
-      metadata: {
-        appName: APP_NAME,
-        version: SCHEMA_VERSION,
-        exportType: EXPORT_TYPES.LINK_HISTORY,
-        exportDate,
-        exportedBy: IMPORT_CONTEXTS.LINK_HISTORY
-      },
-      data: {
-        linkHistory: {
-          items: linkItems,
-          settings: legacyData.settings || { enabled: true, maxItems: 100 }
-        }
-      }
-    };
-  }
-
-  case LEGACY_FORMATS.OLD_CLIPBOARD_HISTORY: {
-    // 旧版剪贴板历史格式转换
-    const clipboardItems = legacyData.history || (Array.isArray(legacyData) ? legacyData : []);
-    return {
-      $schema: SCHEMA_URL,
-      metadata: {
-        appName: APP_NAME,
-        version: SCHEMA_VERSION,
-        exportType: EXPORT_TYPES.CLIPBOARD_HISTORY,
-        exportDate,
-        exportedBy: IMPORT_CONTEXTS.CLIPBOARD_HISTORY
-      },
-      data: {
-        clipboardHistory: {
-          items: clipboardItems,
-          settings: legacyData.settings || { enabled: true, maxItems: 100, autoSave: true }
-        }
-      }
-    };
-  }
-
-  default:
-    // 未知格式，尝试智能推断
-    return {
-      $schema: SCHEMA_URL,
-      metadata: {
-        appName: APP_NAME,
-        version: SCHEMA_VERSION,
-        exportType: EXPORT_TYPES.FULL,
-        exportDate,
-        exportedBy: targetContext || IMPORT_CONTEXTS.SETTINGS
-      },
-      data: {
-        settings: legacyData.settings || legacyData
-      }
-    };
   }
 }
 
@@ -277,31 +279,34 @@ export function convertLegacyToNew(legacyData, legacyType, targetContext) {
  * @returns {Object} 导入策略 { canImport: boolean, targetDataKey?: string, error?: string }
  */
 export function getImportStrategy(importContext, exportType) {
-  // 导入策略矩阵
   const strategies = {
     [IMPORT_CONTEXTS.SETTINGS]: {
-      [EXPORT_TYPES.FULL]: { canImport: true, targetDataKey: null }, // 导入所有
+      [EXPORT_TYPES.FULL]: { canImport: true, targetDataKey: null },
       [EXPORT_TYPES.SETTINGS]: { canImport: true, targetDataKey: 'settings' },
       [EXPORT_TYPES.LINK_HISTORY]: { canImport: true, targetDataKey: 'linkHistory' },
-      [EXPORT_TYPES.CLIPBOARD_HISTORY]: { canImport: true, targetDataKey: 'clipboardHistory' }
+      [EXPORT_TYPES.CLIPBOARD_HISTORY]: { canImport: true, targetDataKey: 'clipboardHistory' },
+      [EXPORT_TYPES.TOKEN_HISTORY]: { canImport: true, targetDataKey: 'tokenHistory' }
     },
     [IMPORT_CONTEXTS.LINK_HISTORY]: {
-      [EXPORT_TYPES.FULL]: { canImport: true, targetDataKey: 'linkHistory' }, // 只提取 linkHistory
+      [EXPORT_TYPES.FULL]: { canImport: true, targetDataKey: 'linkHistory' },
       [EXPORT_TYPES.SETTINGS]: { canImport: false, error: '无法在链接历史页面导入设置数据' },
       [EXPORT_TYPES.LINK_HISTORY]: { canImport: true, targetDataKey: 'linkHistory' },
-      [EXPORT_TYPES.CLIPBOARD_HISTORY]: {
-        canImport: false,
-        error: '数据类型不匹配：这是剪贴板历史数据，请在剪贴板历史页面导入'
-      }
+      [EXPORT_TYPES.CLIPBOARD_HISTORY]: { canImport: false, error: '数据类型不匹配' },
+      [EXPORT_TYPES.TOKEN_HISTORY]: { canImport: false, error: '数据类型不匹配' }
     },
     [IMPORT_CONTEXTS.CLIPBOARD_HISTORY]: {
-      [EXPORT_TYPES.FULL]: { canImport: true, targetDataKey: 'clipboardHistory' }, // 只提取 clipboardHistory
+      [EXPORT_TYPES.FULL]: { canImport: true, targetDataKey: 'clipboardHistory' },
       [EXPORT_TYPES.SETTINGS]: { canImport: false, error: '无法在剪贴板历史页面导入设置数据' },
-      [EXPORT_TYPES.LINK_HISTORY]: {
-        canImport: false,
-        error: '数据类型不匹配：这是链接历史数据，请在链接历史页面导入'
-      },
-      [EXPORT_TYPES.CLIPBOARD_HISTORY]: { canImport: true, targetDataKey: 'clipboardHistory' }
+      [EXPORT_TYPES.LINK_HISTORY]: { canImport: false, error: '数据类型不匹配' },
+      [EXPORT_TYPES.CLIPBOARD_HISTORY]: { canImport: true, targetDataKey: 'clipboardHistory' },
+      [EXPORT_TYPES.TOKEN_HISTORY]: { canImport: false, error: '数据类型不匹配' }
+    },
+    [IMPORT_CONTEXTS.TOKEN_HISTORY]: {
+      [EXPORT_TYPES.FULL]: { canImport: true, targetDataKey: 'tokenHistory' },
+      [EXPORT_TYPES.SETTINGS]: { canImport: false, error: '无法在Token历史页面导入设置数据' },
+      [EXPORT_TYPES.LINK_HISTORY]: { canImport: false, error: '数据类型不匹配' },
+      [EXPORT_TYPES.CLIPBOARD_HISTORY]: { canImport: false, error: '数据类型不匹配' },
+      [EXPORT_TYPES.TOKEN_HISTORY]: { canImport: true, targetDataKey: 'tokenHistory' }
     }
   };
 
@@ -429,17 +434,34 @@ export function createSettingsExport(settings) {
 }
 
 /**
+ * 创建Token历史导出数据
+ * @param {Array} items - Token历史项
+ * @param {Object} settings - Token历史设置
+ * @returns {Object} 标准化的导出数据
+ */
+export function createTokenHistoryExport(items, settings) {
+  return createExportData(EXPORT_TYPES.TOKEN_HISTORY, IMPORT_CONTEXTS.TOKEN_HISTORY, {
+    tokenHistory: {
+      items,
+      settings
+    }
+  });
+}
+
+/**
  * 创建完整备份导出数据
  * @param {Object} settings - 设置对象
  * @param {Object} linkHistory - 链接历史数据
  * @param {Object} clipboardHistory - 剪贴板历史数据
+ * @param {Object} tokenHistory - Token历史数据
  * @returns {Object} 标准化的导出数据
  */
-export function createFullExport(settings, linkHistory, clipboardHistory) {
+export function createFullExport(settings, linkHistory, clipboardHistory, tokenHistory) {
   return createExportData(EXPORT_TYPES.FULL, IMPORT_CONTEXTS.SETTINGS, {
     settings,
     linkHistory,
-    clipboardHistory
+    clipboardHistory,
+    tokenHistory
   });
 }
 
@@ -460,6 +482,7 @@ export default {
   parseImportData,
   createLinkHistoryExport,
   createClipboardHistoryExport,
+  createTokenHistoryExport,
   createSettingsExport,
   createFullExport
 };

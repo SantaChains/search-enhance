@@ -28,35 +28,7 @@ import { getSettings } from './storage.js';
 // 辅助函数：检查字符是否是emoji
 // ============================================================================
 
-function isEmoji(char) {
-  const code = char.codePointAt(0);
-  return (
-    (code >= 0x1f300 && code <= 0x1f9ff) || // 杂项符号和象形文字
-    (code >= 0x1f600 && code <= 0x1f64f) || // 表情符号
-    (code >= 0x1f680 && code <= 0x1f6ff) || // 交通和地图符号
-    (code >= 0x1f1e0 && code <= 0x1f1ff) || // 国旗
-    (code >= 0x2600 && code <= 0x26ff) ||   // 杂项符号
-    (code >= 0x2700 && code <= 0x27bf) ||   // 装饰符号
-    (code >= 0x1f900 && code <= 0x1f9ff)    // 补充符号和象形文字
-  );
-}
-
-function isChinese(char) {
-  const code = char.codePointAt(0);
-  return (
-    (code >= 0x4e00 && code <= 0x9fff) ||   // CJK统一表意文字
-    (code >= 0x3000 && code <= 0x303f) ||   // CJK符号和标点
-    (code >= 0xff00 && code <= 0xffef) ||   // 全角ASCII、半角片假名
-    (code >= 0x3400 && code <= 0x4dbf) ||   // CJK扩展A
-    (code >= 0x20000 && code <= 0x2a6df) || // CJK扩展B
-    (code >= 0x2a700 && code <= 0x2b73f) || // CJK扩展C
-    (code >= 0x2b740 && code <= 0x2b81f)    // CJK扩展D
-  );
-}
-
-function isChineseOrEmoji(char) {
-  return isChinese(char) || isEmoji(char);
-}
+import { isChineseOrEmoji } from './analyzers/utils.js';
 
 // ============================================================================
 // 配置
@@ -202,7 +174,7 @@ export function applySymbolSplit(input) {
       { open: '{', close: '}' },
       { open: '<', close: '>' },
       { open: '"', close: '"' },
-      { open: '\'', close: '\'' },
+      { open: "'", close: "'" },
       { open: '`', close: '`' },
       { open: '「', close: '」' },
       { open: '『', close: '』' },
@@ -213,7 +185,7 @@ export function applySymbolSplit(input) {
     ];
 
     // 普通标点符号（非成对）
-    const punctuation = /[，。！？；：、,.!?;:\-\—/\\|@#$%^&*+=~]/;  
+    const punctuation = /[，。！？；：、,.!?;:\-\—/\\|@#$%^&*+=~]/;
 
     const result = [];
     let buffer = '';
@@ -611,27 +583,27 @@ export async function multiRuleAnalyze(text, rules = []) {
 
   for (const rule of splitRules) {
     switch (rule) {
-    case 'symbolSplit':
-      result = applySymbolSplit(result);
-      break;
-    case 'whitespaceSplit':
-      result = applyWhitespaceSplit(result);
-      break;
-    case 'newlineSplit':
-      result = applyNewlineSplit(result);
-      break;
-    case 'chineseEnglishSplit':
-      result = applyChineseEnglishSplit(result);
-      break;
-    case 'uppercaseSplit':
-      result = applyUppercaseSplit(result);
-      break;
-    case 'namingSplit':
-      result = applyNamingSplit(result);
-      break;
-    case 'digitSplit':
-      result = applyDigitSplit(result);
-      break;
+      case 'symbolSplit':
+        result = applySymbolSplit(result);
+        break;
+      case 'whitespaceSplit':
+        result = applyWhitespaceSplit(result);
+        break;
+      case 'newlineSplit':
+        result = applyNewlineSplit(result);
+        break;
+      case 'chineseEnglishSplit':
+        result = applyChineseEnglishSplit(result);
+        break;
+      case 'uppercaseSplit':
+        result = applyUppercaseSplit(result);
+        break;
+      case 'namingSplit':
+        result = applyNamingSplit(result);
+        break;
+      case 'digitSplit':
+        result = applyDigitSplit(result);
+        break;
     }
     result = flattenArray(result);
   }
@@ -642,18 +614,18 @@ export async function multiRuleAnalyze(text, rules = []) {
 
   for (const rule of removeRules) {
     switch (rule) {
-    case 'removeWhitespace':
-      result = applyRemoveWhitespace(result);
-      break;
-    case 'removeSymbols':
-      result = applyRemoveSymbols(result);
-      break;
-    case 'removeChinese':
-      result = applyRemoveChinese(result);
-      break;
-    case 'removeEnglish':
-      result = applyRemoveEnglish(result);
-      break;
+      case 'removeWhitespace':
+        result = applyRemoveWhitespace(result);
+        break;
+      case 'removeSymbols':
+        result = applyRemoveSymbols(result);
+        break;
+      case 'removeChinese':
+        result = applyRemoveChinese(result);
+        break;
+      case 'removeEnglish':
+        result = applyRemoveEnglish(result);
+        break;
     }
     result = flattenArray(result);
   }
@@ -725,45 +697,45 @@ export function applySingleRule(input, rule) {
 
   // 应用规则
   switch (rule) {
-  case 'symbolSplit':
-    result = applySymbolSplit(result);
-    break;
-  case 'whitespaceSplit':
-    result = applyWhitespaceSplit(result);
-    break;
-  case 'newlineSplit':
-    result = applyNewlineSplit(result);
-    break;
-  case 'chineseEnglishSplit':
-    result = applyChineseEnglishSplit(result);
-    break;
-  case 'uppercaseSplit':
-    result = applyUppercaseSplit(result);
-    break;
-  case 'namingSplit':
-    result = applyNamingSplit(result);
-    break;
-  case 'digitSplit':
-    result = applyDigitSplit(result);
-    break;
-  case 'removeWhitespace':
-    result = applyRemoveWhitespace(result);
-    break;
-  case 'removeSymbols':
-    result = applyRemoveSymbols(result);
-    break;
-  case 'removeChinese':
-    result = applyRemoveChinese(result);
-    break;
-  case 'removeEnglish':
-    result = applyRemoveEnglish(result);
-    break;
-  default:
-    return {
-      result,
-      hasConflict: false,
-      conflictMessage: `未知规则: ${rule}`
-    };
+    case 'symbolSplit':
+      result = applySymbolSplit(result);
+      break;
+    case 'whitespaceSplit':
+      result = applyWhitespaceSplit(result);
+      break;
+    case 'newlineSplit':
+      result = applyNewlineSplit(result);
+      break;
+    case 'chineseEnglishSplit':
+      result = applyChineseEnglishSplit(result);
+      break;
+    case 'uppercaseSplit':
+      result = applyUppercaseSplit(result);
+      break;
+    case 'namingSplit':
+      result = applyNamingSplit(result);
+      break;
+    case 'digitSplit':
+      result = applyDigitSplit(result);
+      break;
+    case 'removeWhitespace':
+      result = applyRemoveWhitespace(result);
+      break;
+    case 'removeSymbols':
+      result = applyRemoveSymbols(result);
+      break;
+    case 'removeChinese':
+      result = applyRemoveChinese(result);
+      break;
+    case 'removeEnglish':
+      result = applyRemoveEnglish(result);
+      break;
+    default:
+      return {
+        result,
+        hasConflict: false,
+        conflictMessage: `未知规则: ${rule}`
+      };
   }
 
   result = flattenArray(result);

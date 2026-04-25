@@ -1,9 +1,20 @@
 // src/utils/storage.js
 
+import { createLogger } from './logger.js';
+
+const logger = createLogger('[Storage]');
+
 /**
  * Enhanced Storage Management Utilities
  * Provides robust data persistence with error handling and validation
  */
+
+// Storage 配额管理
+const STORAGE_CONFIG = {
+  QUOTA_LIMIT: 5 * 1024 * 1024, // 5MB
+  WARNING_THRESHOLD: 0.8, // 80% 警告阈值
+  CRITICAL_THRESHOLD: 0.95 // 95% 严重阈值
+};
 
 // Storage keys constants
 export const STORAGE_KEYS = {
@@ -96,13 +107,6 @@ export const DEFAULTS = {
     // 历史栈
     historyMaxSize: 6 // 历史栈上限
   }
-};
-
-// Utility functions
-const logger = {
-  info: (message, ...args) => console.log(`[Storage] ${message}`, ...args),
-  error: (message, ...args) => console.error(`[Storage] ${message}`, ...args),
-  warn: (message, ...args) => console.warn(`[Storage] ${message}`, ...args)
 };
 
 /**
@@ -484,5 +488,99 @@ export async function getStorageInfo() {
       engineCount: 0,
       lastBackup: null
     };
+  }
+}
+
+/**
+ * 检查 Storage 容量并返回警告级别
+ * @returns {Promise<object>} 容量检查结果
+ */
+export async function checkStorageQuota() {
+  try {
+    const usage = await chrome.storage.local.getBytesInUse();
+    const usagePercent = usage / STORAGE_CONFIG.QUOTA_LIMIT;
+
+    let level = 'normal';
+    let message = '';
+
+    if (usagePercent >= STORAGE_CONFIG.CRITICAL_THRESHOLD) {
+      level = 'critical';
+      message = `存储容量已达 ${Math.round(usagePercent * 100)}%，建议立即清理历史数据`;
+    } else if (usagePercent >= STORAGE_CONFIG.WARNING_THRESHOLD) {
+      level = 'warning';
+      message = `存储容量已达 ${Math.round(usagePercent * 100)}%，建议清理历史数据`;
+    }
+
+    return {
+      bytesUsed: usage,
+      quotaLimit: STORAGE_CONFIG.QUOTA_LIMIT,
+      usagePercent: Math.round(usagePercent * 100),
+      level,
+      message,
+      needsAttention: level !== 'normal'
+    };
+  } catch (error) {
+    logger.error('检查存储配额失败:', error);
+    return {
+      bytesUsed: 0,
+      quotaLimit: STORAGE_CONFIG.QUOTA_LIMIT,
+      usagePercent: 0,
+      level: 'unknown',
+      message: '无法检查存储容量',
+      needsAttention: false
+    };
+  }
+}
+
+/**
+ * 自动清理过期数据（如果容量超限）
+ * @returns {Promise<object>} 清理结果
+ */
+export async function autoCleanupStorage() {
+  try {
+    const quotaCheck = await checkStorageQuota();
+
+    if (quotaCheck.level !== 'critical') {
+      return { cleaned: false, reason: '容量未达严重阈值' };
+    }
+
+    const settings = await getSettings();
+    if (!settings.history || settings.history.length === 0) {
+      return { cleaned: false, reason: '无历史数据可清理' };
+    }
+
+    // 清理 50% 的历史数据
+    const originalCount = settings.history.length;
+    const newCount = Math.floor(originalCount * 0.5);
+    settings.history = settings.history.slice(0, newCount);
+
+    await saveSettings(settings);
+
+    logger.info(`自动清理完成：${originalCount} → ${newCount} 条记录`);
+
+    return {
+      cleaned: true,
+      originalCount,
+      newCount,
+      message: `已自动清理 ${originalCount - newCount} 条历史记录`
+    };
+  } catch (error) {
+    logger.error('自动清理失败:', error);
+    return { cleaned: false, error: error.message };
+  }
+}
+
+/**
+ * 清除所有存储数据
+ * @returns {Promise<boolean>} Success status
+ */
+export async function clearAllData() {
+  try {
+    await chrome.storage.local.clear();
+    logger.info('All data cleared successfully');
+    return true;
+  } catch (error) {
+    logger.error('Failed to clear all data:', error);
+    return false;
   }
 }

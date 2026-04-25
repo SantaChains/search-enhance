@@ -10,10 +10,10 @@
 
 ### 🚀 多种启动方式
 
-- **快捷键启动**：按 `Alt+L` 快速打开扩展弹窗
+- **快捷键启动**：按 `Alt+D` 快速打开扩展弹窗
 - **工具栏图标**：点击浏览器扩展图标打开
 - **侧边栏模式**：右键扩展图标选择"在侧边栏中打开"
-- **剪贴板快捷键**：`Alt+K` 切换剪贴板监控，`Alt+J` 读取剪贴板内容
+- **剪贴板快捷键**：`Alt+C` 切换剪贴板监控，`Alt+V` 读取剪贴板内容
 
 ![主界面概览](image/README/1772945863859.png)
 
@@ -116,17 +116,18 @@
 
 ### 基本操作
 
-1. **启动扩展**：按 `Alt+L` 或点击扩展图标打开侧边栏
-2. **读取剪贴板**：按 `Alt+J` 自动读取剪贴板内容到输入框
+1. **启动扩展**：按 `Alt+D` 或点击扩展图标打开侧边栏
+2. **读取剪贴板**：按 `Alt+V` 自动读取剪贴板内容到输入框
 3. **输入文本**：在搜索框中输入或粘贴内容
 4. **选择功能**：通过开关选择所需的处理方式
 5. **查看结果**：在结果区域查看处理后的内容
 6. **一键复制**：点击复制按钮获取结果
 
 **快捷操作提示**：
-- `Alt+L`：打开/关闭侧边栏并聚焦输入框
-- `Alt+J`：在侧边栏打开时,全局读取剪贴板内容
-- `Alt+K`：切换剪贴板监控状态
+- `Alt+D`：打开/关闭侧边栏并聚焦输入框
+- `Alt+V`：在侧边栏打开时,全局读取剪贴板内容
+- `Alt+C`：切换剪贴板监控状态
+- `Alt+S`：快速搜索选中文本
 
 ### 三大核心功能
 
@@ -187,29 +188,46 @@ search-enhance/
 ├── icons/                  # 扩展图标
 ├── src/
 │   ├── background/         # 后台服务脚本
-│   │   └── background.js
+│   │   └── index.js        # Service Worker 入口
 │   ├── content/            # 内容脚本
-│   │   └── content.js
+│   │   └── index.js        # 页面注入脚本
 │   ├── popup/              # 弹窗界面
-│   │   ├── index.html
-│   │   ├── main.js         # 主逻辑（约 3800 行）
-│   │   ├── style.css
-│   │   └── new-style.css
+│   │   ├── index.html      # 弹窗 HTML
+│   │   ├── main.js         # 主逻辑（模块化后约 1100 行）
+│   │   ├── new-style.css   # 样式文件
+│   │   └── modules/        # 功能模块
+│   │       ├── clipboardHistoryModule.js
+│   │       ├── linkHistoryModule.js
+│   │       ├── textProcessorModule.js
+│   │       ├── tokenHistoryModule.js
+│   │       ├── uiModule.js
+│   │       └── index.js
 │   ├── settings/           # 设置页面
 │   │   ├── settings.html
-│   │   └── settings.js
+│   │   ├── main.js
+│   │   └── modules/        # 设置模块
+│   │       ├── aiSettings.js
+│   │       ├── dataManagement.js
+│   │       ├── generalSettings.js
+│   │       ├── historySettings.js
+│   │       └── tokenizerSettings.js
 │   └── utils/              # 工具模块
-│       ├── textProcessor.js      # 文本处理核心（约 1300 行）
+│       ├── textProcessor.js      # 文本处理核心
 │       ├── multiRuleAnalyzer.js  # 多规则分析器
 │       ├── aiAdapter.js          # AI 适配器
-│       ├── codeAnalyzer.js       # 代码分析器
+│       ├── analyzers/            # 分析器集合
+│       │   ├── index.js
+│       │   ├── smartAnalyzer.js
+│       │   └── utils.js
 │       ├── storage.js            # 存储管理
 │       ├── linkHistory.js        # 链接历史管理
 │       ├── clipboardHistory.js   # 剪贴板历史管理
+│       ├── fastCWS.js            # 中文分词
+│       ├── exportImportSchema.js # 导入导出
 │       └── logger.js             # 日志工具
 ├── manifest.json           # 扩展配置（Manifest V3）
 ├── package.json
-├── test/                    # 测试目录
+├── test/                   # 测试目录
 │   └── test.html           # 功能测试页面
 └── README.md
 ```
@@ -223,6 +241,14 @@ search-enhance/
 | **模块** | ES6 Modules | 模块化代码组织 |
 | **存储** | Chrome Storage API | 本地持久化存储 |
 | **样式** | CSS3 + 变量 | 现代化样式系统 |
+| **通信** | Port + Message | 组件间通信机制 |
+
+### 架构特点
+
+- **模块化设计**：功能按模块拆分，便于维护和扩展
+- **单一职责**：每个模块只负责特定功能
+- **状态管理**：通过 Storage API 统一状态同步
+- **事件驱动**：使用消息机制实现组件通信
 
 ### 核心模块说明
 
@@ -244,6 +270,19 @@ AI 适配器，支持多服务商：
 - 统一的 API 接口
 - 自动重试机制
 - 链接识别和补全
+
+#### clipboardHistory.js
+剪贴板历史管理器：
+- 自动分类标签（URL、代码、中文、英文、多行）
+- 全文搜索和过滤
+- 批量操作支持
+- 多格式导入导出
+
+#### linkHistory.js
+链接历史管理器：
+- 自动记录生成的链接
+- 搜索引擎识别（8大引擎）
+- 搜索查询历史
 
 ---
 

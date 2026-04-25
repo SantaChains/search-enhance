@@ -818,8 +818,7 @@ export { FastCWS, fastCWS };
 export default fastCWS;
 
 // 兼容CommonJS
- 
+
 if (typeof module !== 'undefined' && module.exports) {
-   
   module.exports = { FastCWS, fastCWS };
 }
